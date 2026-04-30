@@ -17,11 +17,11 @@ import type { StaffProfile } from '../../../types/staff.types';
 // ==================== Helper Components ====================
 const FormSection = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
     <Card className="flex flex-col !p-0 overflow-hidden h-full">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
             <div className="text-blue-600">{icon}</div>
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">{title}</h3>
         </div>
-        <div className="p-6 space-y-6">
+        <div className="p-5 space-y-5">
             {children}
         </div>
     </Card>
@@ -128,10 +128,10 @@ const EditDoctorProfilePage = () => {
         <div className="flex flex-col flex-1 h-full w-full bg-slate-50 relative font-sans overflow-hidden">
             <TopBar title={breadcrumb} onMenuClick={() => {}} />
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                <div className="max-w-[1600px] mx-auto pb-24">
+            <div className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6">
+                <div className="max-w-[1400px] mx-auto pb-24">
                     
-                    <div className="flex items-center justify-between mb-8 gap-4">
+                    <div className="flex items-center justify-between mb-6 gap-4">
                         <div className="flex flex-col">
                             <h1 className="text-2xl font-black text-slate-900 flex items-center gap-3">
                                 Edit Doctor Profile
@@ -143,9 +143,9 @@ const EditDoctorProfilePage = () => {
                         </Badge>
                     </div>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
                         {/* Left Sidebar */}
-                        <div className="xl:col-span-3 space-y-8">
+                        <div className="lg:col-span-4 xl:col-span-3 space-y-5">
                             <Card className="p-8 flex flex-col items-center text-center">
                                 <div className="relative mb-6 group cursor-pointer">
                                     <div className="w-36 h-36 rounded-2xl overflow-hidden border-4 border-white shadow-xl bg-slate-100">
@@ -195,7 +195,7 @@ const EditDoctorProfilePage = () => {
                         </div>
 
                         {/* Main Form Area */}
-                        <div className="xl:col-span-9 space-y-8">
+                        <div className="lg:col-span-8 xl:col-span-9 space-y-5">
                             {/* Personal Information */}
                             <FormSection title="Personal Information" icon={<Pencil size={18} />}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -238,7 +238,7 @@ const EditDoctorProfilePage = () => {
                                 </div>
                             </FormSection>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div className="space-y-8">
                                      {/* Documents */}
                                     <Card className="!p-0 overflow-hidden">
@@ -269,7 +269,7 @@ const EditDoctorProfilePage = () => {
 
                                     {/* Organization Assignment */}
                                     <FormSection title="ORGANIZATION ASSIGNMENT" icon={<Plus size={18} />}>
-                                        <div className="grid grid-cols-1 gap-6">
+                                        <div className="grid grid-cols-1 gap-5">
                                             <FieldGroup label="Assigned Department">
                                                 <div className="relative">
                                                     <select name="assignedDept" value={formData.assignedDept || formData.department} onChange={handleInputChange} className="w-full h-11 bg-slate-100/50 border border-slate-200 rounded-xl px-4 font-bold text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20">
