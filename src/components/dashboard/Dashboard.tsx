@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { jwtDecode } from "jwt-decode";
+import { useAuth } from "../../context/AuthContext";
 import Sidebar from "../../components/dashboard/Sidebar";
 import TopBar from "../../components/dashboard/TopBar";
 import StatCards from "../../components/dashboard/StatCards";
@@ -26,6 +26,7 @@ import AssignStaff from "./clinics/AssignStaff";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
 import EditPatientProfilePage from "./users/EditPatientProfilePage";
+import AdminProfile from "./profile/AdminProfile";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
@@ -35,9 +36,8 @@ interface DashboardProps {
 
 const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState<string>("User");
+  const { user, isAdmin, isLoading } = useAuth();
   const [currentDate, setCurrentDate] = useState<string>("");
-  const [authError, setAuthError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [userViewMode, setUserViewMode] = useState<"list" | "register">("list");
   const [registerMode, setRegisterMode] = useState<"patient" | "staff">(
@@ -63,6 +63,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (path.includes("/dashboard/users/staff/")) return "Staff Profile";
     if (path.includes("/dashboard/appointments")) return "Appointments";
     if (path.includes("/dashboard/appointments/edit")) return "Appointment Management";
+    if (path.includes("/dashboard/profile")) return "Admin Profile";
 
     // حالات الـ Tabs الأساسية
     switch (activeTab) {
@@ -101,6 +102,8 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       setActiveTab("clinics");
     } else if (path.includes("/dashboard/settings")) {
       setActiveTab("settings");
+    } else if (path.includes("/dashboard/profile")) {
+      setActiveTab("profile");
     } else {
       setActiveTab("dashboard");
     }
@@ -114,45 +117,22 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       day: "numeric",
     };
     setCurrentDate(new Date().toLocaleDateString("en-US", options));
-
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      setAuthError("No authentication token found. Please log in.");
-      return;
-    }
-
-    try {
-      const decoded: any = jwtDecode(token);
-      const role =
-        decoded[
-          "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
-        ] ||
-        decoded.role ||
-        "";
-      const name =
-        decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
-        decoded.unique_name ||
-        decoded.name;
-
-      // Handle single role string or array of roles
-      const roles = Array.isArray(role) ? role : [role];
-      const isAdmin = roles.some((r) => r === "Admin" || r === "1");
-
-      if (!isAdmin) {
-        setAuthError("This dashboard is for administrative use only.");
-        return;
-      }
-
-      if (name) {
-        const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
-        setUserName(formattedName);
-      }
-    } catch (err) {
-      setAuthError("Invalid authentication token. Please log in again.");
-    }
   }, []);
 
-  if (authError) {
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    return hour < 12 ? "Good Morning" : "Good Evening";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 font-sans p-4 text-center">
         <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg border border-red-100">
@@ -174,11 +154,11 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
             Access Restricted
           </h2>
-          <p className="text-slate-500 mb-8">{authError}</p>
+          <p className="text-slate-500 mb-8">
+            {!user ? "No authentication token found. Please log in." : "This dashboard is for administrative use only."}
+          </p>
           <button
             onClick={() => {
-              localStorage.removeItem("accessToken");
-              localStorage.removeItem("refreshToken");
               onLogout?.();
             }}
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl transition-colors"
@@ -363,6 +343,9 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             }
           />
 
+          {/* Admin Profile */}
+          <Route path="profile" element={<AdminProfile />} />
+
           {/* Dashboard Home */}
           <Route
             path="*"
@@ -374,7 +357,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                       {currentDate}
                     </p>
                     <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                      Good Morning Dr. {userName}
+                      {getGreeting()} {user.name}
                     </h2>
                   </div>
 

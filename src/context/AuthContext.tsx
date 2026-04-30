@@ -3,8 +3,10 @@ import { jwtDecode } from 'jwt-decode';
 
 // Types
 interface User {
+    id: string;
     name: string;
     role: string;
+    avatar?: string;
 }
 
 interface AuthContextType {
@@ -83,15 +85,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             const role = rolesMap[String(rawRole)] || (isNaN(parseInt(String(rawRole))) ? String(rawRole) : 'Staff');
 
-            const name =
-                decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ||
-                decoded.unique_name ||
-                decoded.name ||
-                'User';
+            const id =
+                decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+                decoded.nameid ||
+                decoded.sub ||
+                '';
 
             const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
 
-            return { name: formattedName, role };
+            return { id, name: formattedName, role };
         } catch {
             return null;
         }

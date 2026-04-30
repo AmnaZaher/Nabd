@@ -131,17 +131,20 @@ export const staffApi = {
         ...item, // Spread at top so our mappings can overwrite
         id: item.id || item.Id || idOrNationalId,
         name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
+        fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
         role: roleVal,
         department: deptVal,
         licenseId: item.licenseNumber || item.licenseId || 'N/A',
-        location: item.location || item.city || 'Hospital',
-        email: item.email || item.Email || 'No Email',
+        location: item.location || item.city || item.City || 'Hospital',
+        email: item.email || item.Email || '',
         nationalId: item.nationalId || item.NationalId || idOrNationalId,
-        phone: item.phoneNumber || item.phone || item.PhoneNumber || 'N/A',
-        address: item.address || item.Address || 'N/A',
+        phone: item.phoneNumber || item.phone || item.PhoneNumber || '',
+        address: item.address || item.Address || '',
+        country: item.country || item.Country || '',
+        dateOfBirth: item.dateOfBirth || item.DateOfBirth || '',
         gender: genderStr,
         experience: item.experience || 'N/A',
-        qualifications: item.qualification || item.qualifications || 'N/A',
+        qualifications: item.qualification || item.qualifications || item.Qualification || 'N/A',
         status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
         lastLogin: item.lastLogin || 'N/A',
         avatar: item.avatar || item.PersonalPhotos || '',
@@ -165,30 +168,68 @@ export const staffApi = {
   },
 
   updateStaff: async (id: string, payload: any): Promise<void> => {
-    // Try Admin endpoint first
+    // Try multiple endpoint and payload combinations
+    const endpoints = [`/Admin/Staffs/${id}`, `/Admin/Staff/${id}`, `/Staff/${id}`];
+    const payloads = [payload, { staffDto: payload }];
+    
+    let lastError: any = null;
+    
+    for (const url of endpoints) {
+      for (const p of payloads) {
+        try {
+          await fetchApi(url, {
+            method: "PUT",
+            body: JSON.stringify(p),
+          });
+          return;
+        } catch (err: any) {
+          lastError = err;
+          if (err.status !== 404 && err.status !== 400 && err.status !== 405) break; 
+        }
+      }
+    }
+    
+    // Fallback: Use NewStaff to upsert if standard endpoints fail (Backend has no dedicated PUT)
     try {
-      await fetchApi(`/Admin/Staff/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
+      console.warn("Standard update endpoints failed, attempting upsert via /Account/NewStaff");
+      const formData = new FormData();
+      Object.keys(payload).forEach(key => {
+        if (payload[key] !== undefined && payload[key] !== null) {
+          formData.append(key, payload[key].toString());
+        }
+      });
+      // NewStaff might require Role, Email, FullNameArabic, NationalId
+      if (!formData.has('Role')) formData.append('Role', payload.role || 'Staff');
+      
+      await fetchApi('/Account/NewStaff', {
+        method: "POST",
+        body: formData,
       });
       return;
-    } catch (adminErr: any) {
-      console.warn('Admin Staff PUT failed:', adminErr.message);
-      throw new Error(adminErr.message || 'Staff update is not supported by the current API.');
+    } catch (upsertErr: any) {
+      console.error("Upsert failed:", upsertErr);
+      throw new Error(upsertErr.message || lastError?.message || 'Staff update failed. The backend might be missing the update endpoint.');
     }
   },
 
   deleteStaff: async (id: string): Promise<void> => {
     // Try Admin endpoint first
-    try {
-      await fetchApi(`/Admin/Staff/${id}`, {
-        method: "DELETE",
-      });
-      return;
-    } catch (adminErr: any) {
-      console.warn('Admin Staff DELETE failed:', adminErr.message);
-      throw new Error(adminErr.message || 'Staff deletion is not supported by the current API.');
+    const endpoints = [`/Admin/Staffs/${id}`, `/Admin/Staff/${id}`, `/Staff/${id}`];
+    
+    let lastError: any = null;
+    for (const url of endpoints) {
+      try {
+        await fetchApi(url, {
+          method: "DELETE",
+        });
+        return;
+      } catch (err: any) {
+        lastError = err;
+        if (err.status !== 404) break;
+      }
     }
+    
+    throw new Error(lastError?.message || 'Staff deletion is not supported by the current API.');
   }
 };
 

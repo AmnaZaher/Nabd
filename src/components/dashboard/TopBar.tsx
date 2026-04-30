@@ -1,6 +1,11 @@
 import React from 'react';
-import { Menu, Search } from 'lucide-react';
+import { Menu, Search, User as UserIcon } from 'lucide-react';
 import { AddUserButton } from './shared/AddUserButton';
+import { useAuth } from '../../context/AuthContext';
+import { staffApi } from '../../api/staff';
+import type { StaffProfile } from '../../types/staff.types';
+import { useNavigate } from 'react-router-dom';
+import { PATHS } from '../../routes/routePaths';
 
 interface TopBarProps {
     title?: React.ReactNode;
@@ -19,6 +24,29 @@ const TopBar: React.FC<TopBarProps> = ({
     searchPlaceholder,
     showAddUser = true,
 }) => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [profile, setProfile] = React.useState<StaffProfile | null>(null);
+
+    React.useEffect(() => {
+        const fetchProfile = async () => {
+            if (user?.id) {
+                try {
+                    const data = await staffApi.getStaffById(user.id);
+                    if (data) {
+                        setProfile(data);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch admin profile:', error);
+                }
+            }
+        };
+
+        fetchProfile();
+    }, [user?.id]);
+
+    const displayUser = profile || user;
+
     return (
         <header className="px-4 md:px-10 py-4 md:py-6 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-10 w-full overflow-visible">
             {/* Left Side */}
@@ -67,6 +95,38 @@ const TopBar: React.FC<TopBarProps> = ({
                         }}
                     />
                 )}
+
+                {/* Profile Section */}
+                <div 
+                    className="flex items-center gap-3 pl-4 md:pl-6 border-l border-slate-100 ml-2 md:ml-4 cursor-pointer hover:opacity-80 transition-opacity group/profile"
+                    onClick={() => navigate(PATHS.PROFILE)}
+                >
+                    <div className="text-right hidden sm:block">
+                        <p className="text-sm font-bold text-slate-900 leading-tight group-hover/profile:text-blue-600 transition-colors">
+                            {displayUser?.name || 'Admin'}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                            {displayUser?.role || 'Administrator'}
+                        </p>
+                    </div>
+                    
+                    <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl overflow-hidden border-2 border-white shadow-sm bg-slate-50 flex items-center justify-center shrink-0">
+                        {displayUser?.avatar ? (
+                            <img 
+                                src={displayUser.avatar} 
+                                alt={displayUser.name} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = ''; // Fallback to icon
+                                }}
+                            />
+                        ) : (
+                            <div className="w-full h-full bg-blue-50 flex items-center justify-center text-blue-500">
+                                <UserIcon size={20} />
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </header>
     );

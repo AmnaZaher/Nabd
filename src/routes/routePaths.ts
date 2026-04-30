@@ -22,4 +22,5 @@ export const PATHS = {
   LAB_TEST_REQUEST: "/dashboard/lab-test-request",
   CLINICS: "/dashboard/clinics",
   SETTINGS: "/dashboard/settings",
+  PROFILE: "/dashboard/profile",
 } as const;
