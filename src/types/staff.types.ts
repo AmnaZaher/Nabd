@@ -10,9 +10,18 @@ export interface StaffMember {
     avatar: string;
 }
 
+export interface WorkingSchedule {
+    id?: string;
+    day: string;
+    startTime: string;
+    endTime: string;
+    shift: 'Morning' | 'Evening' | 'Night';
+}
+
 export interface StaffProfile {
     id: string;
     name: string;
+    fullNameArabic?: string;
     role: string;
     department: string;
     licenseId: string;
@@ -22,11 +31,25 @@ export interface StaffProfile {
     phone: string;
     address: string;
     gender: string;
+    dateOfBirth?: string;
+    city?: string;
+    country?: string;
     experience: string;
     qualifications: string;
     status: 'Active' | 'Disabled';
     lastLogin: string;
     avatar: string;
+    
+    // Doctor Specific Fields
+    syndicateNumber?: string;
+    graduationYear?: string;
+    educationalQualification?: string;
+    dateOfAppointment?: string;
+    isHeadOfDepartment?: boolean;
+    assignedDept?: string;
+    assignedClinic?: string;
+    workingSchedule?: WorkingSchedule[];
+    documents?: { id: string; name: string; url: string; type: string }[];
 }
 
 export interface StaffFilters {

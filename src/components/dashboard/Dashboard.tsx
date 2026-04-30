@@ -26,13 +26,16 @@ import AssignStaff from "./clinics/AssignStaff";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
 import EditPatientProfilePage from "./users/EditPatientProfilePage";
+import DoctorProfileDetail from "./users/DoctorProfileDetail";
+import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import AdminProfile from "./profile/AdminProfile";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, useParams } from "react-router-dom";
 
 interface DashboardProps {
   onLogout?: () => void;
   //onAddUserClick?: (type: 'patient' | 'staff', role?: string) => void;
 }
+
 
 const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -60,6 +63,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (path.includes("/dashboard/clinics/assign")) return "Assign Staff";
     if (path.includes("/dashboard/users/patient/edit")) return "Edit Patient Profile";
     if (path.includes("/dashboard/users/patient/")) return "Patient Profile";
+    if (path.includes("/dashboard/users/staff/edit")) return "Edit Doctor Profile";
     if (path.includes("/dashboard/users/staff/")) return "Staff Profile";
     if (path.includes("/dashboard/appointments")) return "Appointments";
     if (path.includes("/dashboard/appointments/edit")) return "Appointment Management";
@@ -216,6 +220,11 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
         <Routes>
           {/* Staff Profile */}
+          <Route
+            path="users/staff/edit/:id"
+            element={<EditDoctorProfilePage />}
+          />
+
           <Route
             path="users/staff/:id"
             element={

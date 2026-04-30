@@ -141,6 +141,7 @@ export const staffApi = {
         phone: item.phoneNumber || item.phone || item.PhoneNumber || '',
         address: item.address || item.Address || '',
         country: item.country || item.Country || '',
+        city: item.city || item.City || '',
         dateOfBirth: item.dateOfBirth || item.DateOfBirth || '',
         gender: genderStr,
         experience: item.experience || 'N/A',
@@ -148,6 +149,16 @@ export const staffApi = {
         status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
         lastLogin: item.lastLogin || 'N/A',
         avatar: item.avatar || item.PersonalPhotos || '',
+        
+        // Doctor Specific Fields - map from backend if available (case-insensitive search)
+        syndicateNumber: item.syndicateNumber || item.SyndicateNumber || '',
+        graduationYear: item.graduationYear || item.GraduationYear || '',
+        educationalQualification: item.educationalQualification || item.EducationalQualification || item.qualification || item.Qualification || '',
+        dateOfAppointment: item.dateOfAppointment || item.DateOfAppointment || '',
+        isHeadOfDepartment: !!(item.isHeadOfDepartment || item.IsHeadOfDepartment),
+        assignedDept: item.assignedDept || item.AssignedDept || deptVal,
+        assignedClinic: item.assignedClinic || item.AssignedClinic || item.location || item.City || 'Main Clinic',
+        workingSchedule: item.workingSchedule || item.WorkingSchedule || [],
       } as unknown as StaffProfile;
     } catch (error) {
       console.error('API getStaffById failed:', error);

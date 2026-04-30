@@ -16,6 +16,7 @@ import {
 import type { StaffProfile } from '../../../types/staff.types';
 import { EditUserModal } from './EditUserModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import DoctorProfileDetail from './DoctorProfileDetail';
 
 // ==================== Helper Components ====================
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
@@ -134,6 +135,16 @@ const UserProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
     }
 
     if (!user) return null;
+
+    // Check if the user is a doctor to show the specialized profile
+    const isDoctor = user.role?.toLowerCase().includes('doctor') || 
+                     user.role?.toLowerCase().trim() === 'doctor' ||
+                     user.role === '2' || 
+                     user.role === 2;
+
+    if (isDoctor) {
+        return <DoctorProfileDetail onMenuClick={onMenuClick} />;
+    }
 
     return (
         <div className="flex flex-col flex-1 h-full w-full bg-slate-50 relative font-sans overflow-hidden">

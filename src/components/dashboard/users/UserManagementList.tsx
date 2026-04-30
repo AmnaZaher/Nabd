@@ -249,10 +249,17 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
     const navigate = useNavigate();
 
     const handleEdit = useCallback((userType: 'patient' | 'staff', id: string) => {
+        if (userType === 'staff') {
+            const staff = staffData.find(s => s.id === id);
+            if (staff?.role === 'Doctor') {
+                navigate(`/dashboard/users/staff/edit/${id}`);
+                return;
+            }
+        }
         setModalUserType(userType);
         setSelectedUserId(id);
         setEditModalOpen(true);
-    }, []);
+    }, [staffData, navigate]);
 
     const handleDelete = useCallback((userType: 'patient' | 'staff', id: string, name: string) => {
         setModalUserType(userType);
