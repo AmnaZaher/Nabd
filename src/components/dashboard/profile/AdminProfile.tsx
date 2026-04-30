@@ -3,8 +3,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { staffApi } from '../../../api/staff';
 import { changePassword as apiChangePassword } from '../../../api/auth';
 import { 
-    User, Mail, Phone, MapPin, Lock, Camera, 
-    Trash2, LogOut, Pencil, Save, X, KeyRound,
+    User, Mail, Lock, Camera, 
+    Trash2, LogOut, Pencil, Save,
     CheckCircle2, AlertCircle, ShieldCheck, Upload
 } from 'lucide-react';
 import { Card, Button, Badge, Modal } from '../../ui';

@@ -91,7 +91,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 decoded.sub ||
                 '';
 
-            const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+            const name =
+                decoded.name ||
+                decoded.unique_name ||
+                decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ||
+                '';
+
+            const formattedName = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Unknown';
 
             return { id, name: formattedName, role };
         } catch {
