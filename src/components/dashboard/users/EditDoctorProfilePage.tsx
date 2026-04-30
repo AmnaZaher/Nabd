@@ -16,7 +16,7 @@ import type { StaffProfile } from '../../../types/staff.types';
 
 // ==================== Helper Components ====================
 const FormSection = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
-    <Card className="flex flex-col !p-0 overflow-hidden h-full">
+    <Card className="flex flex-col !p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
             <div className="text-blue-600">{icon}</div>
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">{title}</h3>
@@ -143,7 +143,7 @@ const EditDoctorProfilePage = () => {
                         </Badge>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
                         {/* Left Sidebar */}
                         <div className="lg:col-span-4 xl:col-span-3 space-y-5">
                             <Card className="p-8 flex flex-col items-center text-center">
@@ -238,7 +238,7 @@ const EditDoctorProfilePage = () => {
                                 </div>
                             </FormSection>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                                 <div className="space-y-8">
                                      {/* Documents */}
                                     <Card className="!p-0 overflow-hidden">
