@@ -26,10 +26,9 @@ import AssignStaff from "./clinics/AssignStaff";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
 import EditPatientProfilePage from "./users/EditPatientProfilePage";
-import DoctorProfileDetail from "./users/DoctorProfileDetail";
 import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import AdminProfile from "./profile/AdminProfile";
-import { Routes, Route, useNavigate, useLocation, useParams } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
   onLogout?: () => void;

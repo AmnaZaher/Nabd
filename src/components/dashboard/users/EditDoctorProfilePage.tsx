@@ -12,7 +12,7 @@ import {
     Upload,
     ChevronDown,
 } from 'lucide-react';
-import type { StaffProfile, WorkingSchedule } from '../../../types/staff.types';
+import type { StaffProfile } from '../../../types/staff.types';
 
 // ==================== Helper Components ====================
 const FormSection = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (

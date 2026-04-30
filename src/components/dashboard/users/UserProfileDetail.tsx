@@ -139,8 +139,7 @@ const UserProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
     // Check if the user is a doctor to show the specialized profile
     const isDoctor = user.role?.toLowerCase().includes('doctor') || 
                      user.role?.toLowerCase().trim() === 'doctor' ||
-                     user.role === '2' || 
-                     user.role === 2;
+                     user.role === '2';
 
     if (isDoctor) {
         return <DoctorProfileDetail onMenuClick={onMenuClick} />;

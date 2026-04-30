@@ -5,9 +5,7 @@ import { Card, Badge, Button, Modal } from '../../ui';
 import { staffApi } from '../../../api/staff';
 import {
     Mail,
-    Calendar,
     ShieldCheck,
-    History,
     Pencil,
     AlertTriangle,
     Trash2,
@@ -39,7 +37,7 @@ const InfoItem = ({ label, value, subValue }: { label: string; value: string | R
     </div>
 );
 
-const ScheduleRow = ({ schedule, onDelete }: { schedule: WorkingSchedule; onDelete?: (id: string) => void }) => (
+const ScheduleRow = ({ schedule }: { schedule: WorkingSchedule }) => (
     <tr className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
         <td className="py-4 px-4 text-sm font-bold text-slate-900">{schedule.day}</td>
         <td className="py-4 px-4 text-sm font-bold text-slate-600">{schedule.startTime}</td>
