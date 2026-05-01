@@ -26,7 +26,11 @@ import AssignStaff from "./clinics/AssignStaff";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
 import EditPatientProfilePage from "./users/EditPatientProfilePage";
+import LabCatalogPage from "./lapCatalog/LabCatalogPage";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import AddLabTest from "./lapCatalog/AddLabTest";
+import TestDetails from "./lapCatalog/TestDetails";
+import EditLabTest from "./lapCatalog/EditLabTest";
 
 interface DashboardProps {
   onLogout?: () => void;
@@ -63,6 +67,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (path.includes("/dashboard/users/staff/")) return "Staff Profile";
     if (path.includes("/dashboard/appointments")) return "Appointments";
     if (path.includes("/dashboard/appointments/edit")) return "Appointment Management";
+    if (path.includes("/dashboard/lab-catalog")) return "Lab Catalog";
 
     // حالات الـ Tabs الأساسية
     switch (activeTab) {
@@ -362,6 +367,21 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
               </div>
             }
           />
+
+          {/* Lab Catalog */}
+          <Route
+            path="lab-catalog"
+            element={
+              <div className="flex-1 overflow-y-auto w-full h-full">
+                <LabCatalogPage />
+              </div>
+            }
+          />
+          {/* <Route path="lab-catalog" element={<LabCatalogPage />} /> */}
+
+          <Route path="lab-catalog/add" element={<AddLabTest />} />
+          <Route path="lab-catalog/details/:id" element={<TestDetails />} />
+          <Route path="lab-catalog/edit/:id" element={<EditLabTest />} />
 
           {/* Dashboard Home */}
           <Route
