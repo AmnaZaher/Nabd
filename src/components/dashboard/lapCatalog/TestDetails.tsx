@@ -1,9 +1,61 @@
-import { ArrowLeft, Edit3, FileText, FlaskConical, List, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Edit3, FileText, FlaskConical, List, AlertCircle, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { getLabTestDetails } from '../../../api/labs';
+import type { LabTest } from '../../../types/labs.types';
 
 const TestDetails = () => {
     const navigate = useNavigate();
-    const { id } = useParams(); // استقبال الكود من الـ URL (مثل CBC-001)
+    const { id } = useParams();
+    const [test, setTest] = useState<LabTest | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchDetails = async () => {
+        if (!id) return;
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await getLabTestDetails(id);
+            setTest(response.data || null);
+        } catch (err: any) {
+            setError(err.message || "Failed to load test details");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDetails();
+    }, [id]);
+
+    if (isLoading) {
+        return (
+            <div className="h-full flex items-center justify-center bg-slate-50/30">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="animate-spin text-blue-600" size={40} />
+                    <p className="text-slate-400 font-bold">Loading test details...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !test) {
+        return (
+            <div className="h-full flex items-center justify-center bg-slate-50/30">
+                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                        <AlertCircle size={32} />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800">Error Loading Details</h2>
+                    <p className="text-slate-500">{error || "Test not found"}</p>
+                    <button onClick={() => navigate(-1)} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold">
+                        Go Back
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full overflow-y-auto bg-slate-50/30">
@@ -20,11 +72,11 @@ const TestDetails = () => {
                                 <ArrowLeft size={18} /> Back to List
                             </button>
                             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                {id || 'TEST-CODE'}
+                                {test.testCode}
                             </span>
                         </div>
                         <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-                            Comprehensive Metabolic Panel
+                            {test.testNameEnglish}
                         </h1>
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold border border-emerald-100">
@@ -32,7 +84,7 @@ const TestDetails = () => {
                                 Active Catalog
                             </div>
                             <div className="flex items-center gap-4 ml-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                                <span className="flex items-center gap-1.5"><FlaskConical size={14}/> Biochemistry</span>
+                                <span className="flex items-center gap-1.5"><FlaskConical size={14}/> {test.category}</span>
                             </div>
                         </div>
                     </div>
@@ -56,12 +108,12 @@ const TestDetails = () => {
                         <h3 className="text-lg font-black text-slate-800 mb-6 border-b border-slate-50 pb-4">General Info</h3>
                         <div className="space-y-6">
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Methodology</p>
-                                <p className="text-sm font-bold text-slate-600">Spectrophotometry, Ion-selective electrode</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Arabic Name</p>
+                                <p className="text-sm font-bold text-slate-600">{test.testNameArabic}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Primary Equipment</p>
-                                <p className="text-sm font-black text-blue-600">Roche Cobas 8000 Analyzer</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Methodology</p>
+                                <p className="text-sm font-bold text-slate-600">Standard Laboratory Procedure</p>
                             </div>
                         </div>
                     </div>
@@ -71,13 +123,15 @@ const TestDetails = () => {
                         <div className="space-y-6">
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sample Type</p>
-                                <p className="text-sm font-black text-slate-700">Serum (Red Top / SST)</p>
+                                <p className="text-sm font-black text-slate-700">{test.sampleType}</p>
                             </div>
-                            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center">🍱</div>
+                            <div className={`p-4 rounded-2xl border flex items-center gap-3 ${test.fasting_required ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${test.fasting_required ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>🍱</div>
                                 <div>
-                                    <p className="text-[10px] font-black text-blue-400 uppercase">Requirement</p>
-                                    <p className="text-sm font-black text-blue-700">8-12 Hours Fasting</p>
+                                    <p className={`text-[10px] font-black uppercase ${test.fasting_required ? 'text-blue-400' : 'text-slate-400'}`}>Requirement</p>
+                                    <p className={`text-sm font-black ${test.fasting_required ? 'text-blue-700' : 'text-slate-500'}`}>
+                                        {test.fasting_required ? 'Fasting Required' : 'No Fasting Required'}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -122,24 +176,31 @@ const TestDetails = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {[
-                                    { name: 'Glucose, Serum', code: 'GLU-70', unit: 'mg/dL', range: '65 - 99', critical: '< 40 or > 400' },
-                                    { name: 'Creatinine, Serum', code: 'CREA-12', unit: 'mg/dL', range: '0.70 - 1.30', critical: '> 4.0' },
-                                ].map((row, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/30 transition-colors">
-                                        <td className="px-8 py-5">
-                                            <div className="text-sm font-black text-slate-700">{row.name}</div>
-                                            <div className="text-[10px] font-bold text-slate-300">{row.code}</div>
-                                        </td>
-                                        <td className="px-8 py-5 text-sm font-bold text-slate-400 text-center">{row.unit}</td>
-                                        <td className="px-8 py-5 text-center text-xs font-black text-slate-600">{row.range}</td>
-                                        <td className="px-8 py-5 text-right">
-                                            <div className="inline-flex items-center gap-1.5 text-red-500 font-black text-xs px-3 py-1 bg-red-50 rounded-lg border border-red-100">
-                                                <AlertCircle size={14} /> {row.critical}
-                                            </div>
+                                {test.parameters && test.parameters.length > 0 ? (
+                                    test.parameters.map((row, i) => (
+                                        <tr key={i} className="hover:bg-slate-50/30 transition-colors">
+                                            <td className="px-8 py-5">
+                                                <div className="text-sm font-black text-slate-700">{row.name || 'Parameter'}</div>
+                                                <div className="text-[10px] font-bold text-slate-300">ID: {row.id}</div>
+                                            </td>
+                                            <td className="px-8 py-5 text-sm font-bold text-slate-400 text-center">{row.unit}</td>
+                                            <td className="px-8 py-5 text-center text-xs font-black text-slate-600">
+                                                {row.referenceRangeMin} - {row.referenceRangeMax}
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <div className="inline-flex items-center gap-1.5 text-blue-500 font-black text-xs px-3 py-1 bg-blue-50 rounded-lg border border-blue-100">
+                                                    {row.gender}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-8 py-10 text-center text-slate-400 font-bold">
+                                            No parameters defined for this test.
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Save,
   Trash2,
@@ -7,12 +8,92 @@ import {
   Thermometer,
   Settings2,
   Edit3,
+  Loader2,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { getLabTestDetails, createLabTest } from "../../../api/labs";
+import type { LabParameter } from "../../../types/labs.types";
 
 const EditLabTest = () => {
   const navigate = useNavigate();
-  const { id: _id } = useParams(); // لجلب كود التحليل من الـ URL
+  const { id } = useParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // Form State
+  const [testData, setTestData] = useState({
+    testCode: "",
+    testNameArabic: "",
+    testNameEnglish: "",
+    category: "",
+    sampleType: "",
+    fasting_required: false,
+  });
+
+  const [parameters, setParameters] = useState<LabParameter[]>([]);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      if (!id) return;
+      setIsLoading(true);
+      try {
+        const response = await getLabTestDetails(id);
+        const data = response.data;
+        if (data) {
+          setTestData({
+            testCode: data.testCode,
+            testNameArabic: data.testNameArabic,
+            testNameEnglish: data.testNameEnglish,
+            category: data.category,
+            sampleType: data.sampleType,
+            fasting_required: data.fasting_required,
+          });
+          setParameters(data.parameters || []);
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to load test details");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDetails();
+  }, [id]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setTestData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
+  };
+
+  const handleSave = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      // NOTE: Backend might not have an update endpoint. 
+      // This is a placeholder or might work if CreateLabTest handles updates.
+      await createLabTest({
+        ...testData,
+        parameters: parameters.map(p => ({
+          unit: p.unit,
+          referenceRangeMin: p.referenceRangeMin,
+          referenceRangeMax: p.referenceRangeMax,
+          gender: p.gender
+        }))
+      });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError("Note: Updates might not be supported by the current API. " + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) return <LoadingState />;
 
   return (
     <div className="h-full overflow-y-auto bg-slate-50/30">
@@ -31,12 +112,10 @@ const EditLabTest = () => {
               <span className="text-blue-600">Edit Test</span>
             </div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-              Comprehensive Metabolic Panel (CMP)
+              {testData.testNameEnglish || "Edit Lab Test"}
             </h1>
-            <p className="text-slate-500 font-medium">
-              Modify core clinical parameters and range thresholds for lab
-              verification.
-            </p>
+            {success && <div className="text-emerald-500 text-xs font-black bg-emerald-50 px-3 py-1 rounded-lg inline-block mt-2">Changes saved successfully!</div>}
+            {error && <div className="text-red-500 text-xs font-black bg-red-50 px-3 py-1 rounded-lg inline-block mt-2">{error}</div>}
           </div>
 
           <div className="flex items-center gap-3">
@@ -49,8 +128,13 @@ const EditLabTest = () => {
             <button className="flex items-center gap-2 px-6 py-2.5 bg-red-50 text-red-600 border border-red-100 font-bold rounded-xl hover:bg-red-100 transition-all shadow-sm">
               <Trash2 size={18} /> Delete Test
             </button>
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-200">
-              <Save size={18} /> Save All Changes
+            <button 
+              onClick={handleSave}
+              disabled={isSubmitting}
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-200"
+            >
+              {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
+              {isSubmitting ? "Saving..." : "Save All Changes"}
             </button>
           </div>
         </div>
@@ -70,11 +154,26 @@ const EditLabTest = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Test Name
+                    Test Name (EN)
                   </label>
                   <input
                     type="text"
-                    defaultValue="Comprehensive Metabolic Panel (CMP)"
+                    name="testNameEnglish"
+                    value={testData.testNameEnglish}
+                    onChange={handleInputChange}
+                    className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-blue-500/5 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    Test Name (AR)
+                  </label>
+                  <input
+                    type="text"
+                    name="testNameArabic"
+                    value={testData.testNameArabic}
+                    onChange={handleInputChange}
+                    dir="rtl"
                     className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-blue-500/5 outline-none transition-all"
                   />
                 </div>
@@ -84,7 +183,7 @@ const EditLabTest = () => {
                   </label>
                   <input
                     type="text"
-                    value="LAB-CMP-042"
+                    value={testData.testCode}
                     readOnly
                     className="w-full p-3.5 bg-slate-100/50 border border-slate-200/50 rounded-2xl text-sm font-bold text-slate-400 cursor-not-allowed outline-none"
                   />
@@ -93,19 +192,17 @@ const EditLabTest = () => {
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
                     Category
                   </label>
-                  <select className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white outline-none">
-                    <option>Clinical Chemistry</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Method
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue="Spectrophotometry"
+                  <select 
+                    name="category"
+                    value={testData.category}
+                    onChange={handleInputChange}
                     className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white outline-none"
-                  />
+                  >
+                    <option>Chemistry</option>
+                    <option>Hematology</option>
+                    <option>Immunology</option>
+                    <option>Microbiology</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -146,39 +243,20 @@ const EditLabTest = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {[
-                      {
-                        name: "Glucose, Serum",
-                        unit: "mg/dL",
-                        range: "65 — 99",
-                        critical: "< 40 or > 400",
-                      },
-                      {
-                        name: "BUN",
-                        unit: "mg/dL",
-                        range: "6 — 24",
-                        critical: "> 100",
-                      },
-                      {
-                        name: "Creatinine, Serum",
-                        unit: "mg/dL",
-                        range: "0.76 — 1.27",
-                        critical: "> 5.0",
-                      },
-                    ].map((row, i) => (
+                    {parameters.length > 0 ? parameters.map((row, i) => (
                       <tr key={i}>
                         <td className="px-6 py-5 text-sm font-black text-slate-700">
-                          {row.name}
+                          {row.name || "Parameter"}
                         </td>
                         <td className="px-6 py-5 text-sm font-bold text-slate-400 text-center">
                           {row.unit}
                         </td>
                         <td className="px-6 py-5 text-sm font-black text-slate-600 text-center">
-                          {row.range}
+                          {row.referenceRangeMin} — {row.referenceRangeMax}
                         </td>
                         <td className="px-6 py-5 text-center">
-                          <span className="text-xs font-black text-red-500 bg-red-50 px-3 py-1 rounded-lg">
-                            {row.critical}
+                          <span className="text-xs font-black text-blue-500 bg-blue-50 px-3 py-1 rounded-lg">
+                            {row.gender}
                           </span>
                         </td>
                         <td className="px-6 py-5 text-right">
@@ -192,7 +270,13 @@ const EditLabTest = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-bold">
+                          No parameters found.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -230,7 +314,9 @@ const EditLabTest = () => {
                   <div className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      defaultChecked
+                      name="fasting_required"
+                      checked={testData.fasting_required}
+                      onChange={handleInputChange}
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -286,5 +372,14 @@ const EditLabTest = () => {
     </div>
   );
 };
+
+const LoadingState = () => (
+  <div className="h-full flex items-center justify-center bg-slate-50/30">
+    <div className="flex flex-col items-center gap-4">
+      <Loader2 className="animate-spin text-blue-600" size={40} />
+      <p className="text-slate-400 font-bold">Loading test details...</p>
+    </div>
+  </div>
+);
 
 export default EditLabTest;

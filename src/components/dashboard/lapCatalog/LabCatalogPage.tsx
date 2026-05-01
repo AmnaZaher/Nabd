@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Edit2,
   Trash2,
@@ -6,76 +6,42 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  Search,
+  RefreshCcw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-// تعريف نوع البيانات لكل فحص مخبري
-interface LabTest {
-  code: string;
-  nameEn: string;
-  nameAr: string;
-  category: string;
-  sampleType: string;
-  duration: string;
-  fasting: boolean;
-  status: "ACTIVE" | "ARCHIVED";
-}
+import { getLabCatalog } from "../../../api/labs";
+import type { LabTest } from "../../../types/labs.types";
 
 const LabCatalogPage = () => {
   const navigate = useNavigate();
-  // بيانات تجريبية
-  const [tests] = useState<LabTest[]>([
-    {
-      code: "CBC-001",
-      nameEn: "Complete Blood Count",
-      nameAr: "فحص دم كامل",
-      category: "Hematology",
-      sampleType: "Venous Blood (EDTA)",
-      duration: "4 Hours",
-      fasting: false,
-      status: "ACTIVE",
-    },
-    {
-      code: "GLU-042",
-      nameEn: "Fasting Blood Sugar",
-      nameAr: "فحص السكر الصائم",
-      category: "Chemistry",
-      sampleType: "Serum",
-      duration: "2 Hours",
-      fasting: true,
-      status: "ACTIVE",
-    },
-    {
-      code: "TSH-099",
-      nameEn: "Thyroid Stimulating Hormone",
-      nameAr: "هرمون تحفيز الغدة الدرقية",
-      category: "Hormones",
-      sampleType: "Serum",
-      duration: "24 Hours",
-      fasting: false,
-      status: "ACTIVE",
-    },
-    {
-      code: "PCR-772",
-      nameEn: "COVID-19 RT-PCR",
-      nameAr: "فحص كورونا",
-      category: "Molecular",
-      sampleType: "Nasopharyngeal Swab",
-      duration: "12 Hours",
-      fasting: false,
-      status: "ARCHIVED",
-    },
-    {
-      code: "LIP-015",
-      nameEn: "Lipid Profile",
-      nameAr: "فحص الدهون",
-      category: "Chemistry",
-      sampleType: "Serum",
-      duration: "6 Hours",
-      fasting: true,
-      status: "ACTIVE",
-    },
-  ]);
+  const [tests, setTests] = useState<LabTest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const fetchCatalog = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await getLabCatalog();
+      setTests(response.data || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to load catalog");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCatalog();
+  }, []);
+
+  const filteredTests = tests.filter(test => 
+    test.testNameEnglish.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    test.testNameArabic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    test.testCode.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-in fade-in duration-500">
@@ -106,48 +72,34 @@ const LabCatalogPage = () => {
       </div>
 
       {/* Filters Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-        <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-            Test Category
-          </label>
-          <select className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10">
-            <option>All Categories</option>
-          </select>
+      <div className="flex flex-col md:flex-row gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input 
+            type="text"
+            placeholder="Search by name or code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+          />
         </div>
-        <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-            Sample Type
-          </label>
-          <select className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10">
-            <option>All Samples</option>
-          </select>
-        </div>
-        <div className="flex items-end pb-2">
-          <label className="flex items-center gap-2 cursor-pointer group">
-            <input
-              type="checkbox"
-              className="w-5 h-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm font-bold text-slate-600">
-              Fasting Required
-            </span>
-          </label>
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-            Status
-          </label>
-          <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100">
-            <button className="flex-1 py-1.5 text-xs font-bold bg-white text-blue-600 rounded-lg shadow-sm">
-              Active
-            </button>
-            <button className="flex-1 py-1.5 text-xs font-bold text-slate-400">
-              Archived
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={fetchCatalog}
+            className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+            title="Refresh Catalog"
+          >
+            <RefreshCcw size={20} className={isLoading ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchCatalog} className="underline hover:no-underline">Retry</button>
+        </div>
+      )}
 
       {/* Table Section */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -166,66 +118,82 @@ const LabCatalogPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {tests.map((test) => (
-                <tr
-                  key={test.code}
-                  onClick={() => navigate(`/dashboard/lab-catalog/details/${test.code}`)}
-                  className="hover:bg-slate-50 cursor-pointer transition-colors group"
-                >
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold tracking-wider">
-                      {test.code}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                      {test.nameEn}
-                    </div>
-                    <div className="text-xs text-slate-400 font-medium">
-                      {test.nameAr}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-bold text-slate-600">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                      {test.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-500">
-                    {test.sampleType}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-bold text-slate-700">
-                    {test.duration}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${test.fasting ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
-                      <Plus size={14} className="rotate-45" />
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest ${test.status === "ACTIVE" ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-500"}`}>
-                      {test.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {/* لاحظ: استخدمنا e.stopPropagation() عشان الضغط على الأزرار ميتداخلش مع الضغط على السطر */}
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/lab-catalog/edit/${test.code}`); }}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); console.log('Delete'); }}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-sm font-bold text-slate-400">Loading catalog...</p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : filteredTests.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-20 text-center text-slate-400 font-bold">
+                    No tests found matching your criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredTests.map((test) => (
+                  <tr
+                    key={test.id}
+                    onClick={() => navigate(`/dashboard/lab-catalog/details/${test.id}`)}
+                    className="hover:bg-slate-50 cursor-pointer transition-colors group"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold tracking-wider">
+                        {test.testCode}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {test.testNameEnglish}
+                      </div>
+                      <div className="text-xs text-slate-400 font-medium">
+                        {test.testNameArabic}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-600">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        {test.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-500">
+                      {test.sampleType}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-700 text-center">
+                      {test.fasting_required ? "Yes" : "No"}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${test.fasting_required ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
+                        <Plus size={14} className="rotate-45" />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest bg-blue-50 text-blue-600`}>
+                        ACTIVE
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/lab-catalog/edit/${test.id}`); }}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); console.log('Delete', test.id); }}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
