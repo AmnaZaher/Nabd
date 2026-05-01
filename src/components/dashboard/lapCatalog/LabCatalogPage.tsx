@@ -37,11 +37,14 @@ const LabCatalogPage = () => {
     fetchCatalog();
   }, []);
 
-  const filteredTests = tests.filter(test => 
-    test.testNameEnglish.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    test.testNameArabic.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    test.testCode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTests = (tests || []).filter(test => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (test.testNameEnglish?.toLowerCase().includes(term)) ||
+      (test.testNameArabic?.toLowerCase().includes(term)) ||
+      (test.testCode?.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-in fade-in duration-500">
@@ -134,9 +137,9 @@ const LabCatalogPage = () => {
                   </td>
                 </tr>
               ) : (
-                filteredTests.map((test) => (
+                filteredTests.map((test, i) => (
                   <tr
-                    key={test.id}
+                    key={test.id || test.testCode || i}
                     onClick={() => navigate(`/dashboard/lab-catalog/details/${test.id}`)}
                     className="hover:bg-slate-50 cursor-pointer transition-colors group"
                   >
