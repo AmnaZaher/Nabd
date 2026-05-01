@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import {
   Save,
   Trash2,
@@ -13,7 +12,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 const EditLabTest = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // لجلب كود التحليل من الـ URL
+  const { id: _id } = useParams(); // لجلب كود التحليل من الـ URL
 
   return (
     <div className="h-full overflow-y-auto bg-slate-50/30">
