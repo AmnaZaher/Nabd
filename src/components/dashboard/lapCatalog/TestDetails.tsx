@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit3, FileText, Info, FlaskConical, Thermometer, List, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit3, FileText, FlaskConical, List, AlertCircle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const TestDetails = () => {
