@@ -28,6 +28,10 @@ import EditAppointmentPage from "./appointments/EditAppointmentPage";
 import EditPatientProfilePage from "./users/EditPatientProfilePage";
 import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import AdminProfile from "./profile/AdminProfile";
+import LabCatalogPage from "./lapCatalog/LabCatalogPage";
+import AddLabTest from "./lapCatalog/AddLabTest";
+import EditLabTest from "./lapCatalog/EditLabTest";
+import TestDetails from "./lapCatalog/TestDetails";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
@@ -353,6 +357,12 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
           {/* Admin Profile */}
           <Route path="profile" element={<AdminProfile />} />
+
+          {/* Lab Catalog */}
+          <Route path="lab-catalog" element={<LabCatalogPage />} />
+          <Route path="lab-catalog/add" element={<AddLabTest />} />
+          <Route path="lab-catalog/edit/:id" element={<EditLabTest />} />
+          <Route path="lab-catalog/details/:id" element={<TestDetails />} />
 
           {/* Dashboard Home */}
           <Route
