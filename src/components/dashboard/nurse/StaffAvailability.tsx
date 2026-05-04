@@ -15,7 +15,7 @@ const StaffAvailability: React.FC = () => {
             setLoading(true);
             try {
                 const res = await staffApi.getStaffs({ Role: 'Doctor', PageSize: 5 });
-                let staffData = res?.staffs || res?.items || res?.data || res || [];
+                let staffData = res?.staffs || (res as any)?.items || (res as any)?.data || res || [];
                 if (!Array.isArray(staffData)) staffData = [];
                 setStaff(staffData.slice(0, 4) as unknown as StaffProfile[]);
                 
