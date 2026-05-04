@@ -24,16 +24,27 @@ interface NavItem {
     path: string;
 }
 
-const navItems: NavItem[] = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
-    { id: 'users', icon: Users, label: 'User Management', path: PATHS.USER_MANAGEMENT },
-    { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
-    { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
-    { id: 'radiology', icon: Microscope, label: 'Radiology', path: PATHS.RADIOLOGY },
-    { id: 'lab-catalog', icon: FlaskConical, label: 'Lab Catalog', path: PATHS.LAB_CATALOG },
-    { id: 'clinics', icon: Building2, label: 'Clinics', path: PATHS.CLINICS },
-    { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
-];
+const getNavItems = (isNurse: boolean): NavItem[] => {
+    if (isNurse) {
+        return [
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+            { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
+            { id: 'users', icon: Users, label: 'Patient Visit', path: PATHS.USER_MANAGEMENT }, // Mapped to Users for now
+            { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
+            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
+        ];
+    }
+    return [
+        { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+        { id: 'users', icon: Users, label: 'User Management', path: PATHS.USER_MANAGEMENT },
+        { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
+        { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
+        { id: 'radiology', icon: Microscope, label: 'Radiology', path: PATHS.RADIOLOGY },
+        { id: 'lab-catalog', icon: FlaskConical, label: 'Lab Catalog', path: PATHS.LAB_CATALOG },
+        { id: 'clinics', icon: Building2, label: 'Clinics', path: PATHS.CLINICS },
+        { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
+    ];
+};
 
 interface SidebarProps {
     isOpen: boolean;
@@ -51,7 +62,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onTabChange,
 }) => {
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, isNurse } = useAuth();
+
+    const currentNavItems = getNavItems(isNurse);
 
     const handleNavClick = (item: NavItem) => {
         onTabChange?.(item.id);
@@ -96,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Navigation Items */}
             <nav className="flex-1 w-full flex flex-col overflow-y-auto mt-2 scrollbar-none">
-                {navItems.map((item) => (
+                {currentNavItems.map((item) => (
                     <button
                         key={item.id}
                         onClick={() => handleNavClick(item)}

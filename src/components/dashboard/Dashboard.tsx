@@ -32,6 +32,7 @@ import LabCatalogPage from "./lapCatalog/LabCatalogPage";
 import AddLabTest from "./lapCatalog/AddLabTest";
 import EditLabTest from "./lapCatalog/EditLabTest";
 import TestDetails from "./lapCatalog/TestDetails";
+import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
@@ -42,7 +43,7 @@ interface DashboardProps {
 
 const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user, isAdmin, isNurse, isLoading } = useAuth();
   const [currentDate, setCurrentDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [userViewMode, setUserViewMode] = useState<"list" | "register">("list");
@@ -139,7 +140,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     );
   }
 
-  if (!user || !isAdmin) {
+  if (!user || (!isAdmin && !isNurse)) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 font-sans p-4 text-center">
         <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg border border-red-100">
@@ -162,7 +163,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             Access Restricted
           </h2>
           <p className="text-slate-500 mb-8">
-            {!user ? "No authentication token found. Please log in." : "This dashboard is for administrative use only."}
+            {!user ? "No authentication token found. Please log in." : `This dashboard is for authorized personnel only. (Detected Role: ${user.role})`}
           </p>
           <button
             onClick={() => {
@@ -368,35 +369,39 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           <Route
             path="*"
             element={
-              <main className="flex-1 overflow-y-auto p-4 md:p-6">
-                <div className="max-w-[1600px] mx-auto space-y-4">
-                  <div className="mb-4">
-                    <p className="text-slate-500 font-medium mb-1">
-                      {currentDate}
-                    </p>
-                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                      {getGreeting()} {user.name}
-                    </h2>
-                  </div>
-
-                  <StatCards />
-
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    {/* Left Column: Chart & Quick Actions */}
-                    <div className="flex-1 space-y-4 min-w-0">
-                      <AppointmentTrendChart />
-                      <QuickActions />
+              isNurse ? (
+                <NurseDashboardOverview />
+              ) : (
+                <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                  <div className="max-w-[1600px] mx-auto space-y-4">
+                    <div className="mb-4">
+                      <p className="text-slate-500 font-medium mb-1">
+                        {currentDate}
+                      </p>
+                      <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        {getGreeting()} {user.name}
+                      </h2>
                     </div>
 
-                    {/* Right Column: Widgets */}
-                    <div className="w-full lg:w-[350px] shrink-0 space-y-4">
-                      <StatusDistribution />
-                      <DoctorStatus />
-                      <PatientFeed />
+                    <StatCards />
+
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      {/* Left Column: Chart & Quick Actions */}
+                      <div className="flex-1 space-y-4 min-w-0">
+                        <AppointmentTrendChart />
+                        <QuickActions />
+                      </div>
+
+                      {/* Right Column: Widgets */}
+                      <div className="w-full lg:w-[350px] shrink-0 space-y-4">
+                        <StatusDistribution />
+                        <DoctorStatus />
+                        <PatientFeed />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </main>
+                </main>
+              )
             }
           />
         </Routes>
