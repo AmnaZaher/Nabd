@@ -13,6 +13,7 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isAdmin: boolean;
+    isNurse: boolean;
     isLoading: boolean;
     login: (accessToken: string, refreshToken: string) => void;
     logout: () => void;
@@ -125,10 +126,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(false);
     };
 
-    const isAdmin = user?.role === 'Admin';
+    const isAdmin = user?.role?.toLowerCase() === 'admin';
+    const isNurse = user?.role?.toLowerCase() === 'nurse';
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isNurse, isLoading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
