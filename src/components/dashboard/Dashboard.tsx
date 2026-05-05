@@ -98,6 +98,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (path.includes("/dashboard/appointments")) return "Appointments";
     if (path.includes("/dashboard/appointments/edit"))
       return "Appointment Management";
+    if (path.includes("/dashboard/patient-visit")) return "Patient Visit";
     if (path.includes("/dashboard/profile")) return "Admin Profile";
 
     // حالات الـ Tabs الأساسية
