@@ -76,4 +76,15 @@ export const scheduleApi = {
       method: 'DELETE',
     });
   },
+
+  getAvailableSlots: async (params: { DoctorId?: number; ClinicId?: number; Specialization?: string; Date?: string }) => {
+    const q = new URLSearchParams();
+    if (params.DoctorId) q.append('DoctorId', params.DoctorId.toString());
+    if (params.ClinicId) q.append('ClinicId', params.ClinicId.toString());
+    if (params.Specialization) q.append('Specialization', params.Specialization);
+    if (params.Date) q.append('Date', params.Date);
+
+    const qs = q.toString();
+    return fetchApi<any>(`/Schedule/AvaliableSlot${qs ? `?${qs}` : ''}`);
+  },
 };

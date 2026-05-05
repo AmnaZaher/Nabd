@@ -79,8 +79,9 @@ const EditAppointmentPage: React.FC = () => {
                     setClinicId(apt.clinicId?.toString() || '');
                     setNotes(apt.notes || '');
 
-                    if (apt.dateTime) {
-                        const d = new Date(apt.dateTime);
+                    if (apt.appointmentDate || apt.dateTime) {
+                        const rawDate = apt.appointmentDate || apt.dateTime;
+                        const d = new Date(rawDate);
                         setDate(d.toISOString().split('T')[0]); // YYYY-MM-DD
                         
                         // Parse time for the time slot selection
@@ -129,7 +130,7 @@ const EditAppointmentPage: React.FC = () => {
                 patientId: Number(patientId),
                 doctorId: Number(doctorId),
                 clinicId: clinicId ? Number(clinicId) : undefined,
-                dateTime: isoDateTime,
+                appointmentDate: isoDateTime,
                 notes: notes,
             };
 

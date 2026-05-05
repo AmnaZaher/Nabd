@@ -20,7 +20,12 @@ const UpcomingAppointmentsList: React.FC = () => {
                     PageSize: 5,
                     PageIndex: 0
                 });
-                let appts = res?.data?.items || res?.data || res || [];
+                let appts = 
+                    (res?.data as any)?.appointments ||
+                    (res?.data as any)?.items ||
+                    (res?.data as any)?.data ||
+                    (Array.isArray(res?.data) ? res.data : null) ||
+                    [];
                 if (!Array.isArray(appts)) appts = [];
                 setAppointments(appts.slice(0, 5));
             } catch (error) {
@@ -45,13 +50,15 @@ const UpcomingAppointmentsList: React.FC = () => {
         }
     };
 
-    const formatTime = (isoString: string) => {
+    const formatTime = (appt: any) => {
+        const iso = appt.appointmentDate || appt.dateTime || appt.AppointmentDate || appt.DateTime;
+        if (!iso) return '--:--';
         try {
             return new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
                 minute: 'numeric',
                 hour12: true
-            }).format(new Date(isoString));
+            }).format(new Date(iso));
         } catch {
             return '--:--';
         }
@@ -111,7 +118,7 @@ const UpcomingAppointmentsList: React.FC = () => {
                                         Dr. {appt.doctorName.split(' ').pop()}
                                     </td>
                                     <td className="px-5 py-4 text-sm font-extrabold text-slate-900">
-                                        {formatTime(appt.dateTime)}
+                                        {formatTime(appt)}
                                     </td>
                                     <td className="px-5 py-4">
                                         {getStatusBadge(appt.status)}

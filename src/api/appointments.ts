@@ -14,16 +14,21 @@ export interface Appointment {
     clinicId?: number;
     clinicName?: string;
     clinicWing?: string;
-    dateTime: string; // ISO string
+    dateTime?: string;       // legacy field name
+    appointmentDate?: string; // actual backend field name
     status: AppointmentStatus;
     notes?: string;
+    appointmentType?: number;
+    fileNumber?: string;
 }
 
 export interface BookAppointmentDto {
-    patientId: number;
+    patientId?: number; // Kept for backwards compatibility if needed
+    fileNumber?: string;
     doctorId: number;
     clinicId?: number;
-    dateTime: string; // ISO string
+    appointmentDate: string; // ISO string
+    appointmentType?: number;
     notes?: string;
 }
 

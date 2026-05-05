@@ -96,7 +96,7 @@ const SurgicalWaitingHall: React.FC = () => {
                             
                             <div className="text-right">
                                 <p className="text-xs font-bold text-slate-700">
-                                    Waiting: {getWaitingTime(patient.dateTime)}
+                                    Waiting: {patient.dateTime ? getWaitingTime(patient.dateTime) : '—'}
                                 </p>
                                 <p className="text-[10px] font-bold text-blue-500">
                                     Room 402
