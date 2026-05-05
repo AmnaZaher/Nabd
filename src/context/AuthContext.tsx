@@ -92,13 +92,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 decoded.sub ||
                 '';
 
-            const name =
-                decoded.name ||
-                decoded.unique_name ||
-                decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ||
-                '';
+            const rawNameCandidates = [
+                decoded.given_name,
+                decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'],
+                decoded.name,
+                decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'],
+                decoded.unique_name,
+            ];
 
-            const formattedName = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Unknown';
+            let name = '';
+            for (const c of rawNameCandidates) {
+                if (c && typeof c === 'string' && c.trim().length > 0) {
+                    name = c.trim();
+                    // Prefer non-numeric names, but keep the numeric one if it's the only one we find
+                    if (!/^\d+$/.test(name)) break;
+                }
+            }
+            
+            // Fallback if all else fails
+            if (!name) {
+                name = decoded.name || decoded.unique_name || 'Unknown';
+            }
+
+            const formattedName = name !== 'Unknown' && !/^\d+$/.test(name) 
+                ? name.charAt(0).toUpperCase() + name.slice(1) 
+                : name;
 
             return { id, name: formattedName, role };
         } catch {

@@ -8,6 +8,9 @@ import {
     Bone, 
     Activity, 
     Building2,
+    Eye,
+    Brain,
+    Ear,
     Loader2
 } from 'lucide-react';
 import { getClinics } from '../../../api/clinics';
@@ -16,13 +19,20 @@ import { listAppointments } from '../../../api/appointments';
 // Helper to map clinic names to specific icons from the design
 const getClinicIcon = (name: string) => {
     const n = name.toLowerCase();
-    if (n.includes('cardiology') || n.includes('heart')) return HeartPulse;
-    if (n.includes('pediatric') || n.includes('baby')) return Baby;
-    if (n.includes('internal') || n.includes('medicine')) return Stethoscope;
-    if (n.includes('surgery') || n.includes('surgeon')) return Scissors;
-    if (n.includes('dermatology') || n.includes('skin')) return Hand;
-    if (n.includes('orthopedic') || n.includes('bone')) return Bone;
-    if (n.includes('pulmonology') || n.includes('lung')) return Activity;
+    if (n.includes('cardiology') || n.includes('heart') || n.includes('القلب')) return HeartPulse;
+    if (n.includes('pediatric') || n.includes('baby') || n.includes('أطفال')) return Baby;
+    if (n.includes('internal') || n.includes('medicine') || n.includes('باطني')) return Stethoscope;
+    if (n.includes('surgery') || n.includes('surgeon') || n.includes('جراح')) return Scissors;
+    if (n.includes('dermatology') || n.includes('skin') || n.includes('جلد')) return Hand;
+    if (n.includes('orthopedic') || n.includes('bone') || n.includes('عظام')) return Bone;
+    if (n.includes('pulmonology') || n.includes('lung') || n.includes('صدر')) return Activity;
+    if (n.includes('neurology') || n.includes('neuro') || n.includes('أعصاب')) return Brain;
+    if (n.includes('ophthalmology') || n.includes('eye') || n.includes('عيون')) return Eye;
+    if (n.includes('ent') || n.includes('ear') || n.includes('أنف') || n.includes('حنجرة')) return Ear;
+    if (n.includes('oncology') || n.includes('أورام')) return Activity;
+    if (n.includes('urology') || n.includes('مسالك')) return Building2;
+    if (n.includes('gynecology') || n.includes('obstetric') || n.includes('نساء')) return Baby;
+    if (n.includes('icu') || n.includes('عناية') || n.includes('مركزة')) return HeartPulse;
     return Building2;
 };
 
@@ -73,6 +83,15 @@ const DepartmentCards: React.FC = () => {
                         { id: 3, name: 'Internal Medicine', arabicName: 'الطب الباطني', patientCount: 31, icon: Stethoscope },
                         { id: 4, name: 'Surgery', arabicName: 'الجراحة', patientCount: 12, icon: Scissors },
                         { id: 5, name: 'Dermatology', arabicName: 'الجلدية', patientCount: 9, icon: Hand },
+                        { id: 6, name: 'Orthopedics', arabicName: 'العظام', patientCount: 9, icon: Bone },
+                        { id: 7, name: 'Pulmonology', arabicName: 'الصدر', patientCount: 9, icon: Activity },
+                        { id: 8, name: 'Neurology', arabicName: 'الأعصاب', patientCount: 9, icon: Brain },
+                        { id: 9, name: 'Oncology', arabicName: 'الأورام', patientCount: 9, icon: Activity },
+                        { id: 10, name: 'ICU', arabicName: 'العناية المركزة', patientCount: 9, icon: HeartPulse },
+                        { id: 11, name: 'Urology', arabicName: 'المسالك البولية', patientCount: 9, icon: Building2 },
+                        { id: 12, name: 'ENT', arabicName: 'الأنف والأذن والحنجرة', patientCount: 9, icon: Ear },
+                        { id: 13, name: 'Ophthalmology', arabicName: 'العيون', patientCount: 9, icon: Eye },
+                        { id: 14, name: 'Gynecology & Obstetrics', arabicName: 'النساء والتوليد', patientCount: 9, icon: Baby },
                     ];
                     setDepartments(mockDeps);
                 } else {
@@ -98,41 +117,31 @@ const DepartmentCards: React.FC = () => {
     }
 
     return (
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
-            {departments.map((dept, index) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            {departments.map((dept) => {
                 const Icon = dept.icon;
-                // Highlight the first card as in the design
-                const isActive = index === 0;
-                
+
                 return (
-                    <div 
-                        key={dept.id} 
-                        className={`min-w-[160px] p-5 rounded-2xl flex flex-col justify-between shrink-0 snap-start transition-all cursor-pointer border ${
-                            isActive 
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20' 
-                            : 'bg-white text-slate-900 border-slate-100 hover:border-blue-200 shadow-sm'
-                        }`}
+                    <div
+                        key={dept.id}
+                        className="group/deptcard p-4 rounded-2xl flex flex-col justify-between transition-all duration-200 cursor-pointer border bg-white text-slate-900 border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-[#0066cc] hover:text-white hover:border-[#0066cc] hover:shadow-[#0066cc]/20"
                     >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
-                            isActive ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-500'
-                        }`}>
-                            <Icon size={22} strokeWidth={2} />
+                        {/* Icon */}
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 transition-colors duration-200 bg-blue-50 text-[#0066cc] group-hover/deptcard:bg-white/20 group-hover/deptcard:text-white">
+                            <Icon size={20} strokeWidth={2} />
                         </div>
-                        
+
+                        {/* Text */}
                         <div>
                             {dept.arabicName && (
-                                <p className={`text-[10px] font-bold mb-1 ${isActive ? 'text-blue-100' : 'text-slate-400'}`}>
+                                <p className="text-[9px] font-bold mb-0.5 leading-tight transition-colors duration-200 text-slate-400 group-hover/deptcard:text-blue-100">
                                     {dept.arabicName}
                                 </p>
                             )}
-                            <h4 className="font-bold text-[15px] leading-tight mb-2">
+                            <h4 className="font-bold text-[14px] leading-tight mb-2 transition-colors duration-200">
                                 {dept.name}
                             </h4>
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                                isActive 
-                                ? 'bg-white/20 text-white' 
-                                : 'bg-blue-50 text-blue-600'
-                            }`}>
+                            <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full transition-colors duration-200 bg-blue-50 text-[#0066cc] group-hover/deptcard:bg-white/20 group-hover/deptcard:text-white">
                                 {dept.patientCount} PATIENTS
                             </span>
                         </div>
@@ -141,6 +150,9 @@ const DepartmentCards: React.FC = () => {
             })}
         </div>
     );
+
+
+
 };
 
 export default DepartmentCards;
