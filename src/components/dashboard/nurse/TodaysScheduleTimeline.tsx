@@ -127,10 +127,10 @@ const TodaysScheduleTimeline: React.FC = () => {
                                 <div className="ml-3 mr-4 flex-shrink-0">
                                     <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-blue-50/50">
                                         <span className="text-xs font-extrabold text-blue-900 leading-none mb-0.5">
-                                            {formatTime(appt.dateTime).split(' ')[0]}
+                                            {appt.dateTime ? formatTime(appt.dateTime).split(' ')[0] : '--'}
                                         </span>
                                         <span className="text-[9px] font-bold text-blue-500 uppercase">
-                                            {formatTime(appt.dateTime).split(' ')[1]}
+                                            {appt.dateTime ? formatTime(appt.dateTime).split(' ')[1] : ''}
                                         </span>
                                     </div>
                                 </div>
