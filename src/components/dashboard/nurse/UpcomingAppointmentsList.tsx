@@ -15,18 +15,24 @@ const UpcomingAppointmentsList: React.FC = () => {
             try {
                 const today = new Date().toISOString().split('T')[0];
                 const res = await listAppointments({ 
-                    StartDate: today, 
-                    EndDate: today, 
+                    DateAppointment: today,
                     PageSize: 5,
                     PageIndex: 0
                 });
-                let appts = 
-                    (res?.data as any)?.appointments ||
-                    (res?.data as any)?.items ||
-                    (res?.data as any)?.data ||
-                    (Array.isArray(res?.data) ? res.data : null) ||
+                const raw = res as any;
+                let appts: any[] =
+                    raw?.data?.data ||
+                    raw?.data?.appointments ||
+                    raw?.data?.items ||
+                    (Array.isArray(raw?.data) ? raw.data : null) ||
+                    raw?.appointments ||
+                    raw?.items ||
                     [];
                 if (!Array.isArray(appts)) appts = [];
+                // Debug: log what the backend actually returns
+                if (appts.length > 0) {
+                    console.log('[nurse/appointments] keys:', Object.keys(appts[0]));
+                }
                 setAppointments(appts.slice(0, 5));
             } catch (error) {
                 console.error("Failed to fetch appointments:", error);
@@ -51,14 +57,31 @@ const UpcomingAppointmentsList: React.FC = () => {
     };
 
     const formatTime = (appt: any) => {
-        const iso = appt.appointmentDate || appt.dateTime || appt.AppointmentDate || appt.DateTime;
+        const iso =
+            appt.appointmentDate ||
+            appt.AppointmentDate ||
+            appt.dateTime ||
+            appt.DateTime ||
+            appt.date ||
+            appt.Date ||
+            appt.appointmentDateTime ||
+            appt.scheduledDate ||
+            // fallback: scan all string fields for ISO date pattern
+            Object.values(appt).find(
+                (v): v is string =>
+                    typeof v === 'string' &&
+                    v.length >= 10 &&
+                    /^\d{4}-\d{2}-\d{2}/.test(v)
+            );
         if (!iso) return '--:--';
         try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '--:--';
             return new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
                 minute: 'numeric',
                 hour12: true
-            }).format(new Date(iso));
+            }).format(d);
         } catch {
             return '--:--';
         }

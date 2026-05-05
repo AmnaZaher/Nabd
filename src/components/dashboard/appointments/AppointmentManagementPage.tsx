@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-    Edit2, Loader2, CalendarCheck,
-    ChevronLeft, ChevronRight, Plus, Hourglass, CheckCircle2, XCircle, Ban
+    Edit2, Loader2, CalendarCheck, ChevronLeft, ChevronRight, Plus, Search, Trash2
 } from 'lucide-react';
 import {
     listAppointments, deleteAppointment, type Appointment
@@ -83,9 +82,35 @@ function fmtDateTime(iso: any) {
     } catch { return { date: String(iso), time: '' }; }
 }
 
-/** Resolve the date/time from an appointment object — backend uses appointmentDate, legacy used dateTime */
+/** Resolve the date/time from an appointment object — tries all known backend field names */
 function getAptDate(apt: any): string | undefined {
-    return apt.appointmentDate || apt.dateTime || apt.AppointmentDate || apt.DateTime || undefined;
+    if (!apt) return undefined;
+    // Try all known field name variants first
+    const direct =
+        apt.appointmentDate ||
+        apt.AppointmentDate ||
+        apt.dateTime ||
+        apt.DateTime ||
+        apt.date ||
+        apt.Date ||
+        apt.appointmentDateTime ||
+        apt.AppointmentDateTime ||
+        apt.scheduledDate ||
+        apt.ScheduledDate ||
+        apt.bookedAt ||
+        apt.BookedAt ||
+        apt.createdAt ||
+        apt.CreatedAt;
+    if (direct) return direct;
+
+    // Fallback: scan all string fields for something that looks like an ISO date
+    for (const key of Object.keys(apt)) {
+        const val = apt[key];
+        if (typeof val === 'string' && val.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+            return val;
+        }
+    }
+    return undefined;
 }
 
 /* ─────────────── Main Page ─────────────── */
@@ -98,11 +123,11 @@ const AppointmentManagementPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const pageSize = 10;
 
-    // Modal state for cancellation
+    // Modal state for deletion
     const [cancelModalData, setCancelModalData] = useState<Appointment | null>(null);
 
     // Filters
-    const [search] = useState('');
+    const [patientSearch, setPatientSearch] = useState('');
     const [filterDoctor, setFilterDoctor] = useState('');
     const [filterClinic, setFilterClinic] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
@@ -114,13 +139,6 @@ const AppointmentManagementPage: React.FC = () => {
     const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
 
-    // Stats
-    const [stats, setStats] = useState({
-        totalToday: 0,
-        waiting: 0,
-        completed: 0,
-        cancelled: 0
-    });
 
     /* ── Fetch appointments ── */
     const fetchAppointments = useCallback(async () => {
@@ -129,25 +147,33 @@ const AppointmentManagementPage: React.FC = () => {
             const res = await listAppointments({
                 PageIndex: page - 1,
                 PageSize: pageSize,
-                SearchKey: search || undefined,
-                search: search || undefined,
                 DoctorId: filterDoctor || undefined,
                 ClinicId: filterClinic || undefined,
                 Status: filterStatus !== '' ? filterStatus : undefined,
-                StartDate: filterFrom || undefined,
-                EndDate: filterTo || undefined,
+                SearchKey: patientSearch || undefined,
+                DateAppointment: filterFrom || undefined,
             });
             const raw: any = res;
             // Normalise various API shapes
-            const list: Appointment[] =
-                raw?.data?.appointments ??
+            let list: Appointment[] =
                 raw?.data?.data ??
+                raw?.data?.appointments ??
                 raw?.data?.items ??
                 (Array.isArray(raw?.data) ? raw.data : []) ??
                 raw?.appointments ??
                 raw?.items ??
                 (Array.isArray(raw) ? raw : []) ??
                 [];
+            // Client-side "to date" filter for range support
+            if (filterTo && Array.isArray(list)) {
+                const toDate = new Date(filterTo);
+                toDate.setHours(23, 59, 59, 999);
+                list = list.filter(apt => {
+                    const d = getAptDate(apt);
+                    if (!d) return true;
+                    return new Date(d) <= toDate;
+                });
+            }
             const total: number =
                 raw?.data?.totalCount ??
                 raw?.data?.total ??
@@ -161,22 +187,15 @@ const AppointmentManagementPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, search, filterDoctor, filterClinic, filterStatus, filterFrom, filterTo]);
+    }, [page, patientSearch, filterDoctor, filterClinic, filterStatus, filterFrom, filterTo]);
 
-    /* ── Fetch sidebar data (doctors, clinics, patients) & Stats ── */
+    /* ── Fetch sidebar data (doctors, clinics) ── */
     useEffect(() => {
         const load = async () => {
             try {
-                const [drRes, clinicRes, statsApptsRes] = await Promise.all([
+                const [drRes, clinicRes] = await Promise.all([
                     staffApi.getStaffs({ PageIndex: 0, PageSize: 100 }),
                     getClinics({ PageIndex: 0, PageSize: 100 }),
-                    // Fetch today's appointments for stats
-                    listAppointments({ 
-                        StartDate: new Date().toISOString().split('T')[0], 
-                        EndDate: new Date().toISOString().split('T')[0], 
-                        PageIndex: 0, 
-                        PageSize: 1000 
-                    })
                 ]);
 
                 const staffList = (drRes as any)?.staffs ?? (drRes as any)?.items ?? (drRes as any)?.data ?? (drRes as any)?.data?.data ?? (Array.isArray(drRes) ? drRes : []);
@@ -205,25 +224,16 @@ const AppointmentManagementPage: React.FC = () => {
                 setDoctors(drList);
                 setAvailableDoctors(drList);
 
-                const clinicList = (clinicRes as any)?.data?.data ?? (clinicRes as any)?.data?.items ??
-                    (Array.isArray((clinicRes as any)?.data) ? (clinicRes as any).data : []);
-                setClinics(clinicList);
-
-                // Calculate stats
-                const rawStats: any = statsApptsRes;
-                const todayAppts: Appointment[] = 
-                    rawStats?.data?.appointments ?? rawStats?.data?.data ?? rawStats?.data?.items ?? (Array.isArray(rawStats?.data) ? rawStats.data : []) ?? rawStats?.items ?? [];
-                
-                const waiting = todayAppts.filter(a => a.status === 2 || a.status === 6).length; // In Progress or Waiting List
-                const completed = todayAppts.filter(a => a.status === 3).length;
-                const cancelled = todayAppts.filter(a => a.status === 5).length;
-
-                setStats({
-                    totalToday: todayAppts.length,
-                    waiting,
-                    completed,
-                    cancelled
-                });
+                const rawClinic: any = clinicRes;
+                const clinicList =
+                    rawClinic?.data?.data ??
+                    rawClinic?.data?.items ??
+                    rawClinic?.data?.clinics ??
+                    (Array.isArray(rawClinic?.data) ? rawClinic.data : null) ??
+                    rawClinic?.items ??
+                    rawClinic?.clinics ??
+                    [];
+                setClinics(Array.isArray(clinicList) ? clinicList : []);
 
             } catch (e) {
                 console.error('Failed to load dropdown data:', e);
@@ -261,9 +271,9 @@ const AppointmentManagementPage: React.FC = () => {
         };
 
         fetchClinicDoctors();
-    }, [filterClinic, doctors]);
+    }, [filterClinic, doctors, filterDoctor]);
 
-    useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
+    useEffect(() => { fetchAppointments(); }, [fetchAppointments, patientSearch]);
 
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -288,96 +298,43 @@ const AppointmentManagementPage: React.FC = () => {
             <div className="max-w-[1400px] mx-auto space-y-6">
 
                 {/* ── Header ── */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 border-b border-slate-200 mb-6">
                     <div>
-                        <h1 className="text-[28px] font-extrabold text-slate-800 tracking-tight">Appointments</h1>
-                        <p className="text-slate-500 text-[15px] mt-1">Manage and track all patient appointments</p>
+                        <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight">Appointment Management</h1>
+                        <p className="text-slate-500 text-sm mt-0.5 font-medium">Schedule and monitor patient visits across all departments.</p>
                     </div>
                     <button 
                         onClick={() => navigate('/dashboard/appointments/new')}
-                        className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-sm"
+                        className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm active:scale-95"
                     >
-                        <Plus size={18} strokeWidth={2.5} />
-                        New Appointment
+                        <Plus size={18} strokeWidth={3} />
+                        Add Appointment
                     </button>
                 </div>
 
-                {/* ── Stats Cards ── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                    {/* Total Appointments */}
-                    <div className="bg-white rounded-[16px] border-l-4 border-l-blue-100 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                                <CalendarCheck size={20} strokeWidth={2.5} />
-                            </div>
-                            <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 7L13.5 15.5L8.5 10.5L2 17"/><path d="M16 7H22V13"/></svg>
-                                +12%
-                            </span>
-                        </div>
-                        <p className="text-[13px] font-bold text-slate-500 mb-1">Total Appointments Today</p>
-                        <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                            {loading ? '...' : String(stats.totalToday).padStart(2, '0')}
-                        </h3>
-                    </div>
-
-                    {/* Waiting Patients */}
-                    <div className="bg-white rounded-[16px] border-l-4 border-l-orange-100 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 bg-orange-50 text-orange-400 rounded-lg flex items-center justify-center shrink-0">
-                                <Hourglass size={20} strokeWidth={2.5} />
-                            </div>
-                            <span className="text-xs font-bold text-red-500">
-                                ! Urgent
-                            </span>
-                        </div>
-                        <p className="text-[13px] font-bold text-slate-500 mb-1">Waiting Patients</p>
-                        <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                            {loading ? '...' : String(stats.waiting).padStart(2, '0')}
-                        </h3>
-                    </div>
-
-                    {/* Completed Today */}
-                    <div className="bg-white rounded-[16px] border-l-4 border-l-emerald-100 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center shrink-0">
-                                <CheckCircle2 size={20} strokeWidth={2.5} />
-                            </div>
-                            <span className="text-xs font-bold text-slate-500">
-                                Today
-                            </span>
-                        </div>
-                        <p className="text-[13px] font-bold text-slate-500 mb-1">Completed Today</p>
-                        <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                            {loading ? '...' : String(stats.completed).padStart(2, '0')}
-                        </h3>
-                    </div>
-
-                    {/* Cancelled */}
-                    <div className="bg-white rounded-[16px] border-l-4 border-l-red-100 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 bg-red-50 text-red-400 rounded-lg flex items-center justify-center shrink-0">
-                                <XCircle size={20} strokeWidth={2.5} />
-                            </div>
-                            <span className="text-xs font-bold text-slate-500">
-                                Today
-                            </span>
-                        </div>
-                        <p className="text-[13px] font-bold text-slate-500 mb-1">Cancelled</p>
-                        <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                            {loading ? '...' : String(stats.cancelled).padStart(2, '0')}
-                        </h3>
-                    </div>
-                </div>
-
                 {/* ── Filters ── */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                        {/* Patient */}
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">PATIENT</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input 
+                                    type="text" 
+                                    placeholder="Name or ID..."
+                                    value={patientSearch}
+                                    onChange={e => { setPatientSearch(e.target.value); setPage(1); }}
+                                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] focus:bg-white transition-all"
+                                />
+                            </div>
+                        </div>
+
                         {/* Doctor */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">DOCTOR</label>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
                             <select value={filterDoctor} onChange={e => { setFilterDoctor(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none"
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all"
                                 style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em', paddingRight: '2.5rem' }}>
                                 <option value="">All Doctors</option>
                                 {availableDoctors.map((d: any) => (
@@ -387,57 +344,41 @@ const AppointmentManagementPage: React.FC = () => {
                         </div>
 
                         {/* Clinic */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">CLINIC</label>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
                             <select value={filterClinic} onChange={e => { setFilterClinic(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none"
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all"
                                 style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em', paddingRight: '2.5rem' }}>
                                 <option value="">All Clinics</option>
                                 {clinics.map((c: any) => (
-                                    <option key={c.id} value={c.id}>{c.clinicNameEn || c.clinicNameAr || `Clinic #${c.id}`}</option>
+                                    <option key={c.id} value={c.id}>{c.clinicNameEn || c.clinicNameAr || c.name || `Clinic #${c.id}`}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Date Range - From */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">FROM DATE</label>
-                            <input type="date" value={filterFrom}
-                                onChange={e => { setFilterFrom(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50" />
-                        </div>
-                        
-                        {/* Date Range - To */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">TO DATE</label>
-                            <input type="date" value={filterTo}
-                                onChange={e => { setFilterTo(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50" />
-                        </div>
-
                         {/* Status */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">STATUS</label>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</label>
                             <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none"
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all"
                                 style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em', paddingRight: '2.5rem' }}>
                                 {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>
                         </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex gap-2">
-                            <button className="flex-1 bg-[#1A6FC4] hover:bg-[#155ba0] text-white py-2.5 rounded-lg text-sm font-semibold transition-colors">
-                                Apply Filters
-                            </button>
-                            <button 
-                                onClick={() => {
-                                    setFilterDoctor(''); setFilterClinic(''); setFilterStatus(''); setFilterFrom(''); setFilterTo(''); setPage(1);
-                                }}
-                                className="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                            >
-                                Reset
-                            </button>
+
+                        {/* Date Range */}
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DATE RANGE</label>
+                            <div className="flex items-center gap-2 bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2">
+                                <input type="date" value={filterFrom}
+                                    onChange={e => { setFilterFrom(e.target.value); setPage(1); }}
+                                    className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
+                                <span className="text-slate-300 font-bold">-</span>
+                                <input type="date" value={filterTo}
+                                    min={filterFrom || undefined}
+                                    onChange={e => { setFilterTo(e.target.value); setPage(1); }}
+                                    className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -450,12 +391,11 @@ const AppointmentManagementPage: React.FC = () => {
                                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
                                     <th className="px-6 py-4">ID</th>
                                     <th className="px-6 py-4">PATIENT NAME</th>
-                                    <th className="px-6 py-4">DOCTOR</th>
+                                    <th className="px-6 py-4">DOCTOR NAME</th>
                                     <th className="px-6 py-4">CLINIC</th>
                                     <th className="px-6 py-4">DATE & TIME</th>
                                     <th className="px-6 py-4">STATUS</th>
                                     <th className="px-6 py-4 text-center">ACTIONS</th>
-                                    <th className="px-6 py-4 text-center">CREATE VISIT</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -524,26 +464,16 @@ const AppointmentManagementPage: React.FC = () => {
                                                 </td>
                                                 {/* Actions */}
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-center gap-3">
+                                                    <div className="flex items-center justify-center gap-4">
                                                         <button onClick={() => navigate(`/dashboard/appointments/edit/${apt.id}`)}
                                                             className="text-slate-400 hover:text-[#1A6FC4] transition-colors" title="Edit">
-                                                            <Edit2 size={16} strokeWidth={2} />
+                                                            <Edit2 size={16} strokeWidth={2.5} />
                                                         </button>
                                                         <button onClick={() => handleDeleteClick(apt)}
-                                                            className="text-slate-400 hover:text-red-500 transition-colors" title="Cancel/Block">
-                                                            <Ban size={16} strokeWidth={2} />
+                                                            className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                                                            <Trash2 size={16} strokeWidth={2.5} />
                                                         </button>
                                                     </div>
-                                                </td>
-                                                {/* Create Visit */}
-                                                <td className="px-6 py-4 text-center">
-                                                    {(apt.status === 5 || String(apt.status).toLowerCase() === 'cancelled') ? (
-                                                        <span className="text-slate-400 font-medium">—</span>
-                                                    ) : (
-                                                        <button className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white text-[12px] font-bold px-4 py-1.5 rounded-md transition-colors shadow-sm w-full max-w-[80px]">
-                                                            Create
-                                                        </button>
-                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -597,12 +527,12 @@ const AppointmentManagementPage: React.FC = () => {
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-md p-6 sm:p-8 transform transition-all animate-in fade-in zoom-in-95 duration-200">
                         <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-5 border border-red-100">
-                            <XCircle className="text-red-500" size={24} strokeWidth={2.5} />
+                            <Trash2 className="text-red-500" size={24} strokeWidth={2.5} />
                         </div>
                         
-                        <h2 className="text-xl font-extrabold text-slate-800 mb-2">Cancel Appointment?</h2>
+                        <h2 className="text-xl font-extrabold text-slate-800 mb-2">Delete Appointment?</h2>
                         <p className="text-[14px] text-slate-500 font-medium mb-6 leading-relaxed">
-                            Are you sure you want to cancel this appointment? This action will remove the patient from the schedule and notify the assigned doctor.
+                            Are you sure you want to delete this appointment? This action cannot be undone and will remove the record from the system.
                         </p>
                         
                         <div className="bg-[#f8fafc] rounded-2xl p-5 mb-8 border border-slate-100 shadow-sm">
@@ -624,13 +554,13 @@ const AppointmentManagementPage: React.FC = () => {
                                 onClick={() => setCancelModalData(null)}
                                 className="w-full sm:w-1/2 py-3 text-sm font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors"
                             >
-                                No, Keep Appointment
+                                No, Keep It
                             </button>
                             <button 
                                 onClick={executeDelete}
-                                className="w-full sm:w-1/2 py-3 bg-[#1A6FC4] hover:bg-[#155ba0] text-white text-sm font-bold rounded-xl shadow-sm hover:shadow-md transition-all flex justify-center items-center gap-2"
+                                className="w-full sm:w-1/2 py-3 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-sm hover:shadow-md transition-all flex justify-center items-center gap-2"
                             >
-                                Yes, Cancel Appointment
+                                Yes, Delete Record
                             </button>
                         </div>
                     </div>
