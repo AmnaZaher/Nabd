@@ -171,6 +171,94 @@ export const staffApi = {
     return response.data!;
   },
 
+  /**
+   * Fetches the current user's display profile.
+   * Strategy 0: /Staff/My/Profile  — self-profile via bearer token (no ID needed)
+   * Strategy 1: /Staff/{userId}    — direct lookup by JWT nameidentifier
+   * Strategy 2: Admin search        — /Admin/Staffs?SearchKey={nationalId} (admins only)
+   * All strategies reject purely-numeric names (= national ID leaking as name).
+   */
+  getMyProfile: async (userId: string, jwtUsername?: string): Promise<StaffProfile | null> => {
+    /** Helper: resolve the display name from a raw backend item */
+    const resolveName = (item: any): string => {
+      const candidates = [
+        item.fullNameEnglish,
+        item.FullNameEnglish,
+        item.displayName,
+        item.DisplayName,
+        item.firstName ? `${item.firstName} ${item.lastName || ''}`.trim() : '',
+        item.FirstName ? `${item.FirstName} ${item.LastName || ''}`.trim() : '',
+        item.name,
+        item.Name,
+      ];
+      for (const c of candidates) {
+        if (c && typeof c === 'string' && c.trim().length > 0 && !/^\d+$/.test(c.trim())) {
+          return c.trim();
+        }
+      }
+      return '';
+    };
+
+    /** Helper: build a StaffProfile from a raw backend item */
+    const buildProfile = (item: any, fallbackId: string, fallbackNationalId?: string): StaffProfile => ({
+      ...item,
+      id: item.id || item.Id || fallbackId,
+      name: resolveName(item),
+      fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
+      role: item.role || item.Role || '',
+      department: item.department || item.Department || '',
+      licenseId: item.licenseId || item.licenseNumber || '',
+      location: item.location || item.city || '',
+      email: item.email || item.Email || '',
+      nationalId: item.nationalId || item.NationalId || fallbackNationalId || '',
+      phone: item.phoneNumber || item.phone || '',
+      address: item.address || '',
+      gender: item.gender || '',
+      experience: item.experience || '',
+      qualifications: item.qualifications || item.qualification || '',
+      status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
+      lastLogin: item.lastLogin || '',
+      avatar: item.avatar || item.PersonalPhotos || '',
+    } as StaffProfile);
+
+    // ── Strategy 0: /Staff/My/Profile (self-profile, works for all roles) ──
+    try {
+      const response = await fetchApi<any>('/Staff/My/Profile');
+      console.log("Strategy 0 (/Staff/My/Profile) raw response:", response);
+      const item = response?.data;
+      if (item) {
+        const name = resolveName(item);
+        if (name) return buildProfile(item, userId, jwtUsername);
+      }
+    } catch (err) { console.log("Strategy 0 failed:", err); }
+
+    // ── Strategy 1: /Staff/{userId} (direct lookup by internal ID) ──
+    try {
+      const response = await fetchApi<any>(`/Staff/${userId}`);
+      console.log("Strategy 1 (/Staff/{userId}) raw response:", response);
+      const item = response?.data;
+      if (item) {
+        const name = resolveName(item);
+        if (name) return buildProfile(item, userId, jwtUsername);
+      }
+    } catch (err) { console.log("Strategy 1 failed:", err); }
+
+    // ── Strategy 2: Admin search by national ID (admins only) ──
+    if (jwtUsername && !/^\d+$/.test(jwtUsername)) {
+      // Only attempt if jwtUsername looks like a real search key (not a pure number)
+      try {
+        return await staffApi.getStaffById(jwtUsername);
+      } catch { /* admin-only, fails for nurses */ }
+    }
+    if (jwtUsername) {
+      try {
+        return await staffApi.getStaffById(jwtUsername);
+      } catch { /* also failed */ }
+    }
+
+    return null;
+  },
+
   toggleStatus: async (id: string, activate: boolean): Promise<void> => {
     await fetchApi(`/Staff/${id}/status`, {
       method: "PATCH",

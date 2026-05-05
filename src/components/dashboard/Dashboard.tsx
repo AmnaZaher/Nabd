@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { staffApi } from "../../api/staff";
+import type { StaffProfile } from "../../types/staff.types";
 import Sidebar from "../../components/dashboard/Sidebar";
 import TopBar from "../../components/dashboard/TopBar";
 import StatCards from "../../components/dashboard/StatCards";
@@ -33,6 +35,7 @@ import AddLabTest from "./lapCatalog/AddLabTest";
 import EditLabTest from "./lapCatalog/EditLabTest";
 import TestDetails from "./lapCatalog/TestDetails";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
+import DepartmentCards from "./nurse/DepartmentCards";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
@@ -51,8 +54,27 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     "patient",
   );
   const [registerRole, setRegisterRole] = useState<string>("Doctor");
+  const [adminProfile, setAdminProfile] = useState<StaffProfile | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Fetch real display name for greeting
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user?.id && isAdmin) {
+        try {
+          const data = await staffApi.getMyProfile(user.id, user.name);
+          if (data) setAdminProfile(data);
+        } catch (error) {
+          console.error('Failed to fetch admin profile for greeting:', error);
+        }
+      }
+    };
+    fetchProfile();
+  }, [user?.id, isAdmin]);
+
+  // Show only first name in greeting
+  const displayName = (adminProfile?.name || user?.name || 'Admin').split(' ')[0];
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -129,7 +151,9 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    return hour < 12 ? "Good Morning" : "Good Evening";
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
   };
 
   if (isLoading) {
@@ -378,12 +402,18 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                       <p className="text-slate-500 font-medium mb-1">
                         {currentDate}
                       </p>
-                      <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        {getGreeting()} {user.name}
-                      </h2>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        {getGreeting()},{' '}
+                        <span className="text-blue-600">{displayName}</span> 👋
+                    </h2>
                     </div>
 
                     <StatCards />
+
+                    {/* Department Cards */}
+                    <div>
+                      <DepartmentCards />
+                    </div>
 
                     <div className="flex flex-col lg:flex-row gap-4">
                       {/* Left Column: Chart & Quick Actions */}

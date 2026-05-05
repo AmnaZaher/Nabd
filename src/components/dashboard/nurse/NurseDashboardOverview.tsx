@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { staffApi } from '../../../api/staff';
+import type { StaffProfile } from '../../../types/staff.types';
 import NurseStatCards from './NurseStatCards';
 import DepartmentCards from './DepartmentCards';
 import UpcomingAppointmentsList from './UpcomingAppointmentsList';
@@ -9,20 +11,40 @@ import StaffAvailability from './StaffAvailability';
 
 const NurseDashboardOverview: React.FC = () => {
     const { user } = useAuth();
-    
-    // We will use the same greeting logic
+    const [profile, setProfile] = useState<StaffProfile | null>(null);
+
+    // Fetch real display name from backend (JWT name claim may be username/ID, not full name)
+    useEffect(() => {
+        const fetchProfile = async () => {
+            if (user?.id) {
+                try {
+                    const data = await staffApi.getMyProfile(user.id, user.name);
+                    if (data) setProfile(data);
+                } catch (error) {
+                    console.error('Failed to fetch nurse profile:', error);
+                }
+            }
+        };
+        fetchProfile();
+    }, [user?.id]);
+
+    // Show only first name in greeting
+    const displayName = (profile?.name || user?.name || 'there').split(' ')[0];
+
     const getGreeting = () => {
         const hour = new Date().getHours();
-        return hour < 12 ? "Good Morning" : "Good Evening";
+        if (hour < 12) return 'Good Morning';
+        if (hour < 17) return 'Good Afternoon';
+        return 'Good Evening';
     };
 
     const options: Intl.DateTimeFormatOptions = {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
     };
-    const currentDate = new Date().toLocaleDateString("en-US", options);
+    const currentDate = new Date().toLocaleDateString('en-US', options);
 
     return (
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
@@ -32,10 +54,11 @@ const NurseDashboardOverview: React.FC = () => {
                         {currentDate}
                     </p>
                     <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        {getGreeting()} {user?.name}
+                        {getGreeting()},{' '}
+                        <span className="text-blue-600">{displayName}</span> 👋
                     </h2>
                 </div>
-                
+
                 {/* Stats Row */}
                 <NurseStatCards />
 
@@ -72,3 +95,4 @@ const NurseDashboardOverview: React.FC = () => {
 };
 
 export default NurseDashboardOverview;
+

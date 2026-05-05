@@ -32,12 +32,12 @@ const TopBar: React.FC<TopBarProps> = ({
         const fetchProfile = async () => {
             if (user?.id) {
                 try {
-                    const data = await staffApi.getStaffById(user.id);
-                    if (data) {
-                        setProfile(data);
-                    }
+                    // user.id = JWT nameidentifier (internal DB id)
+                    // user.name = JWT name/unique_name (often the national ID / username)
+                    const data = await staffApi.getMyProfile(user.id, user.name);
+                    if (data) setProfile(data);
                 } catch (error) {
-                    console.error('Failed to fetch admin profile:', error);
+                    console.error('Failed to fetch profile:', error);
                 }
             }
         };
@@ -103,10 +103,10 @@ const TopBar: React.FC<TopBarProps> = ({
                 >
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-bold text-slate-900 leading-tight group-hover/profile:text-blue-600 transition-colors">
-                            {displayUser?.name || 'Admin'}
+                            {displayUser?.name || user?.name || 'User'}
                         </p>
-                        <p className="text-[10px] text-slate-500 font-medium">
-                            {displayUser?.role || 'Administrator'}
+                        <p className="text-[10px] text-slate-500 font-medium capitalize">
+                            {displayUser?.role || user?.role || 'Staff'}
                         </p>
                     </div>
                     
