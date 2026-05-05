@@ -36,7 +36,7 @@ import AddLabTest from "./lapCatalog/AddLabTest";
 import EditLabTest from "./lapCatalog/EditLabTest";
 import TestDetails from "./lapCatalog/TestDetails";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
-import PatientVisitPage from "./nurse/PatientVisitPage";
+import PatientVisitPageView from "./nurse/PatientVisitPage";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
@@ -410,7 +410,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             path="patient-visit"
             element={
               <div className="flex-1 overflow-y-auto w-full h-full">
-                <PatientVisitPage onMenuClick={() => setIsSidebarOpen(true)} />
+                <PatientVisitPageView onMenuClick={() => setIsSidebarOpen(true)} />
               </div>
             }
           />
