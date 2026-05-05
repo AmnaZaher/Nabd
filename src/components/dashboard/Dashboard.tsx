@@ -100,6 +100,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (path.includes("/dashboard/appointments/edit"))
       return "Appointment Management";
     if (path.includes("/dashboard/profile")) return "Admin Profile";
+    if (path.includes("/dashboard/patient-visit")) return "Patient Visit";
 
     // حالات الـ Tabs الأساسية
     switch (activeTab) {
@@ -140,6 +141,8 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       setActiveTab("settings");
     } else if (path.includes("/dashboard/profile")) {
       setActiveTab("profile");
+    } else if (path.includes("/dashboard/patient-visit")) {
+      setActiveTab("users");
     } else {
       setActiveTab("dashboard");
     }
@@ -238,6 +241,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         {activeTab !== "users" &&
           !location.pathname.includes("/dashboard/users") &&
           !location.pathname.includes("/dashboard/dr-schedule") &&
+          !location.pathname.includes("/dashboard/patient-visit") &&
           //!location.pathname.includes("/dashboard/appointments") &&
           !location.pathname.includes("/dashboard/users/patient/edit") && (
             <TopBar
