@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-    Edit2, Loader2, CalendarCheck, ChevronLeft, ChevronRight, Plus, Search, Trash2
+    Edit2, Loader2, CalendarCheck, ChevronLeft, ChevronRight, Plus, Search, Trash2,
+    Hourglass, CheckCircle2, XCircle, Ban
 } from 'lucide-react';
 import {
     listAppointments, deleteAppointment, type Appointment
@@ -9,6 +10,7 @@ import { getClinics } from '../../../api/clinics';
 import { staffApi } from '../../../api/staff';
 import { scheduleApi } from '../../../api/schedules';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 
 /* ─────────────── helpers ─────────────── */
 const STATUS_MAP: Record<number, { label: string; color: string; bg: string }> = {
@@ -117,6 +119,7 @@ function getAptDate(apt: any): string | undefined {
 
 const AppointmentManagementPage: React.FC = () => {
     const navigate = useNavigate();
+    const { isNurse, isAdmin } = useAuth();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     const [totalCount, setTotalCount] = useState(0);
@@ -138,6 +141,14 @@ const AppointmentManagementPage: React.FC = () => {
     const [doctors, setDoctors] = useState<any[]>([]);
     const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
+
+    // Stats
+    const [stats, setStats] = useState({
+        totalToday: 0,
+        waiting: 0,
+        completed: 0,
+        cancelled: 0
+    });
 
 
     /* ── Fetch appointments ── */
@@ -193,9 +204,15 @@ const AppointmentManagementPage: React.FC = () => {
     useEffect(() => {
         const load = async () => {
             try {
-                const [drRes, clinicRes] = await Promise.all([
+                const [drRes, clinicRes, statsApptsRes] = await Promise.all([
                     staffApi.getStaffs({ PageIndex: 0, PageSize: 100 }),
                     getClinics({ PageIndex: 0, PageSize: 100 }),
+                    // Fetch today's appointments for stats
+                    listAppointments({ 
+                        DateAppointment: new Date().toISOString().split('T')[0], 
+                        PageIndex: 0, 
+                        PageSize: 1000 
+                    })
                 ]);
 
                 const staffList = (drRes as any)?.staffs ?? (drRes as any)?.items ?? (drRes as any)?.data ?? (drRes as any)?.data?.data ?? (Array.isArray(drRes) ? drRes : []);
@@ -234,6 +251,27 @@ const AppointmentManagementPage: React.FC = () => {
                     rawClinic?.clinics ??
                     [];
                 setClinics(Array.isArray(clinicList) ? clinicList : []);
+
+                // Calculate stats
+                const rawStats: any = statsApptsRes;
+                const todayAppts: Appointment[] = 
+                    rawStats?.data?.data ?? 
+                    rawStats?.data?.appointments ?? 
+                    rawStats?.data?.items ?? 
+                    (Array.isArray(rawStats?.data) ? rawStats.data : []) ?? 
+                    rawStats?.appointments ?? 
+                    [];
+                
+                const waiting = todayAppts.filter(a => a.status === 2 || a.status === 6).length; // In Progress or Waiting List
+                const completed = todayAppts.filter(a => a.status === 3).length;
+                const cancelled = todayAppts.filter(a => a.status === 5).length;
+
+                setStats({
+                    totalToday: todayAppts.length,
+                    waiting,
+                    completed,
+                    cancelled
+                });
 
             } catch (e) {
                 console.error('Failed to load dropdown data:', e);
@@ -297,90 +335,162 @@ const AppointmentManagementPage: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#f8fafc] font-sans">
             <div className="max-w-[1400px] mx-auto space-y-6">
 
-                {/* ── Header ── */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 border-b border-slate-200 mb-6">
-                    <div>
-                        <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight">Appointment Management</h1>
-                        <p className="text-slate-500 text-sm mt-0.5 font-medium">Schedule and monitor patient visits across all departments.</p>
-                    </div>
-                    <button 
-                        onClick={() => navigate('/dashboard/appointments/new')}
-                        className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm active:scale-95"
-                    >
-                        <Plus size={18} strokeWidth={3} />
-                        Add Appointment
-                    </button>
-                </div>
-
-                {/* ── Filters ── */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
-                        {/* Patient */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">PATIENT</label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                <input 
-                                    type="text" 
-                                    placeholder="Name or ID..."
-                                    value={patientSearch}
-                                    onChange={e => { setPatientSearch(e.target.value); setPage(1); }}
-                                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] focus:bg-white transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Doctor */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
-                            <select value={filterDoctor} onChange={e => { setFilterDoctor(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all"
-                                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em', paddingRight: '2.5rem' }}>
-                                <option value="">All Doctors</option>
-                                {availableDoctors.map((d: any) => (
-                                    <option key={d.id} value={d.id}>{d.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Clinic */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
-                            <select value={filterClinic} onChange={e => { setFilterClinic(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all"
-                                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em', paddingRight: '2.5rem' }}>
-                                <option value="">All Clinics</option>
-                                {clinics.map((c: any) => (
-                                    <option key={c.id} value={c.id}>{c.clinicNameEn || c.clinicNameAr || c.name || `Clinic #${c.id}`}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Status */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</label>
-                            <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
-                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all"
-                                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em', paddingRight: '2.5rem' }}>
-                                {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                            </select>
-                        </div>
-
-                        {/* Date Range */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DATE RANGE</label>
-                            <div className="flex items-center gap-2 bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2">
-                                <input type="date" value={filterFrom}
-                                    onChange={e => { setFilterFrom(e.target.value); setPage(1); }}
-                                    className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
-                                <span className="text-slate-300 font-bold">-</span>
-                                <input type="date" value={filterTo}
-                                    min={filterFrom || undefined}
-                                    onChange={e => { setFilterTo(e.target.value); setPage(1); }}
-                                    className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
-                            </div>
+                {/* ── Role Based Header ── */}
+                {isAdmin ? (
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 border-b border-slate-200 mb-6">
+                        <div>
+                            <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight uppercase">Appointment Management</h1>
+                            <p className="text-slate-500 text-sm mt-0.5 font-medium">Schedule and monitor patient visits across all departments.</p>
                         </div>
                     </div>
+                ) : (
+                    <>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 border-b border-slate-100 mb-2">
+                            <h1 className="text-[20px] font-black text-slate-800 tracking-tighter uppercase">Appointments</h1>
+                        </div>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h2 className="text-[32px] font-bold text-slate-800 tracking-tight">Appointments</h2>
+                                <p className="text-slate-500 text-[15px] font-medium">Manage and track all patient appointments</p>
+                            </div>
+                            <button 
+                                onClick={() => navigate('/dashboard/appointments/new')}
+                                className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md active:scale-95"
+                            >
+                                <Plus size={20} strokeWidth={3} />
+                                New Appointment
+                            </button>
+                        </div>
+
+                        {/* ── Nurse Stats ── */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative group">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-blue-50 text-[#1A6FC4] rounded-xl flex items-center justify-center">
+                                        <CalendarCheck size={24} />
+                                    </div>
+                                    <span className="text-[12px] font-bold text-emerald-500">+12%</span>
+                                </div>
+                                <p className="text-slate-400 text-sm font-bold">Total Appointments Today</p>
+                                <h3 className="text-3xl font-black text-slate-800 mt-1">{String(stats.totalToday).padStart(2, '0')}</h3>
+                            </div>
+                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative group">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center">
+                                        <Hourglass size={24} />
+                                    </div>
+                                    <span className="text-[12px] font-bold text-red-500">! Urgent</span>
+                                </div>
+                                <p className="text-slate-400 text-sm font-bold">Waiting Patients</p>
+                                <h3 className="text-3xl font-black text-slate-800 mt-1">{String(stats.waiting).padStart(2, '0')}</h3>
+                            </div>
+                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative group">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center">
+                                        <CheckCircle2 size={24} />
+                                    </div>
+                                    <span className="text-slate-400 text-[12px] font-bold">Today</span>
+                                </div>
+                                <p className="text-slate-400 text-sm font-bold">Completed Today</p>
+                                <h3 className="text-3xl font-black text-slate-800 mt-1">{String(stats.completed).padStart(2, '0')}</h3>
+                            </div>
+                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative group">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center">
+                                        <XCircle size={24} />
+                                    </div>
+                                    <span className="text-slate-400 text-[12px] font-bold">Today</span>
+                                </div>
+                                <p className="text-slate-400 text-sm font-bold">Cancelled</p>
+                                <h3 className="text-3xl font-black text-slate-800 mt-1">{String(stats.cancelled).padStart(2, '0')}</h3>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* ── Role Based Filters ── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    {isAdmin ? (
+                        /* Admin Filters */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">PATIENT</label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                    <input type="text" placeholder="Name or ID..." value={patientSearch}
+                                        onChange={e => { setPatientSearch(e.target.value); setPage(1); }}
+                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] focus:bg-white transition-all" />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
+                                <select value={filterDoctor} onChange={e => { setFilterDoctor(e.target.value); setPage(1); }}
+                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                    <option value="">All Doctors</option>
+                                    {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
+                                <select value={filterClinic} onChange={e => { setFilterClinic(e.target.value); setPage(1); }}
+                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                    <option value="">All Clinics</option>
+                                    {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</label>
+                                <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
+                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DATE RANGE</label>
+                                <div className="flex items-center gap-2 bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2">
+                                    <input type="date" value={filterFrom} onChange={e => { setFilterFrom(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
+                                    <span className="text-slate-300 font-bold">-</span>
+                                    <input type="date" value={filterTo} min={filterFrom || undefined} onChange={e => { setFilterTo(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Nurse Filters */
+                        <div className="flex flex-wrap items-end gap-4">
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Doctor</label>
+                                <select value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                    <option value="">All Doctors</option>
+                                    {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Clinic</label>
+                                <select value={filterClinic} onChange={e => setFilterClinic(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                    <option value="">All Clinics</option>
+                                    {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">From Date</label>
+                                <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
+                            </div>
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">To Date</label>
+                                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
+                            </div>
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Status</label>
+                                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => { setPage(1); fetchAppointments(); }} className="bg-[#1A6FC4] text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all hover:bg-[#155ba0]">Apply Filters</button>
+                                <button onClick={() => { setFilterDoctor(''); setFilterClinic(''); setFilterStatus(''); setFilterFrom(''); setFilterTo(''); }} className="bg-white border border-slate-200 text-slate-600 px-6 py-2.5 rounded-lg font-bold text-sm transition-all hover:bg-slate-50">Reset</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Table ── */}
@@ -391,29 +501,29 @@ const AppointmentManagementPage: React.FC = () => {
                                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
                                     <th className="px-6 py-4">ID</th>
                                     <th className="px-6 py-4">PATIENT NAME</th>
-                                    <th className="px-6 py-4">DOCTOR NAME</th>
+                                    <th className="px-6 py-4">{isAdmin ? 'DOCTOR NAME' : 'DOCTOR'}</th>
                                     <th className="px-6 py-4">CLINIC</th>
                                     <th className="px-6 py-4">DATE & TIME</th>
                                     <th className="px-6 py-4">STATUS</th>
-                                    <th className="px-6 py-4 text-center">ACTIONS</th>
+                                    <th className="px-6 py-4">ACTIONS</th>
+                                    {isNurse && <th className="px-6 py-4 text-center">CREATE VISIT</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={8} className="py-20 text-center text-slate-400">
+                                        <td colSpan={isNurse ? 8 : 7} className="py-20 text-center text-slate-400">
                                             <Loader2 className="animate-spin mx-auto mb-3 text-[#1A6FC4]" size={32} />
                                             <span className="text-sm font-medium">Loading appointments...</span>
                                         </td>
                                     </tr>
                                 ) : appointments.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="py-20 text-center text-slate-400">
+                                        <td colSpan={isNurse ? 8 : 7} className="py-20 text-center text-slate-400">
                                             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                                 <CalendarCheck className="opacity-40" size={32} />
                                             </div>
                                             <p className="text-[15px] font-semibold text-slate-600">No appointments found</p>
-                                            <p className="text-sm mt-1">Try adjusting your filters or create a new appointment.</p>
                                         </td>
                                     </tr>
                                 ) : (
@@ -425,13 +535,9 @@ const AppointmentManagementPage: React.FC = () => {
 
                                         return (
                                             <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors group">
-                                                {/* ID */}
                                                 <td className="px-6 py-4">
-                                                    <span className="text-slate-300 font-semibold text-[13px]">
-                                                        #{aptIdStr(apt.id)}
-                                                    </span>
+                                                    <span className="text-slate-300 font-semibold text-[13px]">#{aptIdStr(apt.id)}</span>
                                                 </td>
-                                                {/* Patient */}
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full bg-blue-100 text-[#1A6FC4] flex items-center justify-center text-xs font-bold shrink-0 shadow-sm border border-white">
@@ -445,36 +551,45 @@ const AppointmentManagementPage: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                {/* Doctor */}
                                                 <td className="px-6 py-4 text-sm font-semibold text-slate-800">{displayDoctorName}</td>
-                                                {/* Clinic */}
-                                                <td className="px-6 py-4 text-sm font-semibold text-slate-600">
-                                                    {apt.clinicName
-                                                        ? <>{apt.clinicName}{apt.clinicWing ? `, ${apt.clinicWing}` : ''}</>
-                                                        : '—'}
-                                                </td>
-                                                {/* Date/Time */}
+                                                <td className="px-6 py-4 text-sm font-semibold text-slate-600">{apt.clinicName || '—'}</td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-[13px] font-semibold text-slate-700">{date}</div>
                                                     <div className="text-[12px] font-medium text-slate-400 mt-0.5">{time}</div>
                                                 </td>
-                                                {/* Status */}
                                                 <td className="px-6 py-4">
                                                     <StatusBadge status={apt.status} />
                                                 </td>
-                                                {/* Actions */}
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-center gap-4">
+                                                    <div className="flex items-center gap-4">
                                                         <button onClick={() => navigate(`/dashboard/appointments/edit/${apt.id}`)}
                                                             className="text-slate-400 hover:text-[#1A6FC4] transition-colors" title="Edit">
                                                             <Edit2 size={16} strokeWidth={2.5} />
                                                         </button>
-                                                        <button onClick={() => handleDeleteClick(apt)}
-                                                            className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
-                                                            <Trash2 size={16} strokeWidth={2.5} />
-                                                        </button>
+                                                        {isAdmin ? (
+                                                            <button onClick={() => handleDeleteClick(apt)}
+                                                                className="text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                                                                <Trash2 size={16} strokeWidth={2.5} />
+                                                            </button>
+                                                        ) : (
+                                                            <button onClick={() => handleDeleteClick(apt)}
+                                                                className="text-slate-400 hover:text-red-500 transition-colors" title="Cancel">
+                                                                <Ban size={18} strokeWidth={2.5} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
+                                                {isNurse && (
+                                                    <td className="px-6 py-4 text-center">
+                                                        {(apt.status === 5 || String(apt.status).toLowerCase() === 'cancelled') ? (
+                                                            <span className="text-slate-400 font-medium">—</span>
+                                                        ) : (
+                                                            <button className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white text-[12px] font-bold px-4 py-1.5 rounded-md transition-colors shadow-sm w-full max-w-[80px]">
+                                                                Create
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         );
                                     })
@@ -504,14 +619,6 @@ const AppointmentManagementPage: React.FC = () => {
                                         </button>
                                     );
                                 })}
-                                {totalPages > 5 && <span className="text-slate-400 px-1 font-bold">…</span>}
-                                {totalPages > 5 && (
-                                    <button onClick={() => setPage(totalPages)}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-[13px] font-bold transition-all
-                                            ${page === totalPages ? 'bg-[#1A6FC4] text-white shadow-sm' : 'hover:bg-slate-200 text-slate-500'}`}>
-                                        {totalPages}
-                                    </button>
-                                )}
                                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
                                     className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 text-slate-400 disabled:opacity-40 transition-colors">
                                     <ChevronRight size={16} strokeWidth={2.5} />
@@ -522,46 +629,30 @@ const AppointmentManagementPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Cancel Modal */}
+            {/* Modal */}
             {cancelModalData && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-md p-6 sm:p-8 transform transition-all animate-in fade-in zoom-in-95 duration-200">
                         <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-5 border border-red-100">
-                            <Trash2 className="text-red-500" size={24} strokeWidth={2.5} />
+                            {isAdmin ? <Trash2 className="text-red-500" size={24} strokeWidth={2.5} /> : <Ban className="text-red-500" size={24} strokeWidth={2.5} />}
                         </div>
                         
-                        <h2 className="text-xl font-extrabold text-slate-800 mb-2">Delete Appointment?</h2>
+                        <h2 className="text-xl font-extrabold text-slate-800 mb-2">{isAdmin ? 'Delete' : 'Cancel'} Appointment?</h2>
                         <p className="text-[14px] text-slate-500 font-medium mb-6 leading-relaxed">
-                            Are you sure you want to delete this appointment? This action cannot be undone and will remove the record from the system.
+                            {isAdmin ? 'Are you sure you want to delete this appointment? This action cannot be undone.' : 'Are you sure you want to cancel this appointment?'}
                         </p>
                         
                         <div className="bg-[#f8fafc] rounded-2xl p-5 mb-8 border border-slate-100 shadow-sm">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appointment Details</span>
-                                <span className="text-[11px] font-bold text-[#1A6FC4] bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">#{aptIdStr(cancelModalData.id)}</span>
-                            </div>
                             <div className="text-[15px] font-bold text-slate-800 mb-2">{cancelModalData.patientName || 'Unknown Patient'}</div>
                             <div className="flex items-center gap-2 text-[13px] font-medium text-slate-500">
                                 <CalendarCheck size={14} className="text-slate-400" />
-                                <span>
-                                    {fmtDateTime(getAptDate(cancelModalData)).date} at {fmtDateTime(getAptDate(cancelModalData)).time}
-                                </span>
+                                <span>{fmtDateTime(getAptDate(cancelModalData)).date} at {fmtDateTime(getAptDate(cancelModalData)).time}</span>
                             </div>
                         </div>
                         
                         <div className="flex flex-col-reverse sm:flex-row items-center gap-3">
-                            <button 
-                                onClick={() => setCancelModalData(null)}
-                                className="w-full sm:w-1/2 py-3 text-sm font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors"
-                            >
-                                No, Keep It
-                            </button>
-                            <button 
-                                onClick={executeDelete}
-                                className="w-full sm:w-1/2 py-3 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-sm hover:shadow-md transition-all flex justify-center items-center gap-2"
-                            >
-                                Yes, Delete Record
-                            </button>
+                            <button onClick={() => setCancelModalData(null)} className="w-full sm:w-1/2 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">No, Keep It</button>
+                            <button onClick={executeDelete} className="w-full sm:w-1/2 py-3 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-sm hover:shadow-md transition-all">Yes, {isAdmin ? 'Delete' : 'Cancel'}</button>
                         </div>
                     </div>
                 </div>
