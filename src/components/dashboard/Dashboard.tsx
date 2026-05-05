@@ -36,7 +36,7 @@ import AddLabTest from "./lapCatalog/AddLabTest";
 import EditLabTest from "./lapCatalog/EditLabTest";
 import TestDetails from "./lapCatalog/TestDetails";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
-import PatientVisitPage from "./nurse/PatientVisitPage";
+import PatientVisitPageView from "./nurse/PatientVisitPage";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
@@ -101,6 +101,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       return "Appointment Management";
     if (path.includes("/dashboard/patient-visit")) return "Patient Visit";
     if (path.includes("/dashboard/profile")) return "Admin Profile";
+    if (path.includes("/dashboard/patient-visit")) return "Patient Visit";
 
     // حالات الـ Tabs الأساسية
     switch (activeTab) {
@@ -141,6 +142,8 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       setActiveTab("settings");
     } else if (path.includes("/dashboard/profile")) {
       setActiveTab("profile");
+    } else if (path.includes("/dashboard/patient-visit")) {
+      setActiveTab("users");
     } else {
       setActiveTab("dashboard");
     }
@@ -239,6 +242,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         {activeTab !== "users" &&
           !location.pathname.includes("/dashboard/users") &&
           !location.pathname.includes("/dashboard/dr-schedule") &&
+          !location.pathname.includes("/dashboard/patient-visit") &&
           //!location.pathname.includes("/dashboard/appointments") &&
           !location.pathname.includes("/dashboard/users/patient/edit") && (
             <TopBar
@@ -411,7 +415,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             path="patient-visit"
             element={
               <div className="flex-1 overflow-y-auto w-full h-full">
-                <PatientVisitPage onMenuClick={() => setIsSidebarOpen(true)} />
+                <PatientVisitPageView onMenuClick={() => setIsSidebarOpen(true)} />
               </div>
             }
           />
