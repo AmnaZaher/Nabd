@@ -43,7 +43,6 @@ interface DashboardProps {
   //onAddUserClick?: (type: 'patient' | 'staff', role?: string) => void;
 }
 
-
 const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user, isAdmin, isNurse, isLoading } = useAuth();
@@ -66,7 +65,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           const data = await staffApi.getMyProfile(user.id, user.name);
           if (data) setAdminProfile(data);
         } catch (error) {
-          console.error('Failed to fetch admin profile for greeting:', error);
+          console.error("Failed to fetch admin profile for greeting:", error);
         }
       }
     };
@@ -74,7 +73,9 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   }, [user?.id, isAdmin]);
 
   // Show only first name in greeting
-  const displayName = (adminProfile?.name || user?.name || 'Admin').split(' ')[0];
+  const displayName = (adminProfile?.name || user?.name || "Admin").split(
+    " ",
+  )[0];
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -87,13 +88,16 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       return "Clinic Details";
     if (path.includes("/dashboard/clinics/edit")) return "Edit Clinic";
     if (path.includes("/dashboard/clinics/assign")) return "Assign Staff";
-    if (path.includes("/dashboard/users/patient/edit")) return "Edit Patient Profile";
+    if (path.includes("/dashboard/users/patient/edit"))
+      return "Edit Patient Profile";
     if (path.includes("/dashboard/users/patient/")) return "Patient Profile";
-    if (path.includes("/dashboard/users/staff/edit")) return "Edit Doctor Profile";
+    if (path.includes("/dashboard/users/staff/edit"))
+      return "Edit Doctor Profile";
     if (path.includes("/dashboard/users/staff/")) return "Staff Profile";
     if (path.includes("/dashboard/appointments/new")) return "New Appointment";
     if (path.includes("/dashboard/appointments")) return "Appointments";
-    if (path.includes("/dashboard/appointments/edit")) return "Appointment Management";
+    if (path.includes("/dashboard/appointments/edit"))
+      return "Appointment Management";
     if (path.includes("/dashboard/profile")) return "Admin Profile";
 
     // حالات الـ Tabs الأساسية
@@ -188,7 +192,9 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             Access Restricted
           </h2>
           <p className="text-slate-500 mb-8">
-            {!user ? "No authentication token found. Please log in." : `This dashboard is for authorized personnel only. (Detected Role: ${user.role})`}
+            {!user
+              ? "No authentication token found. Please log in."
+              : `This dashboard is for authorized personnel only. (Detected Role: ${user.role})`}
           </p>
           <button
             onClick={() => {
@@ -376,7 +382,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
           <Route path="clinics/assign/:id" element={<AssignStaff />} />
 
-          {/* DR. Schedule */}
+          {/* ADMIN DR. Schedule */}
           <Route
             path="dr-schedule"
             element={
@@ -398,6 +404,16 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           <Route path="lab-catalog/edit/:id" element={<EditLabTest />} />
           <Route path="lab-catalog/details/:id" element={<TestDetails />} />
 
+          {/*NURSE Patient Visit Route */}
+          <Route
+            path="patient-visit"
+            element={
+              <div className="flex-1 overflow-y-auto w-full h-full">
+                <PatientVisitPage onMenuClick={() => setIsSidebarOpen(true)} />
+              </div>
+            }
+          />
+
           {/* Dashboard Home */}
           <Route
             path="*"
@@ -411,10 +427,10 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                       <p className="text-slate-500 font-medium mb-1">
                         {currentDate}
                       </p>
-                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        {getGreeting()},{' '}
+                      <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        {getGreeting()},{" "}
                         <span className="text-blue-600">{displayName}</span> 👋
-                    </h2>
+                      </h2>
                     </div>
 
                     <StatCards />

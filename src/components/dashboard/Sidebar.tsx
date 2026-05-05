@@ -29,7 +29,7 @@ const getNavItems = (isNurse: boolean): NavItem[] => {
         return [
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
             { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
-            { id: 'users', icon: Users, label: 'Patient Visit', path: PATHS.USER_MANAGEMENT }, // Mapped to Users for now
+            { id: 'users', icon: Users, label: 'Patient Visit', path: PATHS.PATIENT_VISIT }, // Mapped to Users for now
             { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
             { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
