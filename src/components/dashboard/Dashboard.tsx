@@ -27,6 +27,7 @@ import EditClinic from "./clinics/EditClinic";
 import AssignStaff from "./clinics/AssignStaff";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
+import NewAppointmentPage from "./appointments/NewAppointmentPage";
 import EditPatientProfilePage from "./users/EditPatientProfilePage";
 import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import AdminProfile from "./profile/AdminProfile";
@@ -35,7 +36,6 @@ import AddLabTest from "./lapCatalog/AddLabTest";
 import EditLabTest from "./lapCatalog/EditLabTest";
 import TestDetails from "./lapCatalog/TestDetails";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
-import DepartmentCards from "./nurse/DepartmentCards";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardProps {
@@ -91,6 +91,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (path.includes("/dashboard/users/patient/")) return "Patient Profile";
     if (path.includes("/dashboard/users/staff/edit")) return "Edit Doctor Profile";
     if (path.includes("/dashboard/users/staff/")) return "Staff Profile";
+    if (path.includes("/dashboard/appointments/new")) return "New Appointment";
     if (path.includes("/dashboard/appointments")) return "Appointments";
     if (path.includes("/dashboard/appointments/edit")) return "Appointment Management";
     if (path.includes("/dashboard/profile")) return "Admin Profile";
@@ -340,7 +341,15 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             }
           />
 
-          {/* Appointments */}
+          <Route
+            path="appointments/new"
+            element={
+              <div className="flex-1 overflow-y-auto w-full h-full">
+                <NewAppointmentPage />
+              </div>
+            }
+          />
+
           <Route
             path="appointments"
             element={
@@ -409,11 +418,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                     </div>
 
                     <StatCards />
-
-                    {/* Department Cards */}
-                    <div>
-                      <DepartmentCards />
-                    </div>
 
                     <div className="flex flex-col lg:flex-row gap-4">
                       {/* Left Column: Chart & Quick Actions */}
