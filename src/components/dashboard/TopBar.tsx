@@ -4,8 +4,6 @@ import { AddUserButton } from './shared/AddUserButton';
 import { useAuth } from '../../context/AuthContext';
 import { staffApi } from '../../api/staff';
 import type { StaffProfile } from '../../types/staff.types';
-import { useNavigate } from 'react-router-dom';
-import { PATHS } from '../../routes/routePaths';
 
 interface TopBarProps {
     onProfileClick?: () => void;
@@ -27,7 +25,6 @@ const TopBar: React.FC<TopBarProps> = ({
     showAddUser = true,
 }) => {
     const { user } = useAuth();
-    const navigate = useNavigate();
     const [profile, setProfile] = React.useState<StaffProfile | null>(null);
 
     React.useEffect(() => {
@@ -101,7 +98,6 @@ const TopBar: React.FC<TopBarProps> = ({
                 {/* Profile Section */}
                 <div 
                     className="flex items-center gap-3 pl-4 md:pl-6 border-l border-slate-100 ml-2 md:ml-4 cursor-pointer hover:opacity-80 transition-opacity group/profile"
-                    //onClick={() => navigate(PATHS.PROFILE)}
                     onClick={onProfileClick}
                 >
                     <div className="text-right hidden sm:block">
