@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { PATHS } from '../../routes/routePaths';
 
 interface TopBarProps {
+    onProfileClick?: () => void;
     title?: React.ReactNode;
     onMenuClick: () => void;
     onAddUserClick?: (type: 'patient' | 'staff', role?: string) => void;
@@ -19,6 +20,7 @@ interface TopBarProps {
 const TopBar: React.FC<TopBarProps> = ({
     title = 'Dashboard',
     onMenuClick,
+    onProfileClick,
     onAddUserClick,
     onSearch,
     searchPlaceholder,
@@ -99,7 +101,8 @@ const TopBar: React.FC<TopBarProps> = ({
                 {/* Profile Section */}
                 <div 
                     className="flex items-center gap-3 pl-4 md:pl-6 border-l border-slate-100 ml-2 md:ml-4 cursor-pointer hover:opacity-80 transition-opacity group/profile"
-                    onClick={() => navigate(PATHS.PROFILE)}
+                    //onClick={() => navigate(PATHS.PROFILE)}
+                    onClick={onProfileClick}
                 >
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-bold text-slate-900 leading-tight group-hover/profile:text-blue-600 transition-colors">
