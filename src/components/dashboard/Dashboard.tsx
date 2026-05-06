@@ -37,7 +37,9 @@ import EditLabTest from "./lapCatalog/EditLabTest";
 import TestDetails from "./lapCatalog/TestDetails";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
 import PatientVisitPageView from "./nurse/PatientVisitPage";
+import ReceptionistProfile from "./RECEPTIONIST/ReceptionistProfile";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import EditReceptionistProfile from "./RECEPTIONIST/EditReceptionistProfile";
 
 interface DashboardProps {
   onLogout?: () => void;
@@ -55,8 +57,18 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   );
   const [registerRole, setRegisterRole] = useState<string>("Doctor");
   const [adminProfile, setAdminProfile] = useState<StaffProfile | null>(null);
+  const [receptionistProfile, setReceptionistProfile] =
+    useState<StaffProfile | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleProfileClick = () => {
+    if (isAdmin) {
+      navigate("/dashboard/profile");
+    } else {
+      navigate("receptionist-profile");
+    }
+  };
 
   // Fetch real display name for greeting
   useEffect(() => {
@@ -67,6 +79,17 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           if (data) setAdminProfile(data);
         } catch (error) {
           console.error("Failed to fetch admin profile for greeting:", error);
+        }
+      }
+      if (user?.id && !isAdmin) {
+        try {
+          const data = await staffApi.getMyProfile(user.id, user.name);
+          if (data) setReceptionistProfile(data);
+        } catch (error) {
+          console.error(
+            "Failed to fetch receptionist profile for greeting:",
+            error,
+          );
         }
       }
     };
@@ -248,6 +271,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             <TopBar
               title={getPageTitle()}
               onMenuClick={() => setIsSidebarOpen(true)}
+              onProfileClick={handleProfileClick}
               onAddUserClick={(type, role) => {
                 setActiveTab("users");
                 setUserViewMode("register");
@@ -404,6 +428,28 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           {/* Admin Profile */}
           <Route path="profile" element={<AdminProfile />} />
 
+          {/* Receptionist Profile */}
+          <Route
+            path="/receptionist-profile"
+            element={
+              /* هذا الـ div هو المفتاح للسماح بالتمرير */
+              <div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]">
+                <ReceptionistProfile />
+              </div>
+            }
+          />
+
+          <Route
+            path="receptionist-profile/edit"
+            element={
+              <div className="flex-1 overflow-y-auto w-full h-full">
+                <EditReceptionistProfile />
+              </div>
+            }
+          />
+
+          {/* <Route path="*" element={isAdmin ? <AdminOverview /> : <NurseDashboardOverview />} /> */}
+
           {/* Lab Catalog */}
           <Route path="lab-catalog" element={<LabCatalogPage />} />
           <Route path="lab-catalog/add" element={<AddLabTest />} />
@@ -415,7 +461,9 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             path="patient-visit"
             element={
               <div className="flex-1 overflow-y-auto w-full h-full">
-                <PatientVisitPageView onMenuClick={() => setIsSidebarOpen(true)} />
+                <PatientVisitPageView
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                />
               </div>
             }
           />
