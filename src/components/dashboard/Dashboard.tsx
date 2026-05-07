@@ -41,6 +41,8 @@ import NewAppointmentPage from "./appointments/NewAppointmentPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
 import ReceptionistProfile from "./RECEPTIONIST/ReceptionistProfile";
 import EditReceptionistProfile from "./RECEPTIONIST/EditReceptionistProfile";
+import NurseDrSchedulePage from "./schedule/NurseDrSchedulePage";
+import NurseDrScheduleDetails from "./schedule/NurseDrScheduleDetails";
 
 const Dashboard: React.FC = () => {
   const { user, logout, isNurse, isLoading } = useAuth();
@@ -321,12 +323,28 @@ const Dashboard: React.FC = () => {
           />
 
           {/* Other Routes */}
-          <Route
+        <Route
             path="dr-schedule"
             element={
-              <DRSchedulePage
+              isNurse ? (
+                <NurseDrSchedulePage
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                  onProfileClick={handleProfileClick}
+                />
+              ) : (
+                <DRSchedulePage
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                  onAddUserClick={handleAddUser}
+                  onProfileClick={handleProfileClick}
+                />
+              )
+            }
+          />
+          <Route
+            path="dr-schedule/details/:id"
+            element={
+              <NurseDrScheduleDetails
                 onMenuClick={() => setIsSidebarOpen(true)}
-                onAddUserClick={handleAddUser}
                 onProfileClick={handleProfileClick}
               />
             }

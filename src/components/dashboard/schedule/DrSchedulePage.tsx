@@ -152,6 +152,18 @@ const DrSchedulePage = ({ onMenuClick, onAddUserClick, onProfileClick }: DrSched
     // Edit modal
     const [editTarget, setEditTarget] = useState<DoctorSchedule | null>(null);
 
+    const extractList = (resObj: any): any[] => {
+        if (!resObj) return [];
+        if (Array.isArray(resObj)) return resObj;
+        if (Array.isArray(resObj.data)) return resObj.data;
+        if (Array.isArray(resObj.data?.data)) return resObj.data.data;
+        if (Array.isArray(resObj.data?.schedules)) return resObj.data.schedules;
+        if (Array.isArray(resObj.data?.items)) return resObj.data.items;
+        if (Array.isArray(resObj.schedules)) return resObj.schedules;
+        if (Array.isArray(resObj.items)) return resObj.items;
+        return [];
+    };
+
     // ── Load dropdown data once ──
     useEffect(() => {
         const loadDropdowns = async () => {
@@ -160,14 +172,13 @@ const DrSchedulePage = ({ onMenuClick, onAddUserClick, onProfileClick }: DrSched
                     staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 100 }), // Role 2 = Doctor
                     getClinics({ PageIndex: 0, PageSize: 100 }),
                 ]);
-                const staffList: any[] = (staffRes as any)?.staffs ?? (staffRes as any)?.data?.staffs ?? (staffRes as any)?.items ?? [];
+                const staffList: any[] = extractList(staffRes);
                 setDoctors(staffList.map((s: any) => ({
                     id: s.id ?? s.Id,
                     name: s.fullNameEnglish ?? s.name ?? s.FullNameEnglish ?? 'Unknown',
                 })));
 
-                const clinicAny = clinicRes as any;
-                const clinicList: any[] = clinicAny?.data?.data ?? clinicAny?.data?.clinics ?? clinicAny?.data?.items ?? (Array.isArray(clinicAny?.data) ? clinicAny.data : []);
+                const clinicList: any[] = extractList(clinicRes);
                 setClinics(clinicList.map((c: any) => ({
                     id: c.id ?? c.Id,
                     name: c.clinicNameEn ?? c.clinicNameAr ?? `Clinic #${c.id}`,
@@ -188,10 +199,10 @@ const DrSchedulePage = ({ onMenuClick, onAddUserClick, onProfileClick }: DrSched
                 ClinicId: filterClinicId ? Number(filterClinicId) : undefined,
             });
             const any = res as any;
-            const list: DoctorSchedule[] = any?.data?.data ?? any?.data?.schedules ?? any?.data?.items ?? (Array.isArray(any?.data) ? any.data : []);
-            const total: number = any?.data?.totalCount ?? any?.data?.totalPages ?? 1;
+            const list: DoctorSchedule[] = extractList(any);
+            const total: number = any?.data?.totalCount ?? any?.data?.totalPages ?? any?.totalCount ?? list.length;
             setSchedules(list);
-            setTotalCount(any?.data?.totalCount ?? list.length);
+            setTotalCount(total);
             setTotalPages(Math.max(1, typeof any?.data?.totalPages === 'number' ? any.data.totalPages : Math.ceil(total / PAGE_SIZE)));
         } catch (e) { console.error('Failed to fetch schedules', e); }
         finally { setLoading(false); }
