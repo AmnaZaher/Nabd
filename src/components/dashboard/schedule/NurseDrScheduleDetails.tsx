@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, MapPin, CalendarDays, Loader2 } from 'lucide-react';
 import TopBar from '../TopBar';
@@ -74,7 +74,7 @@ const NurseDrScheduleDetails: React.FC<NurseDrScheduleDetailsProps> = ({ onMenuC
             email: "marcus.thorne@hospital.com",
             phone: "+1 234 567 8900",
             gender: "Male"
-          } as StaffProfile);
+          } as unknown as StaffProfile);
           
           setSchedules([
             { id: 1, doctorId: Number(id), clinicId: 1, clinicName: "Heart Center", dayOfWeek: 1, startTime: "08:00:00", endTime: "16:00:00", isActive: true },

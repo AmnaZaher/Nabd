@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, Building2, Eye, ChevronLeft, ChevronRight, ChevronDown, Search, Filter } from 'lucide-react';
+import { Calendar, Users, Building2, Eye, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import TopBar from '../TopBar';
 import { scheduleApi, type DoctorSchedule } from '../../../api/schedules';
 import { staffApi } from '../../../api/staff';
@@ -155,13 +155,7 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
     setTimeout(() => fetchSchedules(), 0);
   };
 
-  const formatTime = (t: string) => {
-    if (!t) return 'N/A';
-    const [h, m] = t.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const hour = h % 12 || 12;
-    return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
-  };
+
 
   const getStatus = (schedule: DoctorSchedule) => {
     if (!schedule.isActive) return { text: 'INACTIVE', color: 'bg-slate-100 text-slate-500' };
