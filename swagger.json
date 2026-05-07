@@ -587,6 +587,61 @@
         }
       }
     },
+    "/api/Admin/Profile": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Admin/Edit": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Admin": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Ai/chat": {
       "post": {
         "tags": [
@@ -812,7 +867,7 @@
             }
           },
           {
-            "name": "FileNumber",
+            "name": "Search",
             "in": "query",
             "schema": {
               "type": "string"
@@ -842,7 +897,15 @@
             }
           },
           {
-            "name": "DateAppointment",
+            "name": "DateAppointmentFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "DateAppointmentTo",
             "in": "query",
             "schema": {
               "type": "string",
@@ -1025,6 +1088,334 @@
       "get": {
         "tags": [
           "Clinics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Clinics/AssignToClinic": {
+      "post": {
+        "tags": [
+          "Clinics"
+        ],
+        "parameters": [
+          {
+            "name": "clinicId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "staffId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Clinics/RemoveFromClinic": {
+      "patch": {
+        "tags": [
+          "Clinics"
+        ],
+        "parameters": [
+          {
+            "name": "staffId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/CreateLabTest": {
+      "post": {
+        "tags": [
+          "Lab"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabTest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabTest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabTest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/labTestrequestFromVisit": {
+      "post": {
+        "tags": [
+          "Lab"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabTestRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabTestRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/labTestrequestFromReciption": {
+      "post": {
+        "tags": [
+          "Lab"
+        ],
+        "parameters": [
+          {
+            "name": "fileNum",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LabTestOrderDto"
+                }
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LabTestOrderDto"
+                }
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LabTestOrderDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/labTestDetails": {
+      "get": {
+        "tags": [
+          "Lab"
+        ],
+        "parameters": [
+          {
+            "name": "VisitNum",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/CreateResult": {
+      "post": {
+        "tags": [
+          "Lab"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalResultDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalResultDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/GetCataliog": {
+      "get": {
+        "tags": [
+          "Lab"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/Approve": {
+      "post": {
+        "tags": [
+          "Lab"
+        ],
+        "parameters": [
+          {
+            "name": "finalResul",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/GetResults": {
+      "get": {
+        "tags": [
+          "Lab"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/GetResultDetails": {
+      "get": {
+        "tags": [
+          "Lab"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/{FinalLabResultId}/exportLabPDF": {
+      "get": {
+        "tags": [
+          "Lab"
+        ],
+        "parameters": [
+          {
+            "name": "FinalLabResultId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lab/GetAnalysis": {
+      "get": {
+        "tags": [
+          "Lab"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -1294,6 +1685,64 @@
       }
     },
     "/api/MedicalRecorde/MedicalHistory/{Id}": {
+      "get": {
+        "tags": [
+          "MedicalRecorde"
+        ],
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/MedicalRecorde/Radiology": {
+      "get": {
+        "tags": [
+          "MedicalRecorde"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/MedicalRecorde/Radiology/{Id}": {
+      "get": {
+        "tags": [
+          "MedicalRecorde"
+        ],
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/MedicalRecorde/Radiology/Export/{Id}": {
       "get": {
         "tags": [
           "MedicalRecorde"
@@ -1680,58 +2129,6 @@
         }
       }
     },
-    "/api/Visit/labTestrequest": {
-      "post": {
-        "tags": [
-          "Visit"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateLabTestRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateLabTestRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateLabTestRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Visit/labTestDetails": {
-      "post": {
-        "tags": [
-          "Visit"
-        ],
-        "parameters": [
-          {
-            "name": "VisitNum",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/api/Visit/{AppointmentId}": {
       "post": {
         "tags": [
@@ -1750,19 +2147,117 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/CreateVisitDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateVisitDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateVisitDto"
+                "type": "object",
+                "properties": {
+                  "ChiefComplaint": {
+                    "type": "string"
+                  },
+                  "VisitType": {
+                    "$ref": "#/components/schemas/VisitType"
+                  },
+                  "Notes": {
+                    "type": "string"
+                  },
+                  "VitalSigns.Temperature": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "VitalSigns.BloodPressureSystolic": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "VitalSigns.BloodPressureDiastolic": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "VitalSigns.HeartRate": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "VitalSigns.RespiratoryRate": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "VitalSigns.OxygenSaturation": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "VitalSigns.Weight": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "VitalSigns.Height": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "VitalSigns.BloodGlucose": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "VitalSigns.BMI": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "VitalSigns.Notes": {
+                    "type": "string"
+                  },
+                  "Attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              },
+              "encoding": {
+                "ChiefComplaint": {
+                  "style": "form"
+                },
+                "VisitType": {
+                  "style": "form"
+                },
+                "Notes": {
+                  "style": "form"
+                },
+                "VitalSigns.Temperature": {
+                  "style": "form"
+                },
+                "VitalSigns.BloodPressureSystolic": {
+                  "style": "form"
+                },
+                "VitalSigns.BloodPressureDiastolic": {
+                  "style": "form"
+                },
+                "VitalSigns.HeartRate": {
+                  "style": "form"
+                },
+                "VitalSigns.RespiratoryRate": {
+                  "style": "form"
+                },
+                "VitalSigns.OxygenSaturation": {
+                  "style": "form"
+                },
+                "VitalSigns.Weight": {
+                  "style": "form"
+                },
+                "VitalSigns.Height": {
+                  "style": "form"
+                },
+                "VitalSigns.BloodGlucose": {
+                  "style": "form"
+                },
+                "VitalSigns.BMI": {
+                  "style": "form"
+                },
+                "VitalSigns.Notes": {
+                  "style": "form"
+                },
+                "Attachments": {
+                  "style": "form"
+                }
               }
             }
           }
@@ -1919,46 +2414,6 @@
             }
           }
         ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Visit"
-        ],
-        "parameters": [
-          {
-            "name": "visitId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordVitalSignsDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordVitalSignsDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordVitalSignsDto"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "OK"
@@ -2550,6 +3005,118 @@
         },
         "additionalProperties": false
       },
+      "CreateLabTest": {
+        "type": "object",
+        "properties": {
+          "testCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "testNameArabic": {
+            "type": "string",
+            "nullable": true
+          },
+          "testNameEnglish": {
+            "type": "string",
+            "nullable": true
+          },
+          "testAbbreviation": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "subCategory": {
+            "type": "string",
+            "nullable": true
+          },
+          "testMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "equipmentRequired": {
+            "type": "string",
+            "nullable": true
+          },
+          "sampleType": {
+            "type": "string",
+            "nullable": true
+          },
+          "preservative": {
+            "type": "string",
+            "nullable": true
+          },
+          "sample_stability_room_temp_hours": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "sample_stability_refrigerated_days": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "sample_stability_frozen_days": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "fasting_required": {
+            "type": "boolean"
+          },
+          "fasting_hours": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateLabTestParameter"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateLabTestParameter": {
+        "required": [
+          "gender",
+          "parameterNameEnglish",
+          "referenceRangeMax",
+          "referenceRangeMin",
+          "unit"
+        ],
+        "type": "object",
+        "properties": {
+          "parameterNameEnglish": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "unit": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "referenceRangeMax": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "referenceRangeMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "gender": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateLabTestRequest": {
         "type": "object",
         "properties": {
@@ -2618,23 +3185,6 @@
         },
         "additionalProperties": false
       },
-      "CreateVisitDto": {
-        "type": "object",
-        "properties": {
-          "chiefComplaint": {
-            "type": "string",
-            "nullable": true
-          },
-          "visitType": {
-            "$ref": "#/components/schemas/VisitType"
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "CurrentSate_Chronic_Disease": {
         "enum": [
           1,
@@ -2668,6 +3218,23 @@
         ],
         "type": "integer",
         "format": "int32"
+      },
+      "FinalResultDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParamterResultDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "ForgetDto": {
         "required": [
@@ -2744,6 +3311,24 @@
         "type": "integer",
         "format": "int32"
       },
+      "ParamterResultDto": {
+        "type": "object",
+        "properties": {
+          "paramterId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paramterValue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PrescriptionItemDto": {
         "type": "object",
         "properties": {
@@ -2773,66 +3358,6 @@
           },
           "instructions": {
             "type": "string",
-            "nullable": true
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "RecordVitalSignsDto": {
-        "type": "object",
-        "properties": {
-          "temperature": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "bloodPressureSystolic": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "bloodPressureDiastolic": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "heartRate": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "respiratoryRate": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "oxygenSaturation": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "weight": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "height": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "bloodGlucose": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "bmi": {
-            "type": "number",
-            "format": "double",
             "nullable": true
           },
           "notes": {
@@ -2923,6 +3448,55 @@
         ],
         "type": "integer",
         "format": "int32"
+      },
+      "UpdateAdminDto": {
+        "type": "object",
+        "properties": {
+          "fullNameArabic": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullNameEnglish": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true
+          },
+          "nationalId": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "UpdateAppointmentDto": {
         "type": "object",

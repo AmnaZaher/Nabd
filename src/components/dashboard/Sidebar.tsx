@@ -10,6 +10,7 @@ import {
     Settings,
     LogOut,
     X,
+    Activity,
     type LucideIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -28,8 +29,9 @@ const getNavItems = (isNurse: boolean): NavItem[] => {
     if (isNurse) {
         return [
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+            { id: 'users', icon: Users, label: 'Patients', path: PATHS.USER_MANAGEMENT },
             { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
-            { id: 'users', icon: Users, label: 'Patient Visit', path: PATHS.PATIENT_VISIT }, // Mapped to Users for now
+            { id: 'patient-visit', icon: Activity, label: 'Patient Visit', path: PATHS.PATIENT_VISIT },
             { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
             { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
@@ -90,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <aside
             className={`
                 w-[100px] flex flex-col items-center py-4 text-white
-                h-screen shrink-0 shadow-lg z-30 transition-transform duration-300
+                h-screen shrink-0 shadow-lg z-50 transition-transform duration-300
                 absolute md:relative
                 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                 top-0 left-0

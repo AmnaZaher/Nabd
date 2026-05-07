@@ -4,11 +4,13 @@ import TopBar from '../TopBar';
 import { scheduleApi, type DoctorSchedule, type CreateDoctorScheduleDto } from '../../../api/schedules';
 import { staffApi } from '../../../api/staff';
 import { getClinics } from '../../../api/clinics';
+import { useAuth } from '../../../context/AuthContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface DrSchedulePageProps {
     onMenuClick: () => void;
     onAddUserClick: (type: 'patient' | 'staff', role?: string) => void;
+    onProfileClick?: () => void;
 }
 
 interface DoctorOption { id: number; name: string; }
@@ -119,7 +121,8 @@ const EditModal = ({ schedule, doctors, clinics, onSave, onClose }: {
 };
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-const DrSchedulePage = ({ onMenuClick, onAddUserClick }: DrSchedulePageProps) => {
+const DrSchedulePage = ({ onMenuClick, onAddUserClick, onProfileClick }: DrSchedulePageProps) => {
+    const { isNurse } = useAuth();
     // Dropdown data
     const [doctors, setDoctors] = useState<DoctorOption[]>([]);
     const [clinics, setClinics] = useState<ClinicOption[]>([]);
@@ -233,7 +236,7 @@ const DrSchedulePage = ({ onMenuClick, onAddUserClick }: DrSchedulePageProps) =>
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f1f5f9]">
-            <TopBar title="DR. Schedule" onMenuClick={onMenuClick} showAddUser={true} onAddUserClick={onAddUserClick} />
+            <TopBar title="DR. Schedule" onMenuClick={onMenuClick} showAddUser={!isNurse} onAddUserClick={onAddUserClick} onProfileClick={onProfileClick} />
 
             <div className="flex flex-col gap-5 p-6 md:p-8">
                 {/* Breadcrumb */}

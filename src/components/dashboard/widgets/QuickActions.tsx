@@ -1,8 +1,7 @@
 import React from "react";
-import { PlusCircle, UserPlus, Calendar, Users, FlaskConical, Boxes } from "lucide-react";
+import { UserPlus, Calendar, Users, FlaskConical, Boxes } from "lucide-react";
 
 const actions = [
-  { id: "add_appt", label: "ADD APPT.", icon: PlusCircle },
   { id: "add_patient", label: "ADD PATIENT", icon: UserPlus },
   { id: "dr_schedule", label: "DR. SCHEDULE", icon: Calendar },
   { id: "users", label: "USERS", icon: Users },
@@ -10,14 +9,19 @@ const actions = [
   { id: "radiology", label: "RADIOLOGY", icon: Boxes },
 ];
 
-const QuickActions: React.FC = () => {
+interface QuickActionsProps {
+  onAction?: (id: string) => void;
+}
+
+const QuickActions: React.FC<QuickActionsProps> = ({ onAction }) => {
   return (
     <div className="bg-gradient-to-r from-[#0057B8] to-[#00A3FF] rounded-[24px] p-5 shadow-xl shadow-blue-500/10">
       <h3 className="text-lg font-bold text-white mb-4 tracking-tight">Quick Actions</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {actions.map((action) => (
           <button
             key={action.id}
+            onClick={() => onAction?.(action.id)}
             className="flex flex-col items-center justify-center py-4 px-2 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-95 transition-all border border-white/5 group backdrop-blur-[2px]"
           >
             <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3 text-white bg-white/10 group-hover:bg-white/20 transition-all">

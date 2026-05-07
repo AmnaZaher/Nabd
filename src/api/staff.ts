@@ -178,7 +178,7 @@ export const staffApi = {
    * Strategy 2: Admin search        — /Admin/Staffs?SearchKey={nationalId} (admins only)
    * All strategies reject purely-numeric names (= national ID leaking as name).
    */
-  getMyProfile: async (userId: string, jwtUsername?: string): Promise<StaffProfile | null> => {
+  getMyProfile: async (userId: string, jwtUsername?: string, jwtRole?: string): Promise<StaffProfile | null> => {
     /** Helper: resolve the display name from a raw backend item */
     const resolveName = (item: any): string => {
       const candidates = [
@@ -221,10 +221,10 @@ export const staffApi = {
       avatar: item.avatar || item.PersonalPhotos || '',
     } as StaffProfile);
 
-    // ── Strategy 0: /Staff/My/Profile (self-profile, works for all roles) ──
+    // ── Strategy 0: /Admin/Profile (self-profile, works for all roles) ──
     try {
-      const response = await fetchApi<any>('/Staff/My/Profile');
-      console.log("Strategy 0 (/Staff/My/Profile) raw response:", response);
+      const response = await fetchApi<any>('/Admin/Profile');
+      console.log("Strategy 0 (/Admin/Profile) raw response:", response);
       const item = response?.data;
       if (item) {
         const name = resolveName(item);
@@ -252,11 +252,22 @@ export const staffApi = {
     }
     if (jwtUsername) {
       try {
-        return await staffApi.getStaffById(jwtUsername);
+        const result = await staffApi.getStaffById(jwtUsername);
+        if (result) return result;
       } catch { /* also failed */ }
     }
 
-    return null;
+    // ── Strategy 3: Fallback to JWT data (when backend lacks profile endpoints for non-admins) ──
+    console.warn("All profile fetch strategies failed. Falling back to JWT data.");
+    return buildProfile({
+      id: userId,
+      name: jwtUsername || 'Staff Member',
+      role: jwtRole || '',
+      status: 'Active',
+      email: 'Not available',
+      phone: 'Not available',
+      department: 'General'
+    }, userId, jwtUsername);
   },
 
   toggleStatus: async (id: string, activate: boolean): Promise<void> => {

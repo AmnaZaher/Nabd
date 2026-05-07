@@ -113,14 +113,6 @@ const SuccessPage: React.FC = () => {
 };
 
 export const AppRoutes: React.FC = () => {
-    const { logout } = useAuth();
-    const navigate = useNavigate();
-
-    const handleLogout = () => {
-        logout();
-        navigate(PATHS.LOGIN);
-    };
-
     return (
         <Routes>
             {/* Auth Routes — كل صفحة لوحدها */}
@@ -135,7 +127,7 @@ export const AppRoutes: React.FC = () => {
                 path="/dashboard/*"
                 element={
                     <ProtectedRoute>
-                        <Dashboard onLogout={handleLogout} />
+                        <Dashboard />
                     </ProtectedRoute>
                 }
             />
