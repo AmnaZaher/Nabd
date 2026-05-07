@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Search, User as UserIcon } from 'lucide-react';
+import { Menu, Search, User as UserIcon, UserPlus } from 'lucide-react';
 import { AddUserButton } from './shared/AddUserButton';
 import { useAuth } from '../../context/AuthContext';
 import { staffApi } from '../../api/staff';
@@ -13,6 +13,7 @@ interface TopBarProps {
     onSearch?: (query: string) => void;         // kept for compatibility
     searchPlaceholder?: string;                  // kept for compatibility
     showAddUser?: boolean;
+    isNurse?: boolean;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -23,6 +24,7 @@ const TopBar: React.FC<TopBarProps> = ({
     onSearch,
     searchPlaceholder,
     showAddUser = true,
+    isNurse = false,
 }) => {
     const { user } = useAuth();
     const [profile, setProfile] = React.useState<StaffProfile | null>(null);
@@ -47,7 +49,7 @@ const TopBar: React.FC<TopBarProps> = ({
     const displayUser = profile || user;
 
     return (
-        <header className="px-4 md:px-10 py-4 md:py-6 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-10 w-full overflow-visible">
+        <header className="px-4 md:px-10 py-4 md:py-6 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-30 w-full overflow-visible">
             {/* Left Side */}
             <div className="flex items-center gap-4 min-w-0">
                 {/* Mobile Menu Button */}
@@ -88,11 +90,21 @@ const TopBar: React.FC<TopBarProps> = ({
                 
                 {/* Add User Button */}
                 {showAddUser && onAddUserClick && (
-                    <AddUserButton
-                        onClick={(type, role) => {
-                            onAddUserClick(type, role);
-                        }}
-                    />
+                    isNurse ? (
+                        <button 
+                            onClick={() => onAddUserClick('patient')}
+                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold shadow-md transition-all active:scale-95 text-sm"
+                        >
+                            <UserPlus size={17} />
+                            <span>Add Patient</span>
+                        </button>
+                    ) : (
+                        <AddUserButton
+                            onClick={(type, role) => {
+                                onAddUserClick(type, role);
+                            }}
+                        />
+                    )
                 )}
 
                 {/* Profile Section */}

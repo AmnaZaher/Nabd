@@ -1,514 +1,359 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import {
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { staffApi } from "../../api/staff";
-import type { StaffProfile } from "../../types/staff.types";
-import Sidebar from "../../components/dashboard/Sidebar";
-import TopBar from "../../components/dashboard/TopBar";
-import StatCards from "../../components/dashboard/StatCards";
+import Sidebar from "./Sidebar";
+import TopBar from "./TopBar";
 
-import AppointmentTrendChart from "./charts/AppointmentTrendChart";
-
-import { PatientFeed } from "./widgets/InfoWidgets";
-import StatusDistribution from "./widgets/StatusDistribution";
-import QuickActions from "./widgets/QuickActions";
+// Widgets
 import DoctorStatus from "./widgets/DoctorStatus";
+import { PatientFeed } from "./widgets/InfoWidgets";
+import AppointmentTrendChart from "./charts/AppointmentTrendChart";
+import StatCards from "./StatCards";
+import QuickActions from "./widgets/QuickActions";
+import StatusDistribution from "./widgets/StatusDistribution";
+
+// Pages
+import UserManagementList from "./users/UserManagementList";
 import RegisterPatient from "./patients/RegisterPatient";
 import RegisterStaff from "./staff/RegisterStaff";
-import UserManagementList from "./users/UserManagementList";
-import UserProfileDetail from "./users/UserProfileDetail";
 import PatientProfileDetail from "./users/PatientProfileDetail";
-import LabResultDetail from "./users/LabResultDetail";
-import DrSchedulePage from "./schedule/DrSchedulePage";
-import RadiologyReportDetail from "./users/RadiologyReportDetail";
-import PrescriptionDetail from "./users/PrescriptionDetail";
-import ClinicsContainer from "./clinics/ClinicsContainer";
-import ClinicDetails from "./clinics/ClinicDetails";
-import EditClinic from "./clinics/EditClinic";
-import AssignStaff from "./clinics/AssignStaff";
-import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
-import EditAppointmentPage from "./appointments/EditAppointmentPage";
-import NewAppointmentPage from "./appointments/NewAppointmentPage";
+import StaffProfilePage from "./staff/StaffProfilePage";
+import DoctorProfileDetail from "./users/DoctorProfileDetail";
 import EditPatientProfilePage from "./users/EditPatientProfilePage";
 import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
-import AdminProfile from "./profile/AdminProfile";
+import ClinicsList from "./clinics/ClinicsList";
+import ClinicDetails from "./clinics/ClinicDetails";
+import EditClinic from "./clinics/EditClinic";
 import LabCatalogPage from "./lapCatalog/LabCatalogPage";
-import AddLabTest from "./lapCatalog/AddLabTest";
+import LabTestDetail from "./lapCatalog/TestDetails";
 import EditLabTest from "./lapCatalog/EditLabTest";
-import TestDetails from "./lapCatalog/TestDetails";
+import DRSchedulePage from "./schedule/DrSchedulePage";
+import AdminProfilePage from "./profile/AdminProfile";
+import PatientVisitPage from "./nurse/PatientVisitPage";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
-import PatientVisitPageView from "./nurse/PatientVisitPage";
+import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
+import NewAppointmentPage from "./appointments/NewAppointmentPage";
+import EditAppointmentPage from "./appointments/EditAppointmentPage";
 import ReceptionistProfile from "./RECEPTIONIST/ReceptionistProfile";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import EditReceptionistProfile from "./RECEPTIONIST/EditReceptionistProfile";
 
-interface DashboardProps {
-  onLogout?: () => void;
-  //onAddUserClick?: (type: 'patient' | 'staff', role?: string) => void;
-}
-
-const Dashboard = ({ onLogout }: DashboardProps) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { user, isAdmin, isNurse, isLoading } = useAuth();
-  const [currentDate, setCurrentDate] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
-  const [userViewMode, setUserViewMode] = useState<"list" | "register">("list");
-  const [registerMode, setRegisterMode] = useState<"patient" | "staff">(
-    "patient",
-  );
-  const [registerRole, setRegisterRole] = useState<string>("Doctor");
-  const [adminProfile, setAdminProfile] = useState<StaffProfile | null>(null);
-  const [receptionistProfile, setReceptionistProfile] =
-    useState<StaffProfile | null>(null);
-  const navigate = useNavigate();
+const Dashboard: React.FC = () => {
+  const { user, logout, isNurse, isLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Sync active tab with URL
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
+    else if (path.includes("/appointments")) setActiveTab("appointments");
+    else if (path.includes("/radiology")) setActiveTab("radiology");
+    else if (path.includes("/lab-catalog")) setActiveTab("lab-catalog");
+    else if (path.includes("/clinics")) setActiveTab("clinics");
+    else if (path.includes("/settings")) setActiveTab("settings");
+    else if (path.includes("/profile")) setActiveTab("profile");
+    else if (path.includes("/dr-schedule")) setActiveTab("dr-schedule");
+    else if (path.includes("/patient-visit")) setActiveTab("patient-visit");
+    else setActiveTab("dashboard");
+
+    // Close sidebar on route change (mobile)
+    setIsSidebarOpen(false);
+  }, [location]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const handleProfileClick = () => {
-    if (isAdmin) {
-      navigate("/dashboard/profile");
-    } else {
-      navigate("receptionist-profile");
-    }
+    navigate("/dashboard/profile");
   };
 
-  // Fetch real display name for greeting
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user?.id && isAdmin) {
-        try {
-          const data = await staffApi.getMyProfile(user.id, user.name);
-          if (data) setAdminProfile(data);
-        } catch (error) {
-          console.error("Failed to fetch admin profile for greeting:", error);
-        }
-      }
-      if (user?.id && !isAdmin) {
-        try {
-          const data = await staffApi.getMyProfile(user.id, user.name);
-          if (data) setReceptionistProfile(data);
-        } catch (error) {
-          console.error(
-            "Failed to fetch receptionist profile for greeting:",
-            error,
-          );
-        }
-      }
-    };
-    fetchProfile();
-  }, [user?.id, isAdmin]);
-
-  // Show only first name in greeting
-  const displayName = (
-    adminProfile?.name ||
-    receptionistProfile?.name ||
-    user?.name ||
-    "Admin"
-  ).split(" ")[0];
-
-  const getPageTitle = () => {
-    const path = location.pathname;
-
-    // حالات خاصة للمسارات التفصيلية
-    if (
-      path.includes("/dashboard/clinics/details") ||
-      path.includes("/dashboard/clinics/WWD")
-    )
-      return "Clinic Details";
-    if (path.includes("/dashboard/clinics/edit")) return "Edit Clinic";
-    if (path.includes("/dashboard/clinics/assign")) return "Assign Staff";
-    if (path.includes("/dashboard/users/patient/edit"))
-      return "Edit Patient Profile";
-    if (path.includes("/dashboard/users/patient/")) return "Patient Profile";
-    if (path.includes("/dashboard/users/staff/edit"))
-      return "Edit Doctor Profile";
-    if (path.includes("/dashboard/users/staff/")) return "Staff Profile";
-    if (path.includes("/dashboard/appointments/new")) return "New Appointment";
-    if (path.includes("/dashboard/appointments")) return "Appointments";
-    if (path.includes("/dashboard/appointments/edit"))
-      return "Appointment Management";
-    if (path.includes("/dashboard/patient-visit")) return "Patient Visit";
-    if (path.includes("/dashboard/profile")) return "Admin Profile";
-    if (path.includes("/dashboard/patient-visit")) return "Patient Visit";
-
-    // حالات الـ Tabs الأساسية
-    switch (activeTab) {
-      case "users":
-        return "User Management";
-      case "clinics":
-        return "Clinics Management";
-      case "appointments":
-        return "Appointments";
-      case "dr-schedule":
-        return "Doctor Schedule";
-      case "radiology":
-        return "Radiology Center";
-      case "lab-catalog":
-        return "Lab Catalog";
-      case "settings":
-        return "Settings";
-      default:
-        return "Dashboard Overview";
-    }
-  };
-
-  useEffect(() => {
-    const path = location.pathname;
-    if (path.includes("/dashboard/users")) {
-      setActiveTab("users");
-    } else if (path.includes("/dashboard/appointments")) {
-      setActiveTab("appointments");
-    } else if (path.includes("/dashboard/dr-schedule")) {
-      setActiveTab("dr-schedule");
-    } else if (path.includes("/dashboard/radiology")) {
-      setActiveTab("radiology");
-    } else if (path.includes("/dashboard/lab-catalog")) {
-      setActiveTab("lab-catalog");
-    } else if (path.includes("/dashboard/clinics")) {
-      setActiveTab("clinics");
-    } else if (path.includes("/dashboard/settings")) {
-      setActiveTab("settings");
-    } else if (path.includes("/dashboard/profile")) {
-      setActiveTab("profile");
-    } else if (path.includes("/dashboard/patient-visit")) {
-      setActiveTab("users");
-    } else {
-      setActiveTab("dashboard");
-    }
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    };
-    setCurrentDate(new Date().toLocaleDateString("en-US", options));
-  }, []);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
+  const handleAddUser = (type: "patient" | "staff") => {
+    navigate(
+      type === "patient"
+        ? "/dashboard/users/register-patient"
+        : "/dashboard/users/register-staff"
+    );
   };
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  if (!user || (!isAdmin && !isNurse)) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 font-sans p-4 text-center">
-        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg border border-red-100">
-          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg
-              className="w-8 h-8"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Access Restricted
-          </h2>
-          <p className="text-slate-500 mb-8">
-            {!user
-              ? "No authentication token found. Please log in."
-              : `This dashboard is for authorized personnel only. (Detected Role: ${user.role})`}
-          </p>
-          <button
-            onClick={() => {
-              onLogout?.();
-            }}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl transition-colors"
-          >
-            Return to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const displayName = user?.name || "User";
+  const currentDate = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans relative">
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/50 z-20 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-700">
       <Sidebar
         isOpen={isSidebarOpen}
-        activeTab={activeTab}
         onClose={() => setIsSidebarOpen(false)}
-        onLogout={() => {
-          onLogout?.();
-        }}
+        activeTab={activeTab}
+        onLogout={handleLogout}
         onTabChange={(tab) => {
           setActiveTab(tab);
-          if (tab === "users") {
-            setUserViewMode("list");
-          }
         }}
       />
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {activeTab !== "users" &&
-          !location.pathname.includes("/dashboard/users") &&
-          !location.pathname.includes("/dashboard/dr-schedule") &&
-          !location.pathname.includes("/dashboard/patient-visit") &&
-          //!location.pathname.includes("/dashboard/appointments") &&
-          !location.pathname.includes("/dashboard/users/patient/edit") && (
-            <TopBar
-              title={getPageTitle()}
-              onMenuClick={() => setIsSidebarOpen(true)}
-              onProfileClick={handleProfileClick}
-              onAddUserClick={(type, role) => {
-                setActiveTab("users");
-                setUserViewMode("register");
-                setRegisterMode(type);
-                if (role) setRegisterRole(role);
-                navigate("/dashboard/users");
-              }}
-              showAddUser={true}
-            />
-          )}
-
+      <div className="flex-1 flex flex-col min-w-0 relative h-full">
         <Routes>
-          {/* Staff Profile */}
+          {/* Dashboard Overview */}
           <Route
-            path="users/staff/edit/:id"
-            element={<EditDoctorProfilePage />}
-          />
-
-          <Route
-            path="users/staff/:id"
+            index
             element={
-              <UserProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />
-            }
-          />
-
-          {/* Edit Patient Profile - Move above detail to ensure specificity */}
-          <Route
-            path="users/patient/edit/:id"
-            element={<EditPatientProfilePage />}
-          />
-
-          {/* Patient Profile */}
-          <Route
-            path="users/patient/:id"
-            element={
-              <PatientProfileDetail
-                onMenuClick={() => setIsSidebarOpen(true)}
-              />
-            }
-          />
-
-          {/* Lab Result Detail */}
-          <Route
-            path="users/patient/:id/lab/:labId"
-            element={
-              <LabResultDetail onMenuClick={() => setIsSidebarOpen(true)} />
-            }
-          />
-
-          {/* Radiology Report Detail */}
-          <Route
-            path="users/patient/:id/radiology/:radiologyId"
-            element={
-              <RadiologyReportDetail
-                onMenuClick={() => setIsSidebarOpen(true)}
-              />
-            }
-          />
-
-          {/* Prescription Detail */}
-          <Route
-            path="users/patient/:id/prescription/:prescriptionId"
-            element={
-              <PrescriptionDetail onMenuClick={() => setIsSidebarOpen(true)} />
-            }
-          />
-
-          {/* User Management List + Register */}
-          <Route
-            path="users"
-            element={
-              <div className="flex-1 flex flex-col w-full h-full overflow-hidden">
-                {userViewMode === "list" ? (
-                  <UserManagementList
+              isNurse ? (
+                <NurseDashboardOverview
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                  onProfileClick={handleProfileClick}
+                  onAddUserClick={handleAddUser}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <TopBar
+                    title="Dashboard Overview"
                     onMenuClick={() => setIsSidebarOpen(true)}
-                    onAddUserClick={(type, role) => {
-                      setUserViewMode("register");
-                      setRegisterMode(type);
-                      if (role) setRegisterRole(role);
-                    }}
+                    onAddUserClick={handleAddUser}
+                    onProfileClick={handleProfileClick}
                   />
-                ) : (
-                  <div className="flex-1 overflow-y-auto w-full">
-                    {registerMode === "patient" ? (
-                      <RegisterPatient
-                        onSwitchView={(type, role) => {
-                          setRegisterMode(type);
-                          if (role) setRegisterRole(role);
-                        }}
-                      />
-                    ) : (
-                      <RegisterStaff
-                        initialRole={registerRole}
-                        onSwitchView={(type, role) => {
-                          setRegisterMode(type);
-                          if (role) setRegisterRole(role);
-                        }}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
+                  <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                    <div className="max-w-[1600px] mx-auto space-y-4">
+                      <div className="mb-4">
+                        <p className="text-slate-500 font-medium mb-1">
+                          {currentDate}
+                        </p>
+                        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                          {getGreeting()},{" "}
+                          <span className="text-blue-600">{displayName}</span> 👋
+                        </h2>
+                      </div>
+
+                      <StatCards />
+
+                      <div className="flex flex-col lg:flex-row gap-4">
+                        {/* Left Column: Chart & Quick Actions */}
+                        <div className="flex-1 space-y-4 min-w-0">
+                          <AppointmentTrendChart />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <QuickActions onAction={(id) => id === 'add_patient' ? handleAddUser('patient') : navigate(`/dashboard/${id}`)} />
+                            <StatusDistribution />
+                          </div>
+                        </div>
+
+                        {/* Right Column: Feeds & Status */}
+                        <div className="w-full lg:w-[380px] space-y-4 shrink-0">
+                          <DoctorStatus />
+                          <PatientFeed />
+                        </div>
+                      </div>
+                    </div>
+                  </main>
+                </div>
+              )
             }
           />
 
-          <Route
-            path="appointments/new"
-            element={
-              <div className="flex-1 overflow-y-auto w-full h-full">
-                <NewAppointmentPage />
-              </div>
-            }
-          />
-
-          <Route
-            path="appointments"
-            element={
-              <div className="flex-1 overflow-y-auto w-full h-full">
-                <AppointmentManagementPage />
-              </div>
-            }
-          />
-
-          <Route
-            path="appointments/edit/:id"
-            element={
-              <div className="flex-1 overflow-y-auto w-full h-full">
-                <EditAppointmentPage />
-              </div>
-            }
-          />
+          {/* User Management */}
+          <Route path="users">
+            <Route
+              index
+              element={
+                <UserManagementList
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                  onAddUserClick={handleAddUser}
+                  onProfileClick={handleProfileClick}
+                />
+              }
+            />
+            <Route
+              path="register-patient"
+              element={
+                <RegisterPatient
+                  onSwitchView={() => navigate("/dashboard/users")}
+                />
+              }
+            />
+            <Route
+              path="register-staff"
+              element={
+                <RegisterStaff
+                  onSwitchView={() => navigate("/dashboard/users")}
+                />
+              }
+            />
+            <Route
+              path="patient/:id"
+              element={
+                <PatientProfileDetail
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                />
+              }
+            />
+            <Route
+              path="patient/edit/:id"
+              element={<EditPatientProfilePage />}
+            />
+            <Route
+              path="staff/:id"
+              element={
+                <StaffProfilePage onMenuClick={() => setIsSidebarOpen(true)} />
+              }
+            />
+            <Route
+              path="doctor/:id"
+              element={
+                <DoctorProfileDetail
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                />
+              }
+            />
+            <Route path="staff/edit/:id" element={<EditDoctorProfilePage />} />
+          </Route>
 
           {/* Clinics */}
-          <Route path="clinics" element={<ClinicsContainer />} />
-          <Route path="clinics/:id" element={<ClinicDetails />} />
+          <Route path="clinics">
+            <Route
+              index
+              element={
+                <ClinicsList
+                  onAddClinic={() => navigate("/dashboard/clinics/add")}
+                />
+              }
+            />
+            <Route
+              path="add"
+              element={<EditClinic />}
+            />
+            <Route
+              path=":id"
+              element={
+                <ClinicDetails />
+              }
+            />
+            <Route
+              path="edit/:id"
+              element={<EditClinic />}
+            />
+          </Route>
 
-          <Route path="clinics/edit/:id" element={<EditClinic />} />
+          {/* Lab Catalog */}
+          <Route path="lab-catalog">
+            <Route
+              index
+              element={
+                <LabCatalogPage />
+              }
+            />
+            <Route
+              path=":id"
+              element={
+                <LabTestDetail />
+              }
+            />
+            <Route
+              path="edit/:id"
+              element={
+                <EditLabTest />
+              }
+            />
+          </Route>
 
-          <Route path="clinics/assign/:id" element={<AssignStaff />} />
+          {/* Appointments */}
+          <Route path="appointments">
+            <Route
+              index
+              element={
+                <div className="flex-1 flex flex-col min-h-0">
+                  <TopBar
+                    title="Appointments"
+                    onMenuClick={() => setIsSidebarOpen(true)}
+                    onProfileClick={handleProfileClick}
+                    showAddUser={false}
+                  />
+                  <AppointmentManagementPage />
+                </div>
+              }
+            />
+            <Route
+              path="new"
+              element={<NewAppointmentPage />}
+            />
+            <Route
+              path="edit/:id"
+              element={<EditAppointmentPage />}
+            />
+          </Route>
 
-          {/* ADMIN DR. Schedule */}
+          {/* Nurse Patients alias */}
+          <Route
+            path="patients"
+            element={
+              <UserManagementList
+                onMenuClick={() => setIsSidebarOpen(true)}
+                onAddUserClick={handleAddUser}
+                onProfileClick={handleProfileClick}
+              />
+            }
+          />
+
+          {/* Other Routes */}
           <Route
             path="dr-schedule"
             element={
-              <div className="flex-1 overflow-y-auto w-full h-full">
-                <DrSchedulePage
-                  onMenuClick={() => setIsSidebarOpen(true)}
-                  onAddUserClick={() => {}}
-                />
-              </div>
+              <DRSchedulePage
+                onMenuClick={() => setIsSidebarOpen(true)}
+                onAddUserClick={handleAddUser}
+                onProfileClick={handleProfileClick}
+              />
             }
           />
 
-          {/* Admin Profile */}
-          <Route path="profile" element={<AdminProfile />} />
-
-          {/* Receptionist Profile */}
+          {/* User Profile */}
           <Route
-            path="/receptionist-profile"
+            path="profile"
             element={
-              /* هذا الـ div هو المفتاح للسماح بالتمرير */
-              <div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]">
-                <ReceptionistProfile />
-              </div>
+              user?.role === 'Admin' ? <AdminProfilePage /> : <ReceptionistProfile />
             }
           />
-
           <Route
-            path="receptionist-profile/edit"
+            path="profile/edit"
             element={
-              <div className="flex-1 overflow-y-auto w-full h-full">
-                <EditReceptionistProfile />
-              </div>
+              user?.role === 'Admin' ? <AdminProfilePage /> : <EditReceptionistProfile />
             }
           />
 
-          {/* <Route path="*" element={isAdmin ? <AdminOverview /> : <NurseDashboardOverview />} /> */}
-
-          {/* Lab Catalog */}
-          <Route path="lab-catalog" element={<LabCatalogPage />} />
-          <Route path="lab-catalog/add" element={<AddLabTest />} />
-          <Route path="lab-catalog/edit/:id" element={<EditLabTest />} />
-          <Route path="lab-catalog/details/:id" element={<TestDetails />} />
-
-          {/*NURSE Patient Visit Route */}
+          {/* Nurse Specific Routes */}
           <Route
             path="patient-visit"
             element={
-              <div className="flex-1 overflow-y-auto w-full h-full">
-                <PatientVisitPageView
-                  onMenuClick={() => setIsSidebarOpen(true)}
-                />
-              </div>
-            }
-          />
-
-          {/* Dashboard Home */}
-          <Route
-            path="*"
-            element={
-              isNurse ? (
-                <NurseDashboardOverview />
-              ) : (
-                <main className="flex-1 overflow-y-auto p-4 md:p-6">
-                  <div className="max-w-[1600px] mx-auto space-y-4">
-                    <div className="mb-4">
-                      <p className="text-slate-500 font-medium mb-1">
-                        {currentDate}
-                      </p>
-                      <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        {getGreeting()},{" "}
-                        <span className="text-blue-600">{displayName}</span> 👋
-                      </h2>
-                    </div>
-
-                    <StatCards />
-
-                    <div className="flex flex-col lg:flex-row gap-4">
-                      {/* Left Column: Chart & Quick Actions */}
-                      <div className="flex-1 space-y-4 min-w-0">
-                        <AppointmentTrendChart />
-                        <QuickActions />
-                      </div>
-
-                      {/* Right Column: Widgets */}
-                      <div className="w-full lg:w-[350px] shrink-0 space-y-4">
-                        <StatusDistribution />
-                        <DoctorStatus />
-                        <PatientFeed />
-                      </div>
-                    </div>
-                  </div>
-                </main>
-              )
+              <PatientVisitPage
+                onMenuClick={() => setIsSidebarOpen(true)}
+                onProfileClick={handleProfileClick}
+              />
             }
           />
         </Routes>

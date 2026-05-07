@@ -142,7 +142,7 @@ const AdminProfile: React.FC = () => {
         if (user?.id) {
             setLoading(true);
             try {
-                const data = await staffApi.getStaffById(user.id);
+                const data = await staffApi.getMyProfile(user.id, user.name, user.role);
                 if (data) {
                     setProfile(data);
                     setFormValues({

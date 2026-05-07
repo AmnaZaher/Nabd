@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import TopBar from '../TopBar';
 import { Badge } from '../../ui';
 import { DataTable, TableFilters } from '../../table';
@@ -14,6 +15,7 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 interface UserManagementListProps {
     onMenuClick: () => void;
     onAddUserClick: (type: 'patient' | 'staff', role?: string) => void;
+    onProfileClick?: () => void;
 }
 
 // ==================== Filter Configs ====================
@@ -227,8 +229,16 @@ const getPatientColumns = (onEdit: (patient: PatientListItem) => void, onDelete:
 ];
 
 // ==================== Component ====================
-const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListProps) => {
-    const [activeTab, setActiveTab] = useState<'patient' | 'staff'>('staff');
+const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: UserManagementListProps) => {
+    const { isNurse } = useAuth();
+    const [activeTab, setActiveTab] = useState<'patient' | 'staff'>(isNurse ? 'patient' : 'staff');
+
+    // Sync activeTab with isNurse role (handles async auth loading)
+    useEffect(() => {
+        if (isNurse) {
+            setActiveTab('patient');
+        }
+    }, [isNurse]);
     const [staffFilters, setStaffFilters] = useState<Record<string, string>>({});
     const [patientFilters, setPatientFilters] = useState<Record<string, string>>({});
     const [searchQuery, setSearchQuery] = useState('');
@@ -353,7 +363,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
                         subtitle: item.nationalId || item.NationalId || item.specialization || '',
                         username: item.username || item.userName || item.Email || item.email || '',
                         role: roleVal,
-                        lastLogin: item.lastLogin || item.LastLogin || item.lastLoginDate || 'N/A',
+                        lastLogin: item.lastLogin || item.LastLogin || item.lastLoginDate || item.LastLoginDate || item.lastSeen || 'N/A',
                         dept: deptVal,
                         status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
                         avatar: item.avatar || item.PersonalPhotos || '',
@@ -414,7 +424,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
                     name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
                     subtitle: item.nationalId || item.NationalId || item.phone || item.PhoneNumber || '',
                     demographics: (item.gender || item.Gender || '') + (item.age ? `, ${item.age}` : ''),
-                    lastVisit: item.lastVisit || item.LastVisit || 'N/A',
+                    lastVisit: item.lastVisit || item.LastVisit || item.lastVisitDate || item.LastVisitDate || item.lastVisitAt || 'N/A',
                     upcoming: item.upcoming || item.UpcomingAppointment || '-',
                     status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
                     avatar: item.avatar || item.PersonalPhotos || '',
@@ -431,8 +441,10 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
                 setPatientData([]);
                 setTotalItems(0);
             }
-        } catch (error) {
-            console.error('Failed to fetch patients:', error);
+        } catch (error: any) {
+            if (error?.message !== 'Access forbidden.') {
+                console.error('Failed to fetch patients:', error);
+            }
             setPatientData([]);
         } finally {
             setLoading(false);
@@ -450,7 +462,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
     return (
         <div className="flex flex-col h-full bg-slate-50 relative font-sans">
             <TopBar
-                title="User Management"
+                title={isNurse ? "Patients" : "User Management"}
                 searchPlaceholder={
                     activeTab === 'patient'
                         ? 'Search patients by name, ID or phone...'
@@ -459,6 +471,8 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
                 onMenuClick={onMenuClick}
                 onAddUserClick={onAddUserClick}
                 onSearch={setSearchQuery}
+                onProfileClick={onProfileClick}
+                isNurse={isNurse}
             />
 
             <div className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -473,18 +487,20 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
                                     : 'text-slate-600 hover:text-slate-800'
                             }`}
                         >
-                            Patient
+                            Patients
                         </button>
-                        <button
-                            onClick={() => setActiveTab('staff')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
-                                activeTab === 'staff'
-                                    ? 'bg-[#5390D9] text-white shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-800'
-                            }`}
-                        >
-                            Hospital Staff
-                        </button>
+                        {!isNurse && (
+                            <button
+                                onClick={() => setActiveTab('staff')}
+                                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
+                                    activeTab === 'staff'
+                                        ? 'bg-[#5390D9] text-white shadow-sm'
+                                        : 'text-slate-600 hover:text-slate-800'
+                                }`}
+                            >
+                                Hospital Staff
+                            </button>
+                        )}
                     </div>
 
                     {/* Filters */}
@@ -511,7 +527,9 @@ const UserManagementList = ({ onMenuClick, onAddUserClick }: UserManagementListP
                         <div className="flex items-center justify-center p-20 bg-white rounded-3xl border border-slate-100">
                             <div className="flex flex-col items-center gap-4">
                                <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
-                               <p className="text-slate-400 font-bold text-sm tracking-widest uppercase">Loading Users...</p>
+                               <p className="text-slate-400 font-bold text-sm tracking-widest uppercase">
+                                 {isNurse ? "Loading Patients..." : "Loading Users..."}
+                               </p>
                            </div>
                         </div>
                     ) : activeTab === 'staff' ? (
