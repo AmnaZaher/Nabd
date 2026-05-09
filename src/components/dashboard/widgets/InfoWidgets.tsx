@@ -59,7 +59,7 @@ export const PatientFeed: React.FC = () => {
                         <div 
                             key={patient.id} 
                             className="flex items-center gap-3 group cursor-pointer"
-                            onClick={() => navigate(`/dashboard/users/patient/${patient.patientId || patient.id}`)}
+                            onClick={() => navigate(`/dashboard/users/patient/${patient.id}`)}
                         >
                             <img
                                 src={patient.avatar}

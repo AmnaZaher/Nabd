@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import TopBar from '../TopBar';
-import { Badge, Button } from '../../ui';
+import { Button } from '../../ui';
 import { patientApi } from '../../../api/patient';
 import {
     ArrowLeft,
@@ -38,7 +38,10 @@ import {
     Scan,
     Bone,
     CircleAlert,
-    Trash2
+    Lock,
+    MapPin,
+    UserX,
+    User
 } from 'lucide-react';
 import type { PatientProfile } from '../../../types/patient.types';
 import VisitDetailsView from './VisitDetailsView';
@@ -63,8 +66,8 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
 // ====================================================================
 //                    SHARED HELPERS
 // ====================================================================
-const InfoField = ({ label, value, labelColor = 'text-blue-500' }: { label: string; value: string; labelColor?: string }) => (<div><p className={`text-xs font-bold ${labelColor} mb-1.5`}>{label}</p><p className="text-[15px] font-bold text-slate-900">{value || 'N/A'}</p></div>);
-const SectionHeader = ({ icon, title }: { icon: React.ReactNode; title: string }) => (<div className="flex items-center gap-3 pb-5 border-b border-slate-100 mb-6"><div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0">{icon}</div><h3 className="text-lg font-extrabold text-slate-900">{title}</h3></div>);
+const InfoField = ({ label, value, labelColor = 'text-[#94a3b8]' }: { label: string; value: string; labelColor?: string }) => (<div><p className={`text-[13px] font-bold ${labelColor} mb-1.5`}>{label}</p><p className="text-[15px] font-bold text-slate-900">{value || 'N/A'}</p></div>);
+const SectionHeader = ({ icon, title }: { icon: React.ReactNode; title: string }) => (<div className="flex items-center gap-4 pb-6 border-b border-slate-100 mb-6"><div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">{icon}</div><h3 className="text-xl font-bold text-slate-800">{title}</h3></div>);
 const BriefRow = ({ label, value, valueColor = 'text-slate-900' }: { label: string; value: string; valueColor?: string }) => (<div className="flex items-center justify-between"><span className="text-sm font-medium text-slate-500">{label}</span><span className={`text-sm font-bold ${valueColor}`}>{value || 'N/A'}</span></div>);
 const MedicalDataItem = ({ icon, iconBg, iconColor, label, value }: { icon: React.ReactNode; iconBg: string; iconColor: string; label: string; value: string }) => (<div className="flex items-center gap-4"><div className={`w-10 h-10 ${iconBg} ${iconColor} rounded-xl flex items-center justify-center shrink-0`}>{icon}</div><div><p className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-0.5">{label}</p><p className="text-sm font-bold text-slate-900">{value || 'N/A'}</p></div></div>);
 const QuickActionCard = ({ icon, label }: { icon: React.ReactNode; label: string }) => (<button className="flex flex-col items-center justify-center gap-3 bg-white border-2 border-slate-100 rounded-2xl p-5 hover:border-blue-200 hover:bg-blue-50/30 transition-all group"><div className="text-slate-400 group-hover:text-blue-500 transition-colors">{icon}</div><span className="text-[10px] font-black tracking-widest text-slate-500 uppercase group-hover:text-blue-600 transition-colors">{label}</span></button>);
@@ -75,32 +78,71 @@ const QuickActionCard = ({ icon, label }: { icon: React.ReactNode; label: string
 const PersonalInfoTab = ({ patient }: { patient: PatientProfile }) => (
     <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 space-y-6">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8">
-                <SectionHeader icon={<ClipboardList size={18} />} title="Personal Identification" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-                    <InfoField label="Full Name" value={patient.name} /><InfoField label="Full Name Arabic" value={patient.nameArabic} />
-                    <InfoField label="National ID" value={patient.nationalId} /><InfoField label="Date Of Birth" value={patient.dateOfBirth} />
-                    <InfoField label="Gender" value={patient.gender} /><InfoField label="Phone Number" value={patient.phone} />
-                    <div className="md:col-span-2"><InfoField label="Email Address" value={patient.email} /></div>
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
+                <SectionHeader icon={<ClipboardList size={20} />} title="Personal Identification" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                    <InfoField label="Full Name" value={patient.name} />
+                    <InfoField label="Full Name Arabic" value={patient.nameArabic} />
+                    <InfoField label="National ID" value={patient.nationalId} />
+                    <InfoField label="Date Of Birth" value={patient.dateOfBirth} />
+                    <InfoField label="Gender" value={patient.gender} />
+                    <InfoField label="Phone Number" value={patient.phone} />
+                    <div className="md:col-span-2">
+                        <InfoField label="Email Address" value={patient.email} />
+                    </div>
                 </div>
             </div>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8">
-                <SectionHeader icon={<Building2 size={18} />} title="Contact & Address" />
-                <div className="space-y-6"><InfoField label="Address" value={patient.address} /><div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6"><InfoField label="City" value={patient.city} /><InfoField label="Country" value={patient.country} /></div></div>
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
+                <SectionHeader icon={<Building2 size={20} />} title="Contact & Address" />
+                <div className="space-y-8">
+                    <InfoField label="Address" value={patient.address} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                        <InfoField label="City" value={patient.city} />
+                        <InfoField label="Country" value={patient.country} />
+                    </div>
+                </div>
             </div>
         </div>
-        <div className="w-full lg:w-[320px] shrink-0 space-y-6">
-            <div className="bg-[#f5ebe0] rounded-2xl p-6 border border-[#e6d5c3]">
-                <div className="flex items-center gap-3 mb-6"><div className="w-9 h-9 bg-[#d4a574] text-white rounded-lg flex items-center justify-center shrink-0"><UserRound size={18} /></div><h3 className="text-lg font-extrabold text-slate-900">Next of Kin</h3></div>
-                <div className="space-y-5">
-                    <div><p className="text-[11px] font-black tracking-widest text-[#8b7355] uppercase mb-1">CONTACT NAME</p><p className="text-base font-bold text-slate-900">{patient.nextOfKin?.name || 'Not Provided'}</p></div>
-                    <div><p className="text-[11px] font-black tracking-widest text-[#8b7355] uppercase mb-1">RELATIONSHIP</p><p className="text-base font-bold text-slate-900">{patient.nextOfKin?.relationship || 'N/A'}</p></div>
-                    <div><p className="text-[11px] font-black tracking-widest text-[#8b7355] uppercase mb-1">PHONE NUMBER</p><div className="flex items-center gap-2"><p className="text-base font-bold text-blue-600">{patient.nextOfKin?.phone || 'N/A'}</p><div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><Phone size={14} /></div></div></div>
+        <div className="w-full lg:w-[340px] shrink-0 space-y-6">
+            <div className="bg-[#fce9e9] rounded-3xl p-7 border border-[#f5d5d5] relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-20">
+                    <UserRound size={80} className="text-[#a53b46]" />
+                </div>
+                <div className="flex items-center gap-4 mb-8 relative z-10">
+                    <div className="w-10 h-10 bg-[#a53b46] text-white rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                        <UserRound size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-[#5c1c24]">Next of Kin</h3>
+                </div>
+                <div className="space-y-6 relative z-10">
+                    <div>
+                        <p className="text-[11px] font-black tracking-widest text-[#a53b46] uppercase mb-1">CONTACT NAME</p>
+                        <p className="text-base font-bold text-[#5c1c24]">{patient.nextOfKin?.name || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-black tracking-widest text-[#a53b46] uppercase mb-1">RELATIONSHIP</p>
+                        <p className="text-base font-bold text-[#5c1c24]">{patient.nextOfKin?.relationship || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-black tracking-widest text-[#a53b46] uppercase mb-1">PHONE NUMBER</p>
+                        <div className="flex items-center gap-3">
+                            <p className="text-base font-bold text-[#5c1c24]">{patient.nextOfKin?.phone || 'N/A'}</p>
+                            {patient.nextOfKin?.phone && (
+                                <button className="w-8 h-8 bg-white/60 text-[#a53b46] rounded-full flex items-center justify-center hover:bg-white transition-colors">
+                                    <Phone size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div className="bg-[#f0f4f8] rounded-2xl p-6 border border-slate-200">
-                <h3 className="text-[11px] font-black tracking-widest text-slate-500 uppercase mb-5">PATIENT BRIEF</h3>
-                <div className="space-y-4"><BriefRow label="Blood Type" value={patient.bloodType} valueColor="text-blue-600" /><BriefRow label="Primary Language" value={patient.primaryLanguage} /><BriefRow label="Insurance" value={patient.insuranceType} /><BriefRow label="Last Visit" value={patient.lastVisit} valueColor="text-blue-600" /></div>
+            <div className="bg-slate-50 rounded-3xl p-7 border border-slate-100">
+                <h3 className="text-[11px] font-black tracking-widest text-slate-500 uppercase mb-6">PATIENT BRIEF</h3>
+                <div className="space-y-5">
+                    <BriefRow label="Blood Type" value={patient.bloodType} valueColor="text-blue-600" />
+                    <BriefRow label="Insurance" value={patient.insuranceType} />
+                    <BriefRow label="Last Visit" value={patient.lastVisit} />
+                </div>
             </div>
         </div>
     </div>
@@ -308,7 +350,7 @@ const PatientProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
         <span className="text-slate-400">
             <span
                 className="cursor-pointer hover:text-slate-600 transition-colors"
-                onClick={() => navigate('/dashboard/users')}
+                onClick={() => navigate('/dashboard/users', { state: { activeTab: 'patient' } })}
             >
                 User Management
             </span>
@@ -338,7 +380,7 @@ const PatientProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                     </div>
                     <h2 className="text-xl font-bold text-slate-900 mb-2">Patient Not Found</h2>
                     <p className="text-slate-500 mb-6 text-center max-w-xs">We couldn't find the patient record you're looking for. It may have been deleted or the ID is incorrect.</p>
-                    <Button variant="primary" onClick={() => navigate('/dashboard/users')}>Back to User Management</Button>
+                    <Button variant="primary" onClick={() => navigate('/dashboard/users', { state: { activeTab: 'patient' } })}>Back to User Management</Button>
                 </div>
             </div>
         );
@@ -351,74 +393,82 @@ const PatientProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
             <div className="flex-1 overflow-y-auto p-4 md:p-8">
                 <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
                     {/* ===== Header Card ===== */}
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 lg:p-8">
-                        <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                            {/* Patient Info Header (No Photo) */}
-                            <div className="flex-1">
-                                <div className="flex flex-wrap items-center gap-3 mb-2">
-                                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-                                        {patient.name}
-                                    </h1>
-                                    <Badge
-                                        variant={patient.status === 'Active' ? 'success' : 'default'}
-                                        className="uppercase text-xs font-black tracking-wider"
-                                    >
-                                        {patient.status}
-                                    </Badge>
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 lg:p-8">
+                        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
+                            {/* Patient Info Header */}
+                            <div className="flex items-center gap-6">
+                                <div className="relative">
+                                    <img
+                                        src={patient.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(patient.name)}&background=f1f5f9&color=64748b`}
+                                        alt={patient.name}
+                                        className="w-[100px] h-[100px] rounded-full object-cover border-[6px] border-slate-50 shadow-sm bg-slate-100"
+                                    />
+                                    {patient.status === 'Active' && (
+                                        <div className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-[3px] border-white rounded-full"></div>
+                                    )}
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 font-medium">
-                                    <span className="flex items-center gap-1">
-                                        <span className="text-blue-500">●</span> {patient.patientId}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <span className="text-slate-300">△</span> {patient.age} Years Old
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <span className="text-slate-300">◎</span> {patient.city}, {patient.country}
-                                    </span>
+                                <div className="flex-1">
+                                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                                            {patient.name}
+                                        </h1>
+                                        {patient.status === 'Active' && (
+                                            <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                                                Active
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500 font-medium mt-3">
+                                        <span className="flex items-center gap-1.5">
+                                            <Lock size={15} className="text-slate-400" /> {patient.patientId}
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <User size={15} className="text-slate-400" /> {patient.age} Years Old
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <MapPin size={15} className="text-slate-400" /> {patient.city}, {patient.country}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-3 shrink-0">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={<ArrowLeft size={16} />}
-                                    onClick={() => navigate('/dashboard/users')}
-                                >
-                                    Back
-                                </Button>
-                                <Button
-                                    variant="danger"
-                                    size="sm"
-                                    icon={<Trash2 size={14} />}
+                            <div className="flex items-center gap-3 shrink-0 pb-2">
+                                <button
                                     onClick={() => setDeleteModalOpen(true)}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-sm font-bold transition-colors border border-red-100"
                                 >
-                                    Delete
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    size="sm"
-                                    icon={<Pencil size={14} />}
+                                    <UserX size={16} />
+                                    Deactivate Account
+                                </button>
+                                <button
+                                    onClick={() => navigate('/dashboard/users', { state: { activeTab: 'patient' } })}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors"
+                                >
+                                    <ArrowLeft size={16} />
+                                    Back
+                                </button>
+                                <button
                                     onClick={() => navigate(`/dashboard/users/patient/edit/${patient.id}`)}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-[#0b5cba] hover:bg-[#094a96] text-white rounded-xl text-sm font-bold transition-colors shadow-sm"
                                 >
+                                    <Pencil size={16} />
                                     Edit Patient
-                                </Button>
+                                </button>
                             </div>
                         </div>
 
                         {/* ===== Tabs ===== */}
-                        <div className="mt-6 border-t border-slate-100 pt-4">
-                            <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+                        <div className="mt-8 border-t border-slate-100 pt-2">
+                            <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide px-2">
                                 {TABS.map((tab) => (
                                     <button
                                         key={tab.key}
                                         onClick={() => setActiveTab(tab.key)}
-                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                                        className={`flex items-center gap-2 pb-3 text-sm font-bold whitespace-nowrap transition-all border-b-2 ${
                                             activeTab === tab.key
-                                                ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
-                                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                                                ? 'text-blue-600 border-blue-600'
+                                                : 'text-slate-400 border-transparent hover:text-slate-700'
                                         }`}
                                     >
                                         {tab.icon}
