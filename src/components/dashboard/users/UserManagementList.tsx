@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import TopBar from '../TopBar';
 import { Badge } from '../../ui';
@@ -231,7 +231,10 @@ const getPatientColumns = (onEdit: (patient: PatientListItem) => void, onDelete:
 // ==================== Component ====================
 const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: UserManagementListProps) => {
     const { isNurse } = useAuth();
-    const [activeTab, setActiveTab] = useState<'patient' | 'staff'>(isNurse ? 'patient' : 'staff');
+    const location = useLocation();
+    const [activeTab, setActiveTab] = useState<'patient' | 'staff'>(
+        (location.state as any)?.activeTab || (isNurse ? 'patient' : 'staff')
+    );
 
     // Sync activeTab with isNurse role (handles async auth loading)
     useEffect(() => {
@@ -358,7 +361,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                     const deptVal = findDept();
 
                     return {
-                        id: item.nationalId || item.NationalId || item.id || item.Id || '',
+                        id: item.id || item.Id || item.nationalId || item.NationalId || '',
                         name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
                         subtitle: item.nationalId || item.NationalId || item.specialization || '',
                         username: item.username || item.userName || item.Email || item.email || '',
@@ -419,8 +422,8 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
             
             if (list && list.length > 0) {
                 const mappedPatients = list.map((item: any) => ({
-                    id: item.nationalId || item.NationalId || item.id || item.Id || '',
-                    patientId: item.nationalId || item.NationalId || item.patientId || item.PatientId || '',
+                    id: item.id || item.Id || item.nationalId || item.NationalId || '',
+                    patientId: item.patientId || item.PatientId || item.nationalId || item.NationalId || '',
                     name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
                     subtitle: item.nationalId || item.NationalId || item.phone || item.PhoneNumber || '',
                     demographics: (item.gender || item.Gender || '') + (item.age ? `, ${item.age}` : ''),
@@ -554,7 +557,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                             totalItems={totalItems}
                             currentPage={currentPatientPage}
                             onPageChange={setCurrentPatientPage}
-                            onRowClick={(patient) => navigate(`/dashboard/users/patient/${patient.patientId || patient.id}`)}
+                            onRowClick={(patient) => navigate(`/dashboard/users/patient/${patient.id}`)}
                         />
                     )}
                 </div>

@@ -31,39 +31,49 @@ export const patientApi = {
   },
 
   getPatientById: async (idOrNationalId: string): Promise<PatientProfile | null> => {
-    // We fetch a small batch and find the exact match to prevent partial search matches returning the wrong patient
+    // 1. First attempt: Direct fetch by ID if supported by the new PatientBasicInfo endpoint
     try {
-      const response = await fetchApi<PatientListResponse>(`/Admin/Patients?SearchKey=${encodeURIComponent(idOrNationalId)}&PageIndex=0&PageSize=20`);
-      
-      const list = response.data?.patients || (response.data as any)?.items || (response.data as any)?.data || [];
-      
-      // Find the exact match in the returned search results
-      const searchId = idOrNationalId.toLowerCase().trim();
-      let item = list.find((p: any) => {
-        return Object.values(p).some(val => 
-          val !== null && 
-          val !== undefined && 
-          String(val).toLowerCase().trim() === searchId
-        );
-      });
-      
-      // Fallback: If only one result is returned by an ID/National ID search, it's likely our patient
-      if (!item && list.length === 1) {
-        item = list[0];
+      let item: any = null;
+
+      try {
+        const basicInfoResp = await fetchApi<any>(`/Admin/PatientBasicInfo/${idOrNationalId}`);
+        if (basicInfoResp.data) {
+          item = basicInfoResp.data;
+        }
+      } catch (err) {
+        console.warn(`Direct fetch for PatientBasicInfo failed for ${idOrNationalId}, falling back to search.`);
       }
+
+      if (!item) {
+        const response = await fetchApi<PatientListResponse>(`/Admin/Patients?SearchKey=${encodeURIComponent(idOrNationalId)}&PageIndex=0&PageSize=20`);
+        
+        const list = response.data?.patients || (response.data as any)?.items || (response.data as any)?.data || [];
+        
+        // Find the exact match in the returned search results
+        const searchId = idOrNationalId.toLowerCase().trim();
+        item = list.find((p: any) => {
+          const idFields = [p.id, p.Id, p.nationalId, p.NationalId, p.patientId, p.PatientId];
+          return idFields.some(val => 
+            val !== null && 
+            val !== undefined && 
+            String(val).toLowerCase().trim() === searchId
+          );
+        });
       
       // Secondary Fallback: If SearchKey failed entirely (backend doesn't search by ID), fetch recent patients and search locally
       if (!item) {
         const fallbackResponse = await fetchApi<PatientListResponse>(`/Admin/Patients?PageIndex=0&PageSize=100`);
         const fallbackList = fallbackResponse.data?.patients || (fallbackResponse.data as any)?.items || (fallbackResponse.data as any)?.data || [];
         item = fallbackList.find((p: any) => {
-          return Object.values(p).some(val => 
+          const idFields = [p.id, p.Id, p.nationalId, p.NationalId, p.patientId, p.PatientId];
+          return idFields.some(val => 
             val !== null && 
             val !== undefined && 
             String(val).toLowerCase().trim() === searchId
           );
         });
       }
+      } // Close if (!item) search block
       
       if (!item) {
         console.warn(`No exact identity match found in search results for: ${idOrNationalId}.`);
@@ -152,24 +162,31 @@ export const patientApi = {
   },
 
   updatePatient: async (id: string, payload: any): Promise<void> => {
-    // Try Admin endpoint first (matches /Admin/Patients convention)
+    // Try the specific EditPatientBaseData endpoint which expects multipart/form-data
     try {
-      await fetchApi(`/Admin/Patient/${id}`, {
+      const formData = new FormData();
+      Object.keys(payload).forEach(key => {
+        if (payload[key] !== undefined && payload[key] !== null) {
+          if (typeof payload[key] === 'object' && !(payload[key] instanceof File)) {
+             formData.append(key, JSON.stringify(payload[key]));
+          } else {
+             formData.append(key, payload[key]);
+          }
+        }
+      });
+      await fetchApi(`/Admin/EditPatientBaseData/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ patientDto: payload })
+        body: formData
       });
       return;
     } catch (adminErr: any) {
-      console.warn('Admin PUT failed, trying Account/NewPatient upsert:', adminErr.message);
+      console.warn('Admin PUT EditPatientBaseData failed, trying Account/NewPatient upsert:', adminErr.message);
     }
 
     // Fallback: re-register with same NationalId to upsert
-    // The backend may treat this as an update if the NationalId already exists
     const upsertPayload = {
-      patientDto: {
-        ...payload,
-        password: payload.nationalId || id, // Required field for NewPatient
-      }
+      ...payload,
+      nationalId: payload.nationalId || id
     };
     await fetchApi(`/Account/NewPatient`, {
       method: 'POST',
@@ -178,26 +195,15 @@ export const patientApi = {
   },
 
   deletePatient: async (id: string): Promise<void> => {
-    // Try Admin endpoint first
+    // Uses ActiveOrDeActive toggle endpoint
     try {
-      await fetchApi(`/Admin/Patient/${id}`, {
-        method: 'DELETE'
-      });
-      return;
-    } catch (adminErr: any) {
-      console.warn('Admin DELETE failed, trying deactivation:', adminErr.message);
-    }
-
-    // Fallback: deactivate the patient by setting isActive to false
-    try {
-      await fetchApi(`/Admin/Patient/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ isActive: false })
+      await fetchApi(`/Admin/ActiveOrDeActive/${id}`, {
+        method: 'PATCH'
       });
       return;
     } catch (patchErr: any) {
-      console.warn('PATCH deactivation also failed:', patchErr.message);
-      throw new Error('Patient delete/deactivation is not supported by the current API. Please contact the backend team to add this endpoint.');
+      console.warn('PATCH deactivation failed:', patchErr.message);
+      throw new Error('Patient delete/deactivation failed. Error: ' + patchErr.message);
     }
   }
 };

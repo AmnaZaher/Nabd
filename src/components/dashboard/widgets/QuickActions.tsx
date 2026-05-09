@@ -15,7 +15,7 @@ interface QuickActionsProps {
 
 const QuickActions: React.FC<QuickActionsProps> = ({ onAction }) => {
   return (
-    <div className="bg-gradient-to-r from-[#0057B8] to-[#00A3FF] rounded-[24px] p-5 shadow-xl shadow-blue-500/10">
+    <div className="bg-gradient-to-r from-[#0057B8] to-[#00A3FF] rounded-[24px] p-5 shadow-xl shadow-blue-500/10 h-fit">
       <h3 className="text-lg font-bold text-white mb-4 tracking-tight">Quick Actions</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {actions.map((action) => (

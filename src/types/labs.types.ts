@@ -21,11 +21,12 @@ export interface LabTest {
 }
 
 export interface CreateLabTestDto {
-  testCode: string;
-  testNameArabic: string;
-  testNameEnglish: string;
-  category: string;
-  sampleType: string;
-  fasting_required: boolean;
-  parameters: Omit<LabParameter, 'id'>[];
+  testCode?: string;
+  testNameArabic?: string;
+  testNameEnglish?: string;
+  category?: string;
+  sampleType?: string;
+  fasting_required?: boolean;
+  isActive?: boolean;
+  parameters?: Omit<LabParameter, 'id'>[];
 }
