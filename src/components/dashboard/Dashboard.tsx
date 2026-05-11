@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Routes,
-  Route,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
@@ -43,6 +38,8 @@ import ReceptionistProfile from "./RECEPTIONIST/ReceptionistProfile";
 import EditReceptionistProfile from "./RECEPTIONIST/EditReceptionistProfile";
 import NurseDrSchedulePage from "./schedule/NurseDrSchedulePage";
 import NurseDrScheduleDetails from "./schedule/NurseDrScheduleDetails";
+import RadiologyPage from "./Radiology/RadiologyPage";
+import AddRadiologyTest from "./Radiology/AddRadiologyTest";
 
 const Dashboard: React.FC = () => {
   const { user, logout, isNurse, isLoading } = useAuth();
@@ -55,7 +52,8 @@ const Dashboard: React.FC = () => {
   // Sync active tab with URL
   useEffect(() => {
     const path = location.pathname;
-    if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
+    if (path.includes("/users") || path.includes("/patients"))
+      setActiveTab("users");
     else if (path.includes("/appointments")) setActiveTab("appointments");
     else if (path.includes("/radiology")) setActiveTab("radiology");
     else if (path.includes("/lab-catalog")) setActiveTab("lab-catalog");
@@ -83,7 +81,7 @@ const Dashboard: React.FC = () => {
     navigate(
       type === "patient"
         ? "/dashboard/users/register-patient"
-        : "/dashboard/users/register-staff"
+        : "/dashboard/users/register-staff",
     );
   };
 
@@ -150,7 +148,8 @@ const Dashboard: React.FC = () => {
                         </p>
                         <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
                           {getGreeting()},{" "}
-                          <span className="text-blue-600">{displayName}</span> 👋
+                          <span className="text-blue-600">{displayName}</span>{" "}
+                          👋
                         </h2>
                       </div>
 
@@ -161,7 +160,13 @@ const Dashboard: React.FC = () => {
                         <div className="flex-1 space-y-4 min-w-0">
                           <AppointmentTrendChart />
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <QuickActions onAction={(id) => id === 'add_patient' ? handleAddUser('patient') : navigate(`/dashboard/${id}`)} />
+                            <QuickActions
+                              onAction={(id) =>
+                                id === "add_patient"
+                                  ? handleAddUser("patient")
+                                  : navigate(`/dashboard/${id}`)
+                              }
+                            />
                             <StatusDistribution />
                           </div>
                         </div>
@@ -246,42 +251,16 @@ const Dashboard: React.FC = () => {
                 />
               }
             />
-            <Route
-              path="add"
-              element={<EditClinic />}
-            />
-            <Route
-              path=":id"
-              element={
-                <ClinicDetails />
-              }
-            />
-            <Route
-              path="edit/:id"
-              element={<EditClinic />}
-            />
+            <Route path="add" element={<EditClinic />} />
+            <Route path=":id" element={<ClinicDetails />} />
+            <Route path="edit/:id" element={<EditClinic />} />
           </Route>
 
           {/* Lab Catalog */}
           <Route path="lab-catalog">
-            <Route
-              index
-              element={
-                <LabCatalogPage />
-              }
-            />
-            <Route
-              path=":id"
-              element={
-                <LabTestDetail />
-              }
-            />
-            <Route
-              path="edit/:id"
-              element={
-                <EditLabTest />
-              }
-            />
+            <Route index element={<LabCatalogPage />} />
+            <Route path=":id" element={<LabTestDetail />} />
+            <Route path="edit/:id" element={<EditLabTest />} />
           </Route>
 
           {/* Appointments */}
@@ -300,15 +279,27 @@ const Dashboard: React.FC = () => {
                 </div>
               }
             />
-            <Route
-              path="new"
-              element={<NewAppointmentPage />}
-            />
-            <Route
-              path="edit/:id"
-              element={<EditAppointmentPage />}
-            />
+            <Route path="new" element={<NewAppointmentPage />} />
+            <Route path="edit/:id" element={<EditAppointmentPage />} />
           </Route>
+
+          {/* Radiology */}
+          <Route
+            path="radiology"
+            element={
+              <div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]">
+                <RadiologyPage />
+              </div>
+            }
+          />
+          <Route
+            path="radiology/add"
+            element={
+              <div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]">
+                <AddRadiologyTest />
+              </div>
+            }
+          />
 
           {/* Nurse Patients alias */}
           <Route
@@ -323,7 +314,7 @@ const Dashboard: React.FC = () => {
           />
 
           {/* Other Routes */}
-        <Route
+          <Route
             path="dr-schedule"
             element={
               isNurse ? (
@@ -354,13 +345,21 @@ const Dashboard: React.FC = () => {
           <Route
             path="profile"
             element={
-              user?.role === 'Admin' ? <AdminProfilePage /> : <ReceptionistProfile />
+              user?.role === "Admin" ? (
+                <AdminProfilePage />
+              ) : (
+                <ReceptionistProfile />
+              )
             }
           />
           <Route
             path="profile/edit"
             element={
-              user?.role === 'Admin' ? <AdminProfilePage /> : <EditReceptionistProfile />
+              user?.role === "Admin" ? (
+                <AdminProfilePage />
+              ) : (
+                <EditReceptionistProfile />
+              )
             }
           />
 
