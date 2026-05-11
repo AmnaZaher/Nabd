@@ -120,17 +120,17 @@ export const patientApi = {
         address: item.address || item.Address || 'N/A',
         city: item.city || item.City || 'N/A',
         country: item.country || item.Country || 'N/A',
-        bloodType: item.bloodType || 'N/A',
-        primaryLanguage: item.primaryLanguage || 'Arabic',
-        insuranceType: item.insuranceType || 'None',
+        bloodType: item.bloodType || item.BloodType || 'N/A',
+        primaryLanguage: item.primaryLanguage || item.PrimaryLanguage || 'Arabic',
+        insuranceType: item.insuranceType || item.InsuranceType || 'None',
         status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
-        lastVisit: item.lastVisit || 'N/A',
-        upcomingAppointment: item.upcoming || 'N/A',
-        nextOfKin: item.nextOfKin || null,
-        allergies: item.allergies || [],
-        chronicDiseases: item.chronicDiseases || [],
-        medications: item.medications || [],
-        visits: item.visits || [],
+        lastVisit: item.lastVisit || item.LastVisit || 'N/A',
+        upcomingAppointment: item.upcoming || item.UpcomingAppointment || 'N/A',
+        nextOfKin: item.nextOfKin || item.NextOfKin || null,
+        allergies: item.allergies || item.Allergies || [],
+        chronicDiseases: item.chronicDiseases || item.ChronicDiseases || [],
+        medications: item.medications || item.Medications || [],
+        visits: item.visits || item.Visits || [],
         visitStats: item.visitStats || { totalVisits: 0, totalVisitsChange: '', departments: 0, departmentsLabel: '', avgVisitTime: '', avgVisitTimeLabel: '' },
         labResults: item.labResults || [],
         vitals: item.vitals || { heartRate: 0, heartRateStatus: 'Stable', heartRateHistory: [] },
@@ -152,13 +152,33 @@ export const patientApi = {
   },
 
   getVisitHistory: async (): Promise<Visit[]> => {
-      const response = await fetchApi<Visit[]>('/MedicalRecords/VisitHistory');
+      const response = await fetchApi<Visit[]>('/MedicalRecorde/VisitHistory');
       return response.data!;
   },
 
+  // Admin: get visits for a specific patient by their file number (patientId)
+  getPatientVisits: async (params: {
+    fileNumber: string;
+    PageIndex?: number;
+    PageSize?: number;
+    VisitStatus?: number;
+    StartDate?: string;
+    EndDate?: string;
+  }): Promise<any> => {
+    const query = new URLSearchParams();
+    query.append('FileNubmer', params.fileNumber);
+    if (params.PageIndex !== undefined) query.append('PageIndex', params.PageIndex.toString());
+    if (params.PageSize !== undefined) query.append('PageSize', params.PageSize.toString());
+    if (params.VisitStatus !== undefined) query.append('VisitStatus', params.VisitStatus.toString());
+    if (params.StartDate) query.append('StartDate', params.StartDate);
+    if (params.EndDate) query.append('EndDate', params.EndDate);
+    const response = await fetchApi<any>(`/Visit?${query.toString()}`);
+    return response.data;
+  },
+
   getVisitDetails: async (visitId: string | number): Promise<any> => {
-      const response = await fetchApi<any>(`/Visit/${visitId}`);
-      return response.data!;
+      const response = await fetchApi<any>(`/MedicalRecorde/Visit/${visitId}`);
+      return response.data;
   },
 
   updatePatient: async (id: string, payload: any): Promise<void> => {
