@@ -24,7 +24,7 @@ export const patientApi = {
     if (params.LastVisit) query.append('LastVisit', params.LastVisit);
     if (params.PageIndex !== undefined) query.append('PageIndex', params.PageIndex.toString());
     if (params.PageSize !== undefined) query.append('PageSize', params.PageSize.toString());
-    if (params.sort !== undefined) query.append('sort', params.sort.toString());
+    if (params.sort !== undefined) query.append('Sorting', params.sort.toString());
 
     const response = await fetchApi<PatientListResponse>(`/Admin/Patients?${query.toString()}`);
     return response.data;
