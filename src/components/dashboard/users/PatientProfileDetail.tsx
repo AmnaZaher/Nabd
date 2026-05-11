@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import TopBar from '../TopBar';
 import { Button } from '../../ui';
 import { patientApi } from '../../../api/patient';
-import { fetchApi } from '../../../api/config';
+
 import {
     ArrowLeft,
     Pencil,
@@ -68,7 +68,7 @@ const InfoField = ({ label, value, labelColor = 'text-[#94a3b8]' }: { label: str
 const SectionHeader = ({ icon, title }: { icon: React.ReactNode; title: string }) => (<div className="flex items-center gap-4 pb-6 border-b border-slate-100 mb-6"><div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">{icon}</div><h3 className="text-xl font-bold text-slate-800">{title}</h3></div>);
 const BriefRow = ({ label, value, valueColor = 'text-slate-900' }: { label: string; value: string; valueColor?: string }) => (<div className="flex items-center justify-between"><span className="text-sm font-medium text-slate-500">{label}</span><span className={`text-sm font-bold ${valueColor}`}>{value || 'N/A'}</span></div>);
 const MedicalDataItem = ({ icon, iconBg, iconColor, label, value }: { icon: React.ReactNode; iconBg: string; iconColor: string; label: string; value: string }) => (<div className="flex items-center gap-4"><div className={`w-10 h-10 ${iconBg} ${iconColor} rounded-xl flex items-center justify-center shrink-0`}>{icon}</div><div><p className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-0.5">{label}</p><p className="text-sm font-bold text-slate-900">{value || 'N/A'}</p></div></div>);
-const QuickActionCard = ({ icon, label }: { icon: React.ReactNode; label: string }) => (<button className="flex flex-col items-center justify-center gap-3 bg-white border-2 border-slate-100 rounded-2xl p-5 hover:border-blue-200 hover:bg-blue-50/30 transition-all group"><div className="text-slate-400 group-hover:text-blue-500 transition-colors">{icon}</div><span className="text-[10px] font-black tracking-widest text-slate-500 uppercase group-hover:text-blue-600 transition-colors">{label}</span></button>);
+
 
 // ====================================================================
 //                    TAB: PERSONAL INFO
@@ -588,7 +588,7 @@ const LabResultsTab = ({ patient }: { patient: PatientProfile }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fileNumber = (patient as any).patientId || (patient as any).PatientId || patient.id;
+
 
     const fetchLabResults = (page: number) => {
         setLoading(true);
@@ -828,7 +828,7 @@ const RadiologyTab = ({ patient }: { patient: PatientProfile }) => {
     const [radiology, setRadiology] = useState<any[]>([]);
     const [totalCount, setTotalCount] = useState(0);
 
-    const fileNumber = (patient as any).patientId || (patient as any).PatientId || patient.id;
+
     // Default summary mapping
     const summary = patient.radiologySummary || { totalScans: totalCount, activeReports: 0, pendingReview: 0, nextScan: { type: 'N/A', date: '-' } };
 
@@ -1079,7 +1079,7 @@ const PrescriptionsTab = ({ patient }: { patient: PatientProfile }) => {
     const [prescriptions, setPrescriptions] = useState<any[]>([]);
     const [totalCount, setTotalCount] = useState(0);
 
-    const fileNumber = (patient as any).patientId || (patient as any).PatientId || patient.id;
+
 
     const fetchPrescriptions = (page: number) => {
         setLoading(true);
