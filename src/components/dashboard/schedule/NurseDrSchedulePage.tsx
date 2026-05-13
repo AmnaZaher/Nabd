@@ -143,11 +143,6 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
 
   useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
 
-  const handleApplyFilters = () => {
-    setCurrentPage(1);
-    fetchSchedules();
-  };
-
   const handleResetFilters = () => {
     setFilterDoctorId('');
     setFilterClinicId('');
