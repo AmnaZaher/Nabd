@@ -1,12 +1,12 @@
 import React from "react";
-import { UserPlus, Calendar, Users, FlaskConical, Boxes } from "lucide-react";
+import { UserPlus, Calendar, Users, FlaskConical, CalendarCheck } from "lucide-react";
 
 const actions = [
   { id: "add_patient", label: "ADD PATIENT", icon: UserPlus },
-  { id: "dr_schedule", label: "DR. SCHEDULE", icon: Calendar },
+  { id: "dr-schedule", label: "DR. SCHEDULE", icon: Calendar },
   { id: "users", label: "USERS", icon: Users },
-  { id: "lab_request", label: "LAB REQUEST", icon: FlaskConical },
-  { id: "radiology", label: "RADIOLOGY", icon: Boxes },
+  { id: "lab-catalog", label: "LAB CATALOG", icon: FlaskConical },
+  { id: "appointments", label: "APPOINTMENTS", icon: CalendarCheck },
 ];
 
 interface QuickActionsProps {

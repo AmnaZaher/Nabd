@@ -4,7 +4,6 @@ import type { LucideIcon } from 'lucide-react';
 import { patientApi } from '../../api/patient';
 import { staffApi } from '../../api/staff';
 import { listAppointments } from '../../api/appointments';
-import { getLabResults } from '../../api/labs';
 
 interface StatItem {
     label: string;
@@ -46,7 +45,7 @@ const StatCards: React.FC = () => {
             trendUp: true,
         },
         {
-            label: 'Lab Results',
+            label: 'Lab Tests',
             value: '...',
             icon: FlaskConical,
             iconBg: 'bg-purple-100',
@@ -61,27 +60,38 @@ const StatCards: React.FC = () => {
         const fetchStats = async () => {
             setLoading(true);
             try {
-                // Fetch patients count
-                const patientsRes = await patientApi.getPatients({ PageIndex: 0, PageSize: 1 });
-                const totalPatients = patientsRes?.totalCount || 0;
+                // Fetch patients — backend returns { isSuccess, data: [...array] }, no totalCount
+                const patientsRes = await patientApi.getPatients({ PageIndex: 0, PageSize: 1000 });
+                const patientsData = (patientsRes as any);
+                const totalPatients = Array.isArray(patientsData)
+                    ? patientsData.length
+                    : patientsData?.totalCount ?? patientsData?.patients?.length ?? 0;
 
-                // Fetch doctors count
-                const staffRes = await staffApi.getStaffs({ Role: 'Doctor', PageIndex: 0, PageSize: 1 });
-                const totalDoctors = staffRes?.totalCount || 0;
+                // Fetch doctors — same array-based response
+                const staffRes = await staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 });
+                const staffData = (staffRes as any);
+                const totalDoctors = Array.isArray(staffData)
+                    ? staffData.length
+                    : staffData?.totalCount ?? staffData?.staffs?.length ?? 0;
 
-                // Fetch today's appointments count
+                // Fetch today's appointments — listAppointments returns raw fetchApi result
+                // backend: { isSuccess, data: [...array] }
                 const today = new Date().toISOString().split('T')[0];
-                const apptRes = await listAppointments({ DateAppointmentFrom: today, DateAppointmentTo: today, PageIndex: 0, PageSize: 1 });
-                const totalAppts = (apptRes?.data as any)?.totalCount || 0;
+                const apptRes = await listAppointments({ DateAppointmentFrom: today, DateAppointmentTo: today, PageIndex: 0, PageSize: 1000 });
+                const apptData = (apptRes as any)?.data;
+                const totalAppts = Array.isArray(apptData)
+                    ? apptData.length
+                    : apptData?.totalCount ?? apptData?.appointments?.length ?? apptData?.items?.length ?? 0;
 
-                // Fetch lab results
+                // Fetch lab catalog (/Lab/GetResults is 403 for Admin; use catalog instead)
                 let totalLabs = 0;
                 try {
-                    const labRes = await getLabResults();
-                    const labsData = (labRes as any)?.data || labRes;
+                    const { getLabCatalog } = await import('../../api/labs');
+                    const labRes = await getLabCatalog();
+                    const labsData = (labRes as any)?.data;
                     totalLabs = Array.isArray(labsData) ? labsData.length : 0;
                 } catch (e) {
-                    console.error("Failed to fetch lab results:", e);
+                    console.warn("Failed to fetch lab catalog:", e);
                 }
 
                 setStats(prev => [
