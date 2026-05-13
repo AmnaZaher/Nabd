@@ -37,7 +37,7 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
     const loadDropdowns = async () => {
       try {
         const [staffRes, clinicRes] = await Promise.all([
-          staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 100 }),
+          staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 }),
           getClinics({ PageIndex: 0, PageSize: 100 }),
         ]);
         const staffList: any[] = (staffRes as any)?.staffs ?? (staffRes as any)?.data?.staffs ?? (staffRes as any)?.items ?? [];
@@ -233,48 +233,48 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex flex-wrap gap-4 flex-1">
-            <div className="relative min-w-[240px]">
-              <select 
-                value={filterDoctorId}
-                onChange={(e) => setFilterDoctorId(e.target.value)}
-                className="w-full appearance-none bg-[#f8fafc] border border-slate-200 rounded-lg pl-10 pr-10 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">All Doctors</option>
-                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-              <Users className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                <select 
+                  value={filterDoctorId}
+                  onChange={(e) => { setFilterDoctorId(e.target.value); setCurrentPage(1); fetchSchedules(); }}
+                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-all"
+                >
+                  <option value="">All Doctors</option>
+                  {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+              </div>
             </div>
 
-            <div className="relative min-w-[240px]">
-              <select 
-                value={filterClinicId}
-                onChange={(e) => setFilterClinicId(e.target.value)}
-                className="w-full appearance-none bg-[#f8fafc] border border-slate-200 rounded-lg pl-10 pr-10 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">All Clinics</option>
-                {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                <select 
+                  value={filterClinicId}
+                  onChange={(e) => { setFilterClinicId(e.target.value); setCurrentPage(1); fetchSchedules(); }}
+                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-all"
+                >
+                  <option value="">All Clinics</option>
+                  {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={handleApplyFilters}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm"
-            >
-              Apply Filters
-            </button>
-            <button 
-              onClick={handleResetFilters}
-              className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-            >
-              Reset
-            </button>
+            <div className="flex items-center gap-3 sm:col-span-2 md:col-span-2 justify-end">
+              <button 
+                onClick={handleResetFilters}
+                className="bg-white border border-slate-200 text-slate-600 px-6 py-2.5 rounded-xl font-bold text-sm transition-all hover:bg-slate-50"
+              >
+                Reset
+              </button>
+            </div>
           </div>
         </div>
 
@@ -310,7 +310,7 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
                   </tr>
                 ) : (
                   schedules.map((schedule) => {
-                    const docName = schedule.doctorName || doctors.find(d => d.id === schedule.doctorId)?.name || 'Unknown Doctor';
+                    const docName = schedule.doctorName || doctors.find(d => d.id === (schedule.doctorId || (schedule as any).DoctorId))?.name || 'Unknown Doctor';
                     const clinicName = schedule.clinicName || clinics.find(c => c.id === schedule.clinicId)?.name || 'Unknown Clinic';
                     const dayName = DAY_OPTIONS[schedule.dayOfWeek];
                     const initials = docName.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase();

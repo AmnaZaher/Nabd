@@ -151,7 +151,6 @@ const AppointmentManagementPage: React.FC = () => {
     });
 
 
-    /* ── Fetch appointments ── */
     const fetchAppointments = useCallback(async () => {
         setLoading(true);
         try {
@@ -161,8 +160,10 @@ const AppointmentManagementPage: React.FC = () => {
                 DoctorId: filterDoctor || undefined,
                 ClinicId: filterClinic || undefined,
                 Status: filterStatus !== '' ? filterStatus : undefined,
-                SearchKey: patientSearch || undefined,
-                DateAppointment: filterFrom || undefined,
+                Search: patientSearch || undefined,
+                DateAppointment: (filterFrom && !filterTo) ? filterFrom : undefined,
+                DateAppointmentFrom: (filterFrom && filterTo) ? filterFrom : undefined,
+                DateAppointmentTo: filterTo ? `${filterTo}T23:59:59` : undefined,
             });
             const raw: any = res;
             // Normalise various API shapes
@@ -175,16 +176,6 @@ const AppointmentManagementPage: React.FC = () => {
                 raw?.items ??
                 (Array.isArray(raw) ? raw : []) ??
                 [];
-            // Client-side "to date" filter for range support
-            if (filterTo && Array.isArray(list)) {
-                const toDate = new Date(filterTo);
-                toDate.setHours(23, 59, 59, 999);
-                list = list.filter(apt => {
-                    const d = getAptDate(apt);
-                    if (!d) return true;
-                    return new Date(d) <= toDate;
-                });
-            }
             const total: number =
                 raw?.data?.totalCount ??
                 raw?.data?.total ??
@@ -205,7 +196,7 @@ const AppointmentManagementPage: React.FC = () => {
         const load = async () => {
             try {
                 const [drRes, clinicRes, statsApptsRes] = await Promise.all([
-                    staffApi.getStaffs({ PageIndex: 0, PageSize: 100 }),
+                    staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 }),
                     getClinics({ PageIndex: 0, PageSize: 100 }),
                     // Fetch today's appointments for stats
                     listAppointments({ 
@@ -238,8 +229,9 @@ const AppointmentManagementPage: React.FC = () => {
                     id: d.id || d.Id || d.nationalId || d.NationalId,
                     name: d.fullNameEnglish || d.FullNameEnglish || d.name || d.Name || `Dr. #${d.id || d.Id}`
                 }));
-                setDoctors(drList);
-                setAvailableDoctors(drList);
+                const sortedDrList = drList.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+                setDoctors(sortedDrList);
+                setAvailableDoctors(sortedDrList);
 
                 const rawClinic: any = clinicRes;
                 const clinicList =
@@ -250,7 +242,13 @@ const AppointmentManagementPage: React.FC = () => {
                     rawClinic?.items ??
                     rawClinic?.clinics ??
                     [];
-                setClinics(Array.isArray(clinicList) ? clinicList : []);
+                const validClinics = Array.isArray(clinicList) ? clinicList : [];
+                const sortedClinics = validClinics.sort((a: any, b: any) => {
+                    const nameA = a.clinicNameEn || a.name || a.clinicNameAr || '';
+                    const nameB = b.clinicNameEn || b.name || b.clinicNameAr || '';
+                    return nameA.localeCompare(nameB);
+                });
+                setClinics(sortedClinics);
 
                 // Calculate stats
                 const rawStats: any = statsApptsRes;
@@ -292,7 +290,7 @@ const AppointmentManagementPage: React.FC = () => {
                 const res = await scheduleApi.getSchedules({ ClinicId: Number(filterClinic), PageSize: 1000 });
                 const rawList = (res as any)?.data?.data || (res as any)?.data?.items || (res as any)?.items || (Array.isArray((res as any)?.data) ? (res as any).data : []) || [];
                 
-                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId)));
+                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId || s.DoctorId)));
                 
                 const filtered = doctors.filter(d => doctorIds.has(String(d.id)));
                 setAvailableDoctors(filtered);
@@ -408,89 +406,50 @@ const AppointmentManagementPage: React.FC = () => {
                     </>
                 )}
 
-                {/* ── Role Based Filters ── */}
+                {/* ── Unified Filters ── */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                    {isAdmin ? (
-                        /* Admin Filters */
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">PATIENT</label>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                    <input type="text" placeholder="Name or ID..." value={patientSearch}
-                                        onChange={e => { setPatientSearch(e.target.value); setPage(1); }}
-                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] focus:bg-white transition-all" />
-                                </div>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
-                                <select value={filterDoctor} onChange={e => { setFilterDoctor(e.target.value); setPage(1); }}
-                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
-                                    <option value="">All Doctors</option>
-                                    {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
-                                <select value={filterClinic} onChange={e => { setFilterClinic(e.target.value); setPage(1); }}
-                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
-                                    <option value="">All Clinics</option>
-                                    {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</label>
-                                <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
-                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
-                                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DATE RANGE</label>
-                                <div className="flex items-center gap-2 bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2">
-                                    <input type="date" value={filterFrom} onChange={e => { setFilterFrom(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
-                                    <span className="text-slate-300 font-bold">-</span>
-                                    <input type="date" value={filterTo} min={filterFrom || undefined} onChange={e => { setFilterTo(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
-                                </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">PATIENT</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input type="text" placeholder="Name or ID..." value={patientSearch}
+                                    onChange={e => { setPatientSearch(e.target.value); setPage(1); }}
+                                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] focus:bg-white transition-all" />
                             </div>
                         </div>
-                    ) : (
-                        /* Nurse Filters */
-                        <div className="flex flex-wrap items-end gap-4">
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Doctor</label>
-                                <select value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
-                                    <option value="">All Doctors</option>
-                                    {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Clinic</label>
-                                <select value={filterClinic} onChange={e => setFilterClinic(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
-                                    <option value="">All Clinics</option>
-                                    {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">From Date</label>
-                                <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">To Date</label>
-                                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Status</label>
-                                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
-                                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => { setPage(1); fetchAppointments(); }} className="bg-[#1A6FC4] text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all hover:bg-[#155ba0]">Apply Filters</button>
-                                <button onClick={() => { setFilterDoctor(''); setFilterClinic(''); setFilterStatus(''); setFilterFrom(''); setFilterTo(''); }} className="bg-white border border-slate-200 text-slate-600 px-6 py-2.5 rounded-lg font-bold text-sm transition-all hover:bg-slate-50">Reset</button>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
+                            <select value={filterClinic} onChange={e => { setFilterClinic(e.target.value); setPage(1); }}
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                <option value="">All Clinics</option>
+                                {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
+                            <select value={filterDoctor} onChange={e => { setFilterDoctor(e.target.value); setPage(1); }}
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                <option value="">All Doctors</option>
+                                {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</label>
+                            <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5 sm:col-span-2 md:col-span-2 lg:col-span-2">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DATE RANGE</label>
+                            <div className="flex items-center bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2.5 transition-all focus-within:ring-2 focus-within:ring-[#1A6FC4] focus-within:bg-white">
+                                <input type="date" value={filterFrom} onChange={e => { setFilterFrom(e.target.value); setPage(1); }} className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none w-full" />
+                                <span className="text-slate-300 font-bold mx-2">-</span>
+                                <input type="date" value={filterTo} min={filterFrom || undefined} onChange={e => { setFilterTo(e.target.value); setPage(1); }} className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none w-full" />
                             </div>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* ── Table ── */}
@@ -501,8 +460,8 @@ const AppointmentManagementPage: React.FC = () => {
                                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
                                     <th className="px-6 py-4">ID</th>
                                     <th className="px-6 py-4">PATIENT NAME</th>
-                                    <th className="px-6 py-4">{isAdmin ? 'DOCTOR NAME' : 'DOCTOR'}</th>
                                     <th className="px-6 py-4">CLINIC</th>
+                                    <th className="px-6 py-4">{isAdmin ? 'DOCTOR NAME' : 'DOCTOR'}</th>
                                     <th className="px-6 py-4">DATE & TIME</th>
                                     <th className="px-6 py-4">STATUS</th>
                                     <th className="px-6 py-4">ACTIONS</th>
@@ -551,8 +510,8 @@ const AppointmentManagementPage: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-semibold text-slate-800">{displayDoctorName}</td>
                                                 <td className="px-6 py-4 text-sm font-semibold text-slate-600">{apt.clinicName || '—'}</td>
+                                                <td className="px-6 py-4 text-sm font-semibold text-slate-800">{displayDoctorName}</td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-[13px] font-semibold text-slate-700">{date}</div>
                                                     <div className="text-[12px] font-medium text-slate-400 mt-0.5">{time}</div>
