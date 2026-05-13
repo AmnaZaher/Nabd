@@ -39,15 +39,14 @@ export interface AppointmentListParams {
     DoctorId?: number | string;
     ClinicId?: number | string;
     Status?: number | string;
-    /** Exact date filter the backend accepts (maps to DateAppointment query param) */
+    /** Exact date filter the backend accepts */
     DateAppointment?: string;
-    /** Convenience alias – will be sent as DateAppointment */
-    StartDate?: string;
-    /** Convenience alias – currently unused by backend (no range support) */
-    EndDate?: string;
+    /** Start date for range filtering */
+    DateAppointmentFrom?: string;
+    /** End date for range filtering */
+    DateAppointmentTo?: string;
     AppointmentType?: number;
-    SearchKey?: string;
-    search?: string;
+    Search?: string;
 }
 
 // ----- API Calls -----
@@ -95,12 +94,11 @@ export const listAppointments = async (params?: AppointmentListParams) => {
     if (params?.Status !== undefined && params.Status !== '') q.append('Status', params.Status.toString());
     if (params?.AppointmentType !== undefined) q.append('AppointmentType', params.AppointmentType.toString());
 
-    // Backend only supports DateAppointment (single date). StartDate is mapped to it.
-    const dateFilter = params?.DateAppointment || params?.StartDate;
-    if (dateFilter) q.append('DateAppointment', dateFilter);
+    if (params?.DateAppointment) q.append('DateAppointment', params.DateAppointment);
+    if (params?.DateAppointmentFrom) q.append('DateAppointmentFrom', params.DateAppointmentFrom);
+    if (params?.DateAppointmentTo) q.append('DateAppointmentTo', params.DateAppointmentTo);
 
-    if (params?.SearchKey) q.append('SearchKey', params.SearchKey);
-    if (params?.search) q.append('search', params.search);
+    if (params?.Search) q.append('Search', params.Search);
 
     const qs = q.toString();
     const res = await fetchApi<any>(`/Appointment/Appointments${qs ? `?${qs}` : ''}`);

@@ -13,8 +13,8 @@ const SurgicalWaitingHall: React.FC = () => {
                 const today = new Date().toISOString().split('T')[0];
                 // Status 6 is WaitingList
                 const res = await listAppointments({ 
-                    StartDate: today, 
-                    EndDate: today, 
+                    DateAppointmentFrom: today, 
+                    DateAppointmentTo: today, 
                     Status: 6,
                     PageSize: 5
                 });

@@ -169,7 +169,7 @@ const DrSchedulePage = ({ onMenuClick, onAddUserClick, onProfileClick }: DrSched
         const loadDropdowns = async () => {
             try {
                 const [staffRes, clinicRes] = await Promise.all([
-                    staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 100 }), // Role 2 = Doctor
+                    staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 }), // Role 2 = Doctor
                     getClinics({ PageIndex: 0, PageSize: 100 }),
                 ]);
                 const staffList: any[] = extractList(staffRes);

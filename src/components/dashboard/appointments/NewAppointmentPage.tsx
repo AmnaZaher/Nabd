@@ -85,7 +85,7 @@ const NewAppointmentPage: React.FC = () => {
             try {
                 const [clinicRes, staffRes] = await Promise.all([
                     getClinics({ PageSize: 100 }),
-                    staffApi.getStaffs({ PageSize: 200 }),
+                    staffApi.getStaffs({ Role: '2', PageSize: 1000 }),
                 ]);
 
                 const clinicList: ClinicOption[] = (
@@ -156,7 +156,7 @@ const NewAppointmentPage: React.FC = () => {
             try {
                 const res = await scheduleApi.getSchedules({ ClinicId: Number(selectedClinic), PageSize: 1000 });
                 const rawList = (res as any)?.data?.data || (res as any)?.data?.items || (Array.isArray((res as any)?.data) ? (res as any).data : []) || [];
-                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId)));
+                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId || s.DoctorId)));
                 const filtered = allDoctors.filter(d => doctorIds.has(String(d.id)));
                 setAvailableDoctors(filtered.length > 0 ? filtered : allDoctors);
 
@@ -378,6 +378,27 @@ const NewAppointmentPage: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* Clinic */}
+                            <div>
+                                <label className="flex items-center gap-2 text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    <Building2 size={13} className="text-[#1A6FC4]" />
+                                    Clinic
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={selectedClinic}
+                                        onChange={e => { setSelectedClinic(e.target.value); setSelectedSlot(''); }}
+                                        className="w-full py-3 px-4 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4]/20 focus:border-[#1A6FC4] appearance-none transition-all"
+                                    >
+                                        <option value="">Select Clinic Location</option>
+                                        {clinics.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
                             {/* Doctor */}
                             <div>
                                 <label className="flex items-center gap-2 text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
@@ -401,27 +422,6 @@ const NewAppointmentPage: React.FC = () => {
                                 {selectedClinic && availableDoctors.length === 0 && !loadingDoctors && (
                                     <p className="text-[11px] text-amber-600 mt-1 font-medium">No doctors assigned to this clinic yet.</p>
                                 )}
-                            </div>
-
-                            {/* Clinic */}
-                            <div>
-                                <label className="flex items-center gap-2 text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                    <Building2 size={13} className="text-[#1A6FC4]" />
-                                    Clinic
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={selectedClinic}
-                                        onChange={e => { setSelectedClinic(e.target.value); setSelectedSlot(''); }}
-                                        className="w-full py-3 px-4 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4]/20 focus:border-[#1A6FC4] appearance-none transition-all"
-                                    >
-                                        <option value="">Select Clinic Location</option>
-                                        {clinics.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
                             </div>
 
                             {/* Notes */}

@@ -71,7 +71,7 @@ const StatCards: React.FC = () => {
 
                 // Fetch today's appointments count
                 const today = new Date().toISOString().split('T')[0];
-                const apptRes = await listAppointments({ StartDate: today, EndDate: today, PageIndex: 0, PageSize: 1 });
+                const apptRes = await listAppointments({ DateAppointmentFrom: today, DateAppointmentTo: today, PageIndex: 0, PageSize: 1 });
                 const totalAppts = (apptRes?.data as any)?.totalCount || 0;
 
                 // Fetch lab results

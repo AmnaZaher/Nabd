@@ -62,7 +62,7 @@ const NurseStatCards: React.FC = () => {
 
                 // Fetch today's appointments for counts
                 const today = new Date().toISOString().split('T')[0];
-                const apptRes = await listAppointments({ StartDate: today, EndDate: today, PageIndex: 0, PageSize: 1000 });
+                const apptRes = await listAppointments({ DateAppointmentFrom: today, DateAppointmentTo: today, PageIndex: 0, PageSize: 1000 });
                 const appts = apptRes?.data?.items || [];
                 
                 const scheduled = appts.filter((a: any) => a.status === 1).length;
