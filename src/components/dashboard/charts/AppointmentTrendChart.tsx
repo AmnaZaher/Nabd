@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Download, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { listAppointments } from '../../../api/appointments';
 
 const filters = ['12 Months', '6 Months', '30 Days', '7 Days'];
@@ -70,10 +70,7 @@ const AppointmentTrendChart: React.FC = () => {
                             {f}
                         </button>
                     ))}
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
-                        <Download size={13} />
-                        Export PDF
-                    </button>
+
                 </div>
             </div>
 
