@@ -313,7 +313,7 @@ const Dashboard: React.FC = () => {
             }
           />
 
-          {/* Other Routes */}
+          {/* Dr Schedule */}
           <Route
             path="dr-schedule"
             element={
