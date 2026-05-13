@@ -29,6 +29,7 @@ import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import ClinicsList from "./clinics/ClinicsList";
 import ClinicDetails from "./clinics/ClinicDetails";
 import EditClinic from "./clinics/EditClinic";
+import AddClinic from "./clinics/AddClinic";
 import LabCatalogPage from "./lapCatalog/LabCatalogPage";
 import LabTestDetail from "./lapCatalog/TestDetails";
 import EditLabTest from "./lapCatalog/EditLabTest";
@@ -248,7 +249,7 @@ const Dashboard: React.FC = () => {
             />
             <Route
               path="add"
-              element={<EditClinic />}
+              element={<AddClinic onCancel={() => navigate("/dashboard/clinics")} onSuccess={() => navigate("/dashboard/clinics")} />}
             />
             <Route
               path=":id"
