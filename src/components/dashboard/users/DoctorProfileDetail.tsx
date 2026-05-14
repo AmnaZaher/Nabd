@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import TopBar from '../TopBar';
-import { Card, Badge, Button, Modal } from '../../ui';
+import { Card, Button, Modal } from '../../ui';
 import { staffApi } from '../../../api/staff';
 import { scheduleApi } from '../../../api/schedules';
 import {
@@ -440,7 +440,7 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                 </div>
                                 <div className="p-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                     {(user.documents && user.documents.length > 0
-                                        ? user.documents.map((doc, i) => ({ key: doc.id, label: doc.name, url: doc.url }))
+                                        ? user.documents.map((doc) => ({ key: doc.id, label: doc.name, url: doc.url }))
                                         : DOC_LABELS.map((d, i) => ({ key: d.key, label: d.label, url: `https://picsum.photos/seed/${i + 20}/400/300` }))
                                     ).map((doc, i) => (
                                         <div key={doc.key} className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer">

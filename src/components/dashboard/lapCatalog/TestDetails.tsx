@@ -180,7 +180,7 @@ const TestDetails = () => {
                                     test.parameters.map((row, i) => (
                                         <tr key={i} className="hover:bg-slate-50/30 transition-colors">
                                             <td className="px-8 py-5">
-                                                <div className="text-sm font-black text-slate-700">{row.name || 'Parameter'}</div>
+                                                <div className="text-sm font-black text-slate-700">{row.parameterNameEnglish || 'Parameter'}</div>
                                                 <div className="text-[10px] font-bold text-slate-300">ID: {row.id}</div>
                                             </td>
                                             <td className="px-8 py-5 text-sm font-bold text-slate-400 text-center">{row.unit}</td>
