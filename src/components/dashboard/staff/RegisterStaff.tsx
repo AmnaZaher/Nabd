@@ -140,6 +140,28 @@ const RegisterStaff = ({
 
             if (basicInfo.profilePhoto) formData.append('PersonalPhotos', basicInfo.profilePhoto);
 
+            // Append Role Details based on selected Role
+            if (roleDetails.educationalQualification) formData.append('EducationalQualification', roleDetails.educationalQualification);
+            if (roleDetails.medicalSyndicateNumber) formData.append('MedicalSyndicateNumber', roleDetails.medicalSyndicateNumber);
+            if (roleDetails.graduationYear) formData.append('GraduationYear', roleDetails.graduationYear);
+            if (roleDetails.specialization) formData.append('Specialization', roleDetails.specialization);
+            if (roleDetails.dateOfAppointment) formData.append('DateOfAppointment', roleDetails.dateOfAppointment);
+            if (roleDetails.clinicId) formData.append('ClinicId', roleDetails.clinicId);
+            if (roleDetails.doctorId) formData.append('DoctorId', roleDetails.doctorId);
+            if (roleDetails.qualification) formData.append('Qualification', roleDetails.qualification);
+            if (roleDetails.syndicateRegistrationNumber) formData.append('SyndicateRegistrationNumber', roleDetails.syndicateRegistrationNumber);
+            if (roleDetails.nurseLevel) formData.append('NurseLevel', roleDetails.nurseLevel);
+            if (roleDetails.nursingLicenseNumber) formData.append('NursingLicenseNumber', roleDetails.nursingLicenseNumber);
+            if (roleDetails.ltLicenseNumber) formData.append('LtLicenseNumber', roleDetails.ltLicenseNumber);
+            formData.append('CanPerformTests', roleDetails.canPerformTests ? 'true' : 'false');
+            formData.append('CanApproveResults', roleDetails.canApproveResults ? 'true' : 'false');
+            formData.append('CanManageEquipment', roleDetails.canManageEquipment ? 'true' : 'false');
+            if (roleDetails.radiologistLicenseNumber) formData.append('RadiologistLicenseNumber', roleDetails.radiologistLicenseNumber);
+            if (roleDetails.pharmacyDegree) formData.append('PharmacyDegree', roleDetails.pharmacyDegree);
+            if (roleDetails.pharmacyLicenseNumber) formData.append('PharmacyLicenseNumber', roleDetails.pharmacyLicenseNumber);
+            if (roleDetails.employmentDate) formData.append('EmploymentDate', roleDetails.employmentDate);
+            if (roleDetails.shiftType) formData.append('ShiftType', roleDetails.shiftType);
+
             // Document mapping (PascalCase)
             const natIdDoc = documents.find((d) => d.id === '1');
             if (natIdDoc?.file) formData.append('NationalIdFile', natIdDoc.file);

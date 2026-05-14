@@ -16,14 +16,17 @@ const AddLabTest = () => {
     testNameArabic: "",
     testNameEnglish: "",
     category: "Chemistry",
+    subCategory: "",
+    testMethod: "",
     sampleType: "Whole Blood",
     fasting_required: true,
+    fasting_hours: "",
   });
 
   // Parameters State
   const [parameters, setParameters] = useState<Omit<LabParameter, 'id'>[]>([]);
   const [currentParam, setCurrentParam] = useState<Omit<LabParameter, 'id'>>({
-    name: "", // Internal use for the list
+    parameterNameEnglish: "",
     unit: "",
     referenceRangeMin: "",
     referenceRangeMax: "",
@@ -44,10 +47,10 @@ const AddLabTest = () => {
   };
 
   const addParameter = () => {
-    if (!currentParam.name || !currentParam.unit) return;
+    if (!currentParam.parameterNameEnglish || !currentParam.unit) return;
     setParameters(prev => [...prev, currentParam]);
     setCurrentParam({
-      name: "",
+      parameterNameEnglish: "",
       unit: "",
       referenceRangeMin: "",
       referenceRangeMax: "",
@@ -66,11 +69,20 @@ const AddLabTest = () => {
 
     try {
       const payload: CreateLabTestDto = {
-        ...testData,
+        testCode: testData.testCode,
+        testNameArabic: testData.testNameArabic,
+        testNameEnglish: testData.testNameEnglish,
+        category: testData.category,
+        subCategory: testData.subCategory || undefined,
+        testMethod: testData.testMethod || undefined,
+        sampleType: testData.sampleType,
+        fasting_required: testData.fasting_required,
+        fasting_hours: testData.fasting_hours ? Number(testData.fasting_hours) : undefined,
         parameters: parameters.map(p => ({
+          parameterNameEnglish: p.parameterNameEnglish,
           unit: p.unit,
-          referenceRangeMin: p.referenceRangeMin,
-          referenceRangeMax: p.referenceRangeMax,
+          referenceRangeMin: p.referenceRangeMin !== "" ? Number(p.referenceRangeMin) : 0,
+          referenceRangeMax: p.referenceRangeMax !== "" ? Number(p.referenceRangeMax) : 0,
           gender: p.gender
         }))
       };
@@ -202,6 +214,9 @@ const AddLabTest = () => {
                 </label>
                 <input
                   type="text"
+                  name="subCategory"
+                  value={testData.subCategory}
+                  onChange={handleInputChange}
                   placeholder="e.g. Routine Chemistry"
                   className="w-full p-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:bg-white transition-all"
                 />
@@ -213,6 +228,9 @@ const AddLabTest = () => {
                 </label>
                 <input
                   type="text"
+                  name="testMethod"
+                  value={testData.testMethod}
+                  onChange={handleInputChange}
                   placeholder="e.g. Spectrophotometry"
                   className="w-full p-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:bg-white transition-all"
                 />
@@ -305,6 +323,9 @@ const AddLabTest = () => {
                 </label>
                 <input
                   type="number"
+                  name="fasting_hours"
+                  value={testData.fasting_hours}
+                  onChange={handleInputChange}
                   placeholder="12"
                   className="w-full p-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:bg-white transition-all"
                 />
@@ -365,8 +386,8 @@ const AddLabTest = () => {
                   </label>
                   <input
                     type="text"
-                    name="name"
-                    value={currentParam.name}
+                    name="parameterNameEnglish"
+                    value={currentParam.parameterNameEnglish}
                     onChange={handleParamChange}
                     placeholder="e.g. Hemoglobin"
                     className="w-full p-3 bg-slate-50/80 border border-slate-200/50 rounded-xl text-sm font-medium text-slate-600 placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
@@ -492,7 +513,7 @@ const AddLabTest = () => {
                 parameters.map((row, i) => (
                   <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-8 py-5 text-sm font-black text-slate-700">
-                      {row.name}
+                      {row.parameterNameEnglish}
                     </td>
                     <td className="px-8 py-5 text-sm font-bold text-slate-400 text-center">
                       {row.unit}

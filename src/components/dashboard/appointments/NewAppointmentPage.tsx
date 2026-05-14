@@ -97,7 +97,8 @@ const NewAppointmentPage: React.FC = () => {
 
                 const staffList: any[] = (staffRes as any)?.staffs ?? (staffRes as any)?.items ?? (staffRes as any)?.data ?? [];
                 const rolesMap: Record<string, string> = {
-                    '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician'
+                    '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
+                    'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
                 };
                 const doctorList: DoctorOption[] = staffList.filter((s: any) => {
                     let r = s.role ?? s.Role ?? s.roleId ?? s.RoleId ?? '';

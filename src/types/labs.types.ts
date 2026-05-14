@@ -2,10 +2,10 @@
 
 export interface LabParameter {
   id?: number;
-  name?: string; // Some endpoints might return name
+  parameterNameEnglish: string; // Backend field name
   unit: string;
-  referenceRangeMax: string;
-  referenceRangeMin: string;
+  referenceRangeMax: number | string;
+  referenceRangeMin: number | string;
   gender: string; // "Male", "Female", "Both"
 }
 
@@ -25,8 +25,11 @@ export interface CreateLabTestDto {
   testNameArabic?: string;
   testNameEnglish?: string;
   category?: string;
+  subCategory?: string;
+  testMethod?: string;
   sampleType?: string;
   fasting_required?: boolean;
+  fasting_hours?: number;
   isActive?: boolean;
   parameters?: Omit<LabParameter, 'id'>[];
 }
