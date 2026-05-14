@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import TopBar from '../TopBar';
 import { Card, Button, Modal } from '../../ui';
 import { staffApi } from '../../../api/staff';
@@ -8,7 +9,6 @@ import {
     Mail, ShieldCheck, Pencil, AlertTriangle,
     Trash2, MapPin, User, Briefcase, Clock, FileText, CheckCircle2,
 } from 'lucide-react';
-import type { StaffProfile, WorkingSchedule } from '../../../types/staff.types';
 
 // ─── Helpers ───────────────────────────────────────────────
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -89,7 +89,7 @@ const DOC_LABELS = [
 
 // ─── Main Component ────────────────────────────────────────
 const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
-    const { id } = useParams<{ id: string }>();
+    const { id: paramId } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
     const [user, setUser] = useState<StaffProfile | null>(null);
@@ -166,11 +166,8 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
 
     const breadcrumb = (
         <span className="text-slate-400">
-            <span
-                className="cursor-pointer hover:text-slate-600 transition-colors"
-                onClick={() => navigate('/dashboard/users')}
-            >
-                USER MANAGMENT
+            <span className="cursor-pointer hover:text-slate-600 transition-colors" onClick={() => navigate('/dashboard/users')}>
+                USER MANAGEMENT
             </span>
             <span className="mx-2 text-slate-300">&rsaquo;</span>
             <span className="text-blue-600 font-bold">PROFILE DETAIL</span>
@@ -188,7 +185,7 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
         );
     }
 
-    if (!user) return (
+    if (!doctor) return (
         <div className="flex flex-col h-full bg-slate-50 w-full">
             <TopBar title={breadcrumb} onMenuClick={onMenuClick} />
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -271,7 +268,7 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                         <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
                                             <Briefcase className="text-blue-600" size={14} />
                                         </div>
-                                        <span className="text-xs font-black text-blue-600 uppercase tracking-wide">{user.role}</span>
+                                        <span className="text-xs font-black text-blue-600 uppercase tracking-wide">{doctor.role || 'Doctor'}</span>
                                     </div>
                                     {user.location && (
                                         <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -457,8 +454,10 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                             <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-900/80 to-transparent">
                                                 <p className="text-[10px] font-bold text-white truncate">{doc.label}</p>
                                             </div>
-                                        </div>
-                                    ))}
+                                        </a>
+                                    )) : (
+                                        <div className="col-span-5 py-10 text-center text-slate-400 font-bold text-sm">No documents uploaded.</div>
+                                    )}
                                 </div>
                             </Card>
                         </div>
