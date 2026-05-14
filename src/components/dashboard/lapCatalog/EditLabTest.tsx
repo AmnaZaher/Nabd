@@ -78,6 +78,7 @@ const EditLabTest = () => {
       await createLabTest({
         ...testData,
         parameters: parameters.map(p => ({
+          parameterNameEnglish: p.parameterNameEnglish,
           unit: p.unit,
           referenceRangeMin: p.referenceRangeMin,
           referenceRangeMax: p.referenceRangeMax,
@@ -246,7 +247,7 @@ const EditLabTest = () => {
                     {parameters.length > 0 ? parameters.map((row, i) => (
                       <tr key={i}>
                         <td className="px-6 py-5 text-sm font-black text-slate-700">
-                          {row.name || "Parameter"}
+                          {row.parameterNameEnglish || "Parameter"}
                         </td>
                         <td className="px-6 py-5 text-sm font-bold text-slate-400 text-center">
                           {row.unit}
