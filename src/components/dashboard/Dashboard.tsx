@@ -27,6 +27,7 @@ import EditClinic from "./clinics/EditClinic";
 import AddClinic from "./clinics/AddClinic";
 import LabCatalogPage from "./lapCatalog/LabCatalogPage";
 import LabTestDetail from "./lapCatalog/TestDetails";
+import AddLabTest from "./lapCatalog/AddLabTest";
 import EditLabTest from "./lapCatalog/EditLabTest";
 import DRSchedulePage from "./schedule/DrSchedulePage";
 import AdminProfilePage from "./profile/AdminProfile";
@@ -271,8 +272,10 @@ const Dashboard: React.FC = () => {
           {/* Lab Catalog */}
           <Route path="lab-catalog">
             <Route index element={<LabCatalogPage />} />
-            <Route path=":id" element={<LabTestDetail />} />
+            <Route path="add" element={<AddLabTest />} />
+            <Route path="details/:id" element={<LabTestDetail />} />
             <Route path="edit/:id" element={<EditLabTest />} />
+            <Route path=":id" element={<LabTestDetail />} />
           </Route>
 
           {/* Appointments */}

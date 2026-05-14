@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserRoundCog, Calendar, FlaskConical, Loader2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { patientApi } from '../../api/patient';
-import { staffApi } from '../../api/staff';
-import { listAppointments } from '../../api/appointments';
+import { fetchApi } from '../../api/config';
 
 interface StatItem {
     label: string;
@@ -59,52 +57,47 @@ const StatCards: React.FC = () => {
     useEffect(() => {
         const fetchStats = async () => {
             setLoading(true);
+
+            let totalPatients: number | string = 0;
+            let totalDoctors: number | string = 0;
+            let totalAppts: number | string = 0;
+            let totalLabs: number | string = 0;
+
+            // 1. Use DashboardData — single endpoint returns patients, doctors, todayAppointment
             try {
-                // Fetch patients — backend returns { isSuccess, data: [...array] }, no totalCount
-                const patientsRes = await patientApi.getPatients({ PageIndex: 0, PageSize: 1000 });
-                const patientsData = (patientsRes as any);
-                const totalPatients = Array.isArray(patientsData)
-                    ? patientsData.length
-                    : patientsData?.totalCount ?? patientsData?.patients?.length ?? 0;
-
-                // Fetch doctors — same array-based response
-                const staffRes = await staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 });
-                const staffData = (staffRes as any);
-                const totalDoctors = Array.isArray(staffData)
-                    ? staffData.length
-                    : staffData?.totalCount ?? staffData?.staffs?.length ?? 0;
-
-                // Fetch today's appointments — listAppointments returns raw fetchApi result
-                // backend: { isSuccess, data: [...array] }
-                const today = new Date().toISOString().split('T')[0];
-                const apptRes = await listAppointments({ DateAppointmentFrom: today, DateAppointmentTo: today, PageIndex: 0, PageSize: 1000 });
-                const apptData = (apptRes as any)?.data;
-                const totalAppts = Array.isArray(apptData)
-                    ? apptData.length
-                    : apptData?.totalCount ?? apptData?.appointments?.length ?? apptData?.items?.length ?? 0;
-
-                // Fetch lab catalog (/Lab/GetResults is 403 for Admin; use catalog instead)
-                let totalLabs = 0;
-                try {
-                    const { getLabCatalog } = await import('../../api/labs');
-                    const labRes = await getLabCatalog();
-                    const labsData = (labRes as any)?.data;
-                    totalLabs = Array.isArray(labsData) ? labsData.length : 0;
-                } catch (e) {
-                    console.warn("Failed to fetch lab catalog:", e);
+                const dashRes = await fetchApi<any>('/Admin/DashboardData');
+                const dash = dashRes?.data;
+                if (dash) {
+                    totalPatients = dash.totalPatients ?? 0;
+                    totalDoctors = dash.totalDoctor ?? 0;
+                    totalAppts = dash.todayAppointment ?? 0;
                 }
-
-                setStats(prev => [
-                    { ...prev[0], value: totalPatients.toLocaleString() },
-                    { ...prev[1], value: totalDoctors.toLocaleString() },
-                    { ...prev[2], value: totalAppts.toLocaleString() },
-                    { ...prev[3], value: totalLabs.toLocaleString() },
-                ]);
             } catch (error) {
-                console.error("Error fetching stats:", error);
-            } finally {
-                setLoading(false);
+                console.error('Error fetching DashboardData:', error);
+                totalPatients = 'Error';
+                totalDoctors = 'Error';
+                totalAppts = 'Error';
             }
+
+            // 2. Lab catalog count (not part of DashboardData)
+            try {
+                const { getLabCatalog } = await import('../../api/labs');
+                const labRes = await getLabCatalog();
+                const labsData = (labRes as any)?.data || labRes;
+                totalLabs = Array.isArray(labsData) ? labsData.length : 0;
+            } catch (error) {
+                console.warn('Failed to fetch lab catalog:', error);
+                totalLabs = 'Error';
+            }
+
+            setStats(prev => [
+                { ...prev[0], value: typeof totalPatients === 'number' ? totalPatients.toLocaleString() : totalPatients },
+                { ...prev[1], value: typeof totalDoctors === 'number' ? totalDoctors.toLocaleString() : totalDoctors },
+                { ...prev[2], value: typeof totalAppts === 'number' ? totalAppts.toLocaleString() : totalAppts },
+                { ...prev[3], value: typeof totalLabs === 'number' ? totalLabs.toLocaleString() : totalLabs },
+            ]);
+
+            setLoading(false);
         };
 
         fetchStats();
@@ -123,7 +116,7 @@ const StatCards: React.FC = () => {
                             <stat.icon size={20} strokeWidth={2} />
                         </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 relative z-10">
                         {loading ? (
                             <Loader2 size={24} className="animate-spin text-slate-300" />
@@ -131,7 +124,7 @@ const StatCards: React.FC = () => {
                             <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{stat.value}</p>
                         )}
                     </div>
-                    
+
                     <p className={`text-xs font-semibold flex items-center gap-1 relative z-10 ${stat.trendUp ? 'text-green-500' : 'text-red-500'}`}>
                         <span>{stat.trendUp ? '↑' : '↓'}</span>
                         {stat.trend}

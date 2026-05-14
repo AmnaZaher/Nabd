@@ -1,4 +1,6 @@
 import { BriefcaseMedical } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { fetchApi } from '../../../api/config';
 
 export interface StaffRoleDetails {
     role: string;
@@ -42,6 +44,25 @@ interface RoleDetailsFormProps {
 }
 
 const RoleDetailsForm = ({ details, onChange }: RoleDetailsFormProps) => {
+    const [clinics, setClinics] = useState<any[]>([]);
+    const [loadingClinics, setLoadingClinics] = useState(false);
+
+    useEffect(() => {
+        const loadClinics = async () => {
+            setLoadingClinics(true);
+            try {
+                const res = await fetchApi<any>('/Patient/Clinics');
+                const list = res?.data || (res as any)?.items || (res as any)?.data || (Array.isArray(res) ? res : []);
+                setClinics(Array.isArray(list) ? list : list.data || list.items || []);
+            } catch (err) {
+                console.error('Failed to load clinics:', err);
+            } finally {
+                setLoadingClinics(false);
+            }
+        };
+        loadClinics();
+    }, []);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target;
         const value = target.type === 'checkbox' ? (target as HTMLInputElement).checked : target.value;
@@ -117,7 +138,15 @@ const RoleDetailsForm = ({ details, onChange }: RoleDetailsFormProps) => {
                                 <label className="block text-xs font-bold text-slate-800 mb-2 ml-1">Clinic ID</label>
                                 <select name="clinicId" className="w-full px-4 py-2.5 bg-white border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-900 font-medium appearance-none" value={details.clinicId || ''} onChange={handleChange}>
                                     <option value="">Select Clinic</option>
-                                    <option value="#XFfj93">#XFfj93</option>
+                                    {loadingClinics ? (
+                                        <option value="" disabled>Loading...</option>
+                                    ) : (
+                                        clinics.map((c: any) => (
+                                            <option key={c.id || c.clinicId} value={c.id || c.clinicId}>
+                                                {c.name || c.clinicName || c.nameEnglish || `#${c.id || c.clinicId}`}
+                                            </option>
+                                        ))
+                                    )}
                                 </select>
                             </div>
                         </div>
@@ -129,7 +158,15 @@ const RoleDetailsForm = ({ details, onChange }: RoleDetailsFormProps) => {
                                 <label className="block text-xs font-bold text-slate-800 mb-2 ml-1">Clinic ID</label>
                                 <select name="clinicId" value={details.clinicId || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-white border-0 rounded-xl focus:outline-none appearance-none font-medium">
                                     <option value="">Select Clinic ID</option>
-                                    <option value="REG-99283-X">REG-99283-X</option>
+                                    {loadingClinics ? (
+                                        <option value="" disabled>Loading...</option>
+                                    ) : (
+                                        clinics.map((c: any) => (
+                                            <option key={c.id || c.clinicId} value={c.id || c.clinicId}>
+                                                {c.name || c.clinicName || c.nameEnglish || `#${c.id || c.clinicId}`}
+                                            </option>
+                                        ))
+                                    )}
                                 </select>
                             </div>
                             <div className="col-span-1">
