@@ -97,6 +97,18 @@ const patientFilterConfig: FilterConfig[] = [
     },
 ];
 
+// ==================== Helpers ====================
+const formatDate = (raw: string | null | undefined): string => {
+    if (!raw || raw === 'N/A' || raw.startsWith('0001-01-01')) return 'N/A';
+    try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw; // return as-is if unparseable
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+        return raw;
+    }
+};
+
 // ==================== Column Definitions ====================
 const getStaffColumns = (onEdit: (staff: StaffMember) => void, onDelete: (staff: StaffMember) => void): Column<StaffMember>[] => [
     {
@@ -192,14 +204,14 @@ const getPatientColumns = (onEdit: (patient: PatientListItem) => void, onDelete:
     {
         key: 'lastVisit',
         header: 'LAST VISIT',
-        render: (patient) => <span className="font-extrabold text-slate-900">{patient.lastVisit || 'N/A'}</span>,
+        render: (patient) => <span className="font-extrabold text-slate-900">{formatDate(patient.lastVisit)}</span>,
     },
     {
         key: 'upcoming',
         header: 'UPCOMING',
         render: (patient) => (
-            <span className={`font-bold ${patient.upcoming !== '-' ? 'text-blue-500' : 'text-slate-400'}`}>
-                {patient.upcoming || '-'}
+            <span className={`font-bold ${patient.upcoming && patient.upcoming !== '-' ? 'text-blue-500' : 'text-slate-400'}`}>
+                {patient.upcoming && patient.upcoming !== '-' ? formatDate(patient.upcoming) : '-'}
             </span>
         ),
     },
@@ -316,7 +328,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                 const mappedStaff = list.map((item: any) => {
                     const rolesMap: Record<string, string> = {
                         '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
-                        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician'
+                        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
                     };
                     
                     // Comprehensive search for role
@@ -368,7 +380,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                         role: roleVal,
                         lastLogin: item.lastLogin || item.LastLogin || item.lastLoginDate || item.LastLoginDate || item.lastSeen || 'N/A',
                         dept: deptVal,
-                        status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
+                        status: item.isActive === false || item.status === 'Inactive' ? 'Disabled' : (item.status || 'Active'),
                         avatar: item.avatar || item.PersonalPhotos || '',
                     };
                 });
@@ -421,19 +433,30 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
             const list = data?.patients || (data as any)?.items || (data as any)?.data || (Array.isArray(data) ? data : []);
             
             if (list && list.length > 0) {
-                const mappedPatients = list.map((item: any) => ({
-                    id: item.id || item.Id || item.nationalId || item.NationalId || '',
-                    patientId: item.patientId || item.PatientId || item.nationalId || item.NationalId || '',
-                    name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
-                    subtitle: item.nationalId || item.NationalId || item.phone || item.PhoneNumber || '',
-                    demographics: (item.gender || item.Gender || '') + (item.age ? `, ${item.age}` : ''),
-                    lastVisit: item.lastVisit || item.LastVisit || item.lastVisitDate || item.LastVisitDate || item.lastVisitAt || 'N/A',
-                    upcoming: item.upcoming || item.UpcomingAppointment || '-',
-                    status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
-                    avatar: item.avatar || item.PersonalPhotos || '',
-                    prescriptions: item.prescriptions || [],
-                    prescriptionSummary: item.prescriptionSummary || { totalPrescriptions: 0, activeTreatmentNote: '', recentNote: '' },
-                }));
+                const mappedPatients = list.map((item: any) => {
+                    const userGuid = item.userId ? String(item.userId) : (item.id ? String(item.id) : '');
+                    
+                    const isMinDate = (d: any) => !d || d.toString().startsWith('0001-01-01');
+                    
+                    const rawLastVisit = item.lastVisitDate || item.LastVisitDate || item.lastVisit || item.LastVisit;
+                    const rawUpcoming = item.upComingAppointment || item.UpComingAppointment || item.UpcomingAppointment || item.upcomingAppointment || item.upcoming || item.Upcoming;
+                    
+                    return {
+                        id: userGuid,
+                        userId: userGuid,
+                        patientId: item.fileNumber || item.nationalId || userGuid,
+                        name: item.name || 'Unknown',
+                        subtitle: item.fileNumber || '',
+                        demographics: item.demographicData || item.demographics || '',
+                        lastVisit: isMinDate(rawLastVisit) ? 'N/A' : rawLastVisit,
+                        upcoming: isMinDate(rawUpcoming) ? '-' : rawUpcoming,
+                        status: item.isActive === false || item.status === 'Inactive' ? 'Disabled' : (item.status || 'Active'),
+                        avatar: item.avatar || item.PersonalPhotos || '',
+                        prescriptions: item.prescriptions || [],
+                        prescriptionSummary: item.prescriptionSummary || { totalPrescriptions: 0, activeTreatmentNote: '', recentNote: '' },
+                    };
+                });
+
                 setPatientData(mappedPatients);
                 if (data?.totalCount !== undefined) {
                     setTotalItems(data.totalCount);
@@ -453,6 +476,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
             setLoading(false);
         }
     }, [searchQuery, patientFilters, currentPatientPage]);
+
 
     useEffect(() => {
         if (activeTab === 'staff') {
@@ -545,7 +569,14 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                             totalItems={totalItems}
                             currentPage={currentStaffPage}
                             onPageChange={setCurrentStaffPage}
-                            onRowClick={(staff) => navigate(`/dashboard/users/staff/${staff.username || staff.id}`)}
+                            onRowClick={(staff) => {
+                                const routeId = staff.username || staff.id;
+                                if (staff.role === 'Doctor') {
+                                    navigate(`/dashboard/users/doctor/${routeId}`);
+                                } else {
+                                    navigate(`/dashboard/users/staff/${routeId}`);
+                                }
+                            }}
                         />
                     ) : (
                         <DataTable<PatientListItem>

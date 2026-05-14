@@ -140,7 +140,13 @@ const PersonalInfoTab = ({ patient }: { patient: PatientProfile }) => (
                     <BriefRow label="Blood Type" value={patient.bloodType} valueColor="text-blue-600" />
                     <BriefRow label="Insurance" value={patient.insuranceType} />
                     <BriefRow label="Last Visit" value={patient.lastVisit} />
+                    <BriefRow
+                        label="Next Appointment"
+                        value={patient.upcomingAppointment || '-'}
+                        valueColor={patient.upcomingAppointment && patient.upcomingAppointment !== '-' ? 'text-blue-600' : 'text-slate-400'}
+                    />
                 </div>
+
             </div>
         </div>
     </div>
@@ -158,7 +164,9 @@ const MedicalInfoTab = ({ patient }: { patient: PatientProfile }) => (
                     <MedicalDataItem icon={<Droplets size={18} />} iconBg="bg-red-50" iconColor="text-red-500" label="BLOOD TYPE" value={patient.bloodType} />
                     <MedicalDataItem icon={<ShieldCheck size={18} />} iconBg="bg-blue-50" iconColor="text-blue-600" label="INSURANCE TYPE" value={patient.insuranceType} />
                     <MedicalDataItem icon={<Calendar size={18} />} iconBg="bg-slate-100" iconColor="text-slate-500" label="LAST VISIT" value={patient.lastVisit} />
+                    <MedicalDataItem icon={<Calendar size={18} />} iconBg="bg-blue-50" iconColor="text-blue-600" label="NEXT APPOINTMENT" value={patient.upcomingAppointment || '-'} />
                 </div>
+
             </div>
             <div className="bg-[#1d4ed8] rounded-2xl p-6 md:p-8 text-white relative overflow-hidden">
                 <h4 className="text-[17px] font-bold mb-2 relative z-10">Precision Monitoring</h4>
@@ -1270,9 +1278,16 @@ const PatientProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
         if (!id) return;
         setLoading(true);
         try {
-            const data = await patientApi.getPatientById(id);
+            // Fetch profile and upcoming appointment in parallel
+            const [data, upcomingDate] = await Promise.all([
+                patientApi.getPatientById(id),
+                patientApi.getUpcomingAppointmentForPatient(id),
+            ]);
             if (data) {
-                setPatient(data);
+                setPatient({
+                    ...data,
+                    upcomingAppointment: upcomingDate !== '-' ? upcomingDate : (data.upcomingAppointment || '-'),
+                });
             } else {
                 console.error('Patient record not found');
             }
@@ -1286,6 +1301,7 @@ const PatientProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
     useEffect(() => {
         loadPatientData();
     }, [id]);
+
 
     const onDeleteSuccess = () => {
         navigate('/dashboard/users');

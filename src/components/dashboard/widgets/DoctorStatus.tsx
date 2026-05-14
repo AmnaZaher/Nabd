@@ -20,8 +20,8 @@ const DoctorStatus: React.FC = () => {
     const fetchDoctors = async () => {
       setLoading(true);
       try {
-        const res = await staffApi.getStaffs({ Role: "Doctor", PageIndex: 0, PageSize: 5 });
-        const list = res?.staffs || (res as any)?.items || (res as any)?.data || [];
+        const res = await staffApi.getStaffs({ Role: "2", PageIndex: 0, PageSize: 5 });
+        const list = Array.isArray(res) ? res : (res?.staffs || (res as any)?.items || (res as any)?.data || []);
         
         const mappedDoctors = list.map((item: any) => {
           let statusText: "AVAILABLE" | "BUSY" | "OFFLINE" = "AVAILABLE";
