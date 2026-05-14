@@ -39,5 +39,67 @@ export const visitApi = {
       method: 'POST',
       body: formData,
     });
+  },
+
+  listVisits: async (params?: Record<string, any>) => {
+    const queryStr = params ? '?' + new URLSearchParams(
+      Object.entries(params)
+        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => [k, String(v)])
+    ).toString() : '';
+    return await fetchApi(`/Visit${queryStr}`);
+  },
+
+  getVisit: async (visitId: number | string) => {
+    return await fetchApi(`/Visit/${visitId}`);
+  },
+
+  markVisitComplete: async (visitId: number | string) => {
+    return await fetchApi(`/Visit/${visitId}/MarkComplete`, {
+      method: 'PATCH',
+    });
+  },
+
+  getVitalSigns: async (visitId: number | string) => {
+    return await fetchApi(`/Visit/${visitId}/vital-signs`);
+  },
+
+  getVitalSignsHistory: async (params?: Record<string, any>) => {
+    const queryStr = params ? '?' + new URLSearchParams(
+      Object.entries(params)
+        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => [k, String(v)])
+    ).toString() : '';
+    return await fetchApi(`/Visit/vital-signs/history${queryStr}`);
+  },
+
+  addPrescription: async (visitId: number | string, payload: any) => {
+    return await fetchApi(`/Visit/${visitId}/prescriptions`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getPrescriptions: async (visitId: number | string) => {
+    return await fetchApi(`/Visit/${visitId}/prescriptions`);
+  },
+
+  getPrescriptionDetails: async (prescriptionId: number | string) => {
+    return await fetchApi(`/Visit/prescriptions/${prescriptionId}`);
+  },
+
+  addDiagnosis: async (visitId: number | string, payload: any) => {
+    return await fetchApi(`/Visit/${visitId}/diagnoses`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getDiagnoses: async (visitId: number | string) => {
+    return await fetchApi(`/Visit/${visitId}/diagnoses`);
+  },
+
+  getDiagnosisDetails: async (visitId: number | string, diagnosisId: number | string) => {
+    return await fetchApi(`/Visit/${visitId}/diagnosesDetails/${diagnosisId}`);
   }
 };

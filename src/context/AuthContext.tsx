@@ -14,6 +14,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isAdmin: boolean;
     isNurse: boolean;
+    isDoctor: boolean;
     isLoading: boolean;
     login: (accessToken: string, refreshToken: string) => void;
     logout: () => void;
@@ -28,15 +29,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-        // On mount — check if token exists in localStorage
+    // On mount — check if token exists in localStorage
     useEffect(() => {
         const checkToken = () => {
             const token = localStorage.getItem('accessToken');
             if (token) {
                 try {
                     const decoded = decodeToken(token);
+                    console
                     if (decoded) {
                         setUser(decoded);
+                        console.log("decoded", decoded)
                         setIsAuthenticated(true);
                     } else {
                         throw new Error('Token decode returned null (likely expired)');
@@ -69,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const decodeToken = (token: string): User | null => {
         try {
             const decoded: any = jwtDecode(token);
-
+            console.log("decoded", decoded)
             // Check if token is expired
             if (decoded.exp && (decoded.exp * 1000) < Date.now()) {
                 return null;
@@ -108,14 +111,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (!/^\d+$/.test(name)) break;
                 }
             }
-            
+
             // Fallback if all else fails
             if (!name) {
                 name = decoded.name || decoded.unique_name || 'Unknown';
             }
 
-            const formattedName = name !== 'Unknown' && !/^\d+$/.test(name) 
-                ? name.charAt(0).toUpperCase() + name.slice(1) 
+            const formattedName = name !== 'Unknown' && !/^\d+$/.test(name)
+                ? name.charAt(0).toUpperCase() + name.slice(1)
                 : name;
 
             return { id, name: formattedName, role };
@@ -130,6 +133,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('refreshToken', refreshToken);
 
         const decoded = decodeToken(accessToken);
+        console.log("decoded", decoded)
+
+
         if (decoded) {
             setUser(decoded);
             setIsAuthenticated(true);
@@ -146,9 +152,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const isAdmin = user?.role?.toLowerCase() === 'admin';
     const isNurse = user?.role?.toLowerCase() === 'nurse';
+    const isDoctor = user?.role?.toLowerCase() === 'doctor';
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isNurse, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isNurse, isDoctor, isLoading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
