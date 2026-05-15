@@ -88,11 +88,20 @@ const EditAppointmentPage: React.FC = () => {
                     (Array.isArray(rawClinic?.data) ? rawClinic.data : null) ??
                     rawClinic?.items ??
                     rawClinic?.clinics ??
+                    rawClinic?.data ??
                     (Array.isArray(rawClinic) ? rawClinic : []);
                 setClinics(Array.isArray(clinicList) ? clinicList : []);
 
-                const ptList = (ptRes as any)?.patients ?? (ptRes as any)?.items ?? (Array.isArray(ptRes) ? ptRes : []);
-                setPatients(ptList);
+                const rawPt: any = ptRes;
+                const ptList = 
+                    rawPt?.data?.patients ?? 
+                    rawPt?.data?.items ?? 
+                    rawPt?.data?.data ??
+                    rawPt?.patients ?? 
+                    rawPt?.items ?? 
+                    rawPt?.data ??
+                    (Array.isArray(rawPt) ? rawPt : []);
+                setPatients(Array.isArray(ptList) ? ptList : []);
 
                 const apt = aptRes?.data?.data ?? aptRes?.data ?? aptRes;
                 console.log("Fetched appointment details:", apt);
@@ -123,6 +132,8 @@ const EditAppointmentPage: React.FC = () => {
                         }
                     }
                 }
+                console.log("Clinics parsed:", clinicList);
+                console.log("Patients parsed:", ptList);
             } catch (err) {
                 console.error('Failed to load edit page data', err);
             } finally {
@@ -274,7 +285,7 @@ const EditAppointmentPage: React.FC = () => {
                 </div>
                 
                 <div>
-                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Edit Appointmentt</h1>
+                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Edit Appointment</h1>
                     <p className="text-slate-500 text-sm mt-0.5">Refine scheduling details for patient consultation.</p>
                 </div>
 
@@ -300,12 +311,17 @@ const EditAppointmentPage: React.FC = () => {
                                     </div>
                                     <select 
                                         value={patientId} onChange={e => setPatientId(e.target.value)}
-                                        className="w-full pl-10 pr-16 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none"
+                                        className="w-full pl-10 pr-24 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none transition-all"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
                                     >
                                         <option value="">Select patient...</option>
-                                        {patients.map(p => <option key={p.id} value={p.id}>{p.fullNameEnglish || p.name || `Patient #${p.id}`}</option>)}
+                                        {patients.map(p => {
+                                            const id = p.id || p.Id || p.patientId || p.PatientId || p.userId || p.UserId;
+                                            const name = p.fullNameEnglish || p.name || p.FullNameEnglish || p.Name || p.patientName || p.PatientName || `Patient #${id}`;
+                                            return <option key={id} value={id}>{name}</option>;
+                                        })}
                                     </select>
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="absolute right-10 top-1/2 -translate-y-1/2">
                                         <span className="bg-[#E0F2FE] text-[#0284C7] text-[10px] font-bold px-2 py-1 rounded">VERIFIED</span>
                                     </div>
                                 </div>
@@ -324,7 +340,11 @@ const EditAppointmentPage: React.FC = () => {
                                         style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
                                     >
                                         <option value="">Select location...</option>
-                                        {clinics.map(c => <option key={c.id} value={c.id}>{c.clinicNameEn || c.clinicNameAr || `Clinic #${c.id}`}</option>)}
+                                        {clinics.map(c => {
+                                            const id = c.id || c.Id;
+                                            const name = c.clinicNameEn || c.name || c.ClinicNameEn || c.Name || c.clinicNameAr || `Clinic #${id}`;
+                                            return <option key={id} value={id}>{name}</option>;
+                                        })}
                                     </select>
                                 </div>
                             </div>
@@ -345,7 +365,11 @@ const EditAppointmentPage: React.FC = () => {
                                         style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
                                     >
                                         <option value="">Select doctor...</option>
-                                        {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                        {doctors.map(d => {
+                                            const id = d.id || d.Id;
+                                            const name = d.name || d.Name || `Dr. #${id}`;
+                                            return <option key={id} value={id}>{name}</option>;
+                                        })}
                                     </select>
                                 </div>
                                 {!clinicId && (

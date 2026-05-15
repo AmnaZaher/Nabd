@@ -108,6 +108,7 @@ const UpcomingAppointmentsList: React.FC = () => {
                             <th className="px-5 py-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Provider</th>
                             <th className="px-5 py-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Time</th>
                             <th className="px-5 py-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Status</th>
+                            <th className="px-5 py-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -145,6 +146,19 @@ const UpcomingAppointmentsList: React.FC = () => {
                                     </td>
                                     <td className="px-5 py-4">
                                         {getStatusBadge(appt.status)}
+                                    </td>
+                                    <td className="px-5 py-4 text-right">
+                                        {(appt.status === 1 || appt.status === 2 || appt.status === 6) && (
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/dashboard/patient-visit?appointmentId=${appt.id}`);
+                                                }}
+                                                className="px-3 py-1.5 bg-[#0061BC] hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shadow-sm"
+                                            >
+                                                Start Visit
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))

@@ -62,30 +62,58 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
     const fetchAppointments = async () => {
       setLoading(true);
       try {
-        const today = new Date().toISOString().split('T')[0];
-        // Fetch Scheduled (1) and InProgress (2) appointments
-        const res = await listAppointments({ DateAppointment: today, PageSize: 50, PageIndex: 0 });
+        // Fetch a broad range of appointments to ensure we "get them all"
+        const res = await listAppointments({ 
+            DateAppointmentFrom: '2020-01-01',
+            DateAppointmentTo: '2030-12-31',
+            PageSize: 1000, 
+            PageIndex: 0 
+        });
         const raw = res as any;
         let appts: Appointment[] = raw?.data?.data || raw?.data?.appointments || raw?.data?.items || (Array.isArray(raw?.data) ? raw.data : []) || raw?.appointments || raw?.items || [];
-        appts = appts.filter(a => a.status === 1 || a.status === 2);
         
-        // If passedApptId exists and is NOT in the appts list, fetch it specifically
-        if (passedApptId && !appts.some(a => a.id.toString() === passedApptId.toString())) {
+        // Helper to resolve status
+        const resolveStatus = (s: any): number => {
+            const n = Number(s);
+            if (!isNaN(n)) return n;
+            return 0;
+        };
+
+        // If the user wants ALL, we show all, but we might want to prioritize "active" ones.
+        // For now, let's show everything that isn't cancelled (5) or completed (3) by default,
+        // or just show everything if the list is still empty.
+        const activeAppts = appts.filter(a => {
+            const st = resolveStatus(a.status);
+            return st !== 3 && st !== 5; // Not completed or cancelled
+        });
+
+        // Use active ones if found, otherwise show all
+        const displayAppts = activeAppts.length > 0 ? activeAppts : appts;
+
+        // Sort by date (closest to now first)
+        displayAppts.sort((a, b) => {
+            const dateA = new Date(a.appointmentDate || a.dateTime || 0).getTime();
+            const dateB = new Date(b.appointmentDate || b.dateTime || 0).getTime();
+            return Math.abs(dateA - Date.now()) - Math.abs(dateB - Date.now());
+        });
+
+        // If passedApptId exists and is NOT in the list, fetch it specifically
+        if (passedApptId && !displayAppts.some(a => a.id.toString() === passedApptId.toString())) {
             try {
                 const singleRes = await getAppointmentDetails(passedApptId);
                 if (singleRes?.data) {
-                    appts = [singleRes.data, ...appts];
+                    displayAppts.unshift(singleRes.data);
                 }
             } catch (err) {
                 console.warn("Failed to fetch specific appointment:", passedApptId);
             }
         }
 
-        setAppointments(appts);
-        if (passedApptId) {
+        setAppointments(displayAppts);
+        if (passedApptId && !selectedApptId) {
           setSelectedApptId(passedApptId.toString());
-        } else if (appts.length > 0) {
-          setSelectedApptId(appts[0].id.toString());
+        } else if (displayAppts.length > 0 && !selectedApptId) {
+          setSelectedApptId(displayAppts[0].id.toString());
         }
       } catch (err) {
         console.error(err);
@@ -232,10 +260,10 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
                         onChange={(e) => setSelectedApptId(e.target.value)}
                         className="w-full bg-[#F1F5F9] border-2 border-transparent rounded-2xl p-5 text-sm font-bold text-slate-700 appearance-none focus:bg-white focus:border-blue-500 transition-all outline-none"
                       >
-                        <option value="">-- Select Appointment --</option>
+                        <option value="">-- {appointments.length === 0 ? 'Searching for appointments...' : 'Select Appointment'} --</option>
                         {appointments.map(a => (
                           <option key={a.id} value={a.id}>
-                            {a.patientName} - Dr. {a.doctorName} - {new Date(a.appointmentDate || a.dateTime || '').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            {a.patientName} (F-{a.patientId || a.id}) - Dr. {a.doctorName || 'Unknown'} - {new Date(a.appointmentDate || a.dateTime || '').toLocaleDateString()}
                           </option>
                         ))}
                       </select>
@@ -486,7 +514,7 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
                   <CheckCircle2 size={14} className="text-[#0061BC] fill-white" />
                 </div>
               )}
-              Create Visit
+              Save
             </button>
           </div>
         </div>

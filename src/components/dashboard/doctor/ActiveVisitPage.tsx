@@ -69,6 +69,18 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     }, [visitId]);
 
     // Handlers
+    const handleSaveNotes = async () => {
+        if (!visitId) return;
+        try {
+            await visitApi.updateVisit(visitId, {
+                ClinicalNotes: clinicalNotes
+            });
+            alert("Notes saved successfully!");
+        } catch (error) {
+            console.error("Failed to save notes", error);
+        }
+    };
+
     const handleFinishVisit = async () => {
         try {
             if (visitId) {
@@ -237,9 +249,17 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
 
                             {/* Clinical Notes */}
                             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex-1 flex flex-col min-h-[300px]">
-                                <h3 className="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
-                                    <FileText className="w-5 h-5 text-blue-500" /> Clinical Notes
-                                </h3>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                                        <FileText className="w-5 h-5 text-blue-500" /> Clinical Notes
+                                    </h3>
+                                    <button 
+                                        onClick={handleSaveNotes}
+                                        className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-md hover:bg-blue-100 transition-colors"
+                                    >
+                                        Save Notes
+                                    </button>
+                                </div>
                                 {/* Minimal formatting toolbar mock */}
                                 <div className="flex gap-2 mb-3 border-b border-slate-100 pb-3 text-slate-500">
                                     <button className="p-1 hover:text-slate-800 font-bold px-2 rounded hover:bg-slate-50">B</button>
