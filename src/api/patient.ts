@@ -313,6 +313,22 @@ export const patientApi = {
     });
   },
 
+  /** Fetch doctors assigned to a specific clinic using the Patient/Doctors endpoint */
+  getDoctorsByClinic: async (clinicId: number): Promise<{ id: number; name: string }[]> => {
+    try {
+      const res = await fetchApi<any>(`/Patient/Doctors?Clinic=${clinicId}`);
+      const raw = res.data;
+      // Response shape: { isSuccess, message, data: [ { id, name }, ... ] }
+      const list: any[] =
+        raw?.data ??
+        (Array.isArray(raw) ? raw : []);
+      return list.map((d: any) => ({ id: Number(d.id), name: d.name || `Dr. #${d.id}` }));
+    } catch (err) {
+      console.error('[getDoctorsByClinic] Failed:', err);
+      return [];
+    }
+  },
+
   deletePatient: async (id: string): Promise<void> => {
     // Uses ActiveOrDeActive toggle endpoint
     try {
