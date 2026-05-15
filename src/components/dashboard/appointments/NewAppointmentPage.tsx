@@ -102,7 +102,8 @@ const NewAppointmentPage: React.FC = () => {
                     id: c.id,
                     name: c.clinicNameEn || c.clinicNameAr || `Clinic #${c.id}`,
                 }));
-                setClinics(clinicList);
+                const sortedClinics = clinicList.sort((a: any, b: any) => a.name.localeCompare(b.name));
+                setClinics(sortedClinics);
             } catch (e) {
                 console.error('Failed to load clinics:', e);
             } finally {
@@ -111,6 +112,11 @@ const NewAppointmentPage: React.FC = () => {
         };
         init();
     }, []);
+
+    /* ── Clear error on input change ── */
+    useEffect(() => {
+        setError('');
+    }, [selectedClinic, selectedDoctor, selectedDate, selectedPatient, selectedSlot, appointmentType, notes]);
 
     /* ── Patient search ── */
     useEffect(() => {
@@ -169,6 +175,7 @@ const NewAppointmentPage: React.FC = () => {
                     console.warn('Failed to fetch schedules to filter doctors:', err);
                 }
 
+                mapped.sort((a, b) => a.name.localeCompare(b.name));
                 setAvailableDoctors(mapped);
                 setNoDoctorsForClinic(mapped.length === 0);
                 // Reset doctor if not in new list
@@ -483,44 +490,42 @@ const NewAppointmentPage: React.FC = () => {
                             </div>
 
                             {/* Available Time Slots */}
-                            <div>
-                                <label className="flex items-center gap-2 text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-3">
-                                    <Clock size={13} className="text-[#1A6FC4]" />
-                                    Available Time Slots
-                                    {loadingSlots && <Loader2 size={12} className="animate-spin text-slate-400" />}
-                                </label>
+                            {(loadingSlots || (!selectedDoctor || !selectedDate) || (timeSlots.length > 0 && !error)) && (
+                                <div>
+                                    <label className="flex items-center gap-2 text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                        <Clock size={13} className="text-[#1A6FC4]" />
+                                        Available Time Slots
+                                        {loadingSlots && <Loader2 size={12} className="animate-spin text-slate-400" />}
+                                    </label>
 
-                                {!selectedDoctor || !selectedDate ? (
-                                    <p className="text-[12px] text-slate-400 font-medium italic py-3">
-                                        Select a doctor and date to see available time slots.
-                                    </p>
-                                ) : loadingSlots ? (
-                                    <div className="flex items-center gap-2 text-slate-400 py-3">
-                                        <Loader2 size={14} className="animate-spin" />
-                                        <span className="text-[12px] font-medium">Loading slots...</span>
-                                    </div>
-                                ) : timeSlots.length === 0 ? (
-                                    <p className="text-[12px] text-amber-600 font-medium italic py-3 bg-amber-50 rounded-xl px-4 border border-amber-100">
-                                        No available slots for this day. Try a different date.
-                                    </p>
-                                ) : (
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {timeSlots.map(slot => (
-                                            <button
-                                                key={slot}
-                                                onClick={() => setSelectedSlot(slot)}
-                                                className={`py-2.5 px-2 text-[12px] font-bold rounded-xl border transition-all ${
-                                                    selectedSlot === slot
-                                                        ? 'bg-[#1A6FC4] text-white border-[#1A6FC4] shadow-sm shadow-blue-200'
-                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-[#1A6FC4] hover:text-[#1A6FC4] hover:bg-blue-50'
-                                                }`}
-                                            >
-                                                {formatSlot(slot)}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                    {!selectedDoctor || !selectedDate ? (
+                                        <p className="text-[12px] text-slate-400 font-medium italic py-3">
+                                            Select a doctor and date to see available time slots.
+                                        </p>
+                                    ) : loadingSlots ? (
+                                        <div className="flex items-center gap-2 text-slate-400 py-3">
+                                            <Loader2 size={14} className="animate-spin" />
+                                            <span className="text-[12px] font-medium">Loading slots...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {timeSlots.map(slot => (
+                                                <button
+                                                    key={slot}
+                                                    onClick={() => setSelectedSlot(slot)}
+                                                    className={`py-2.5 px-2 text-[12px] font-bold rounded-xl border transition-all ${
+                                                        selectedSlot === slot
+                                                            ? 'bg-[#1A6FC4] text-white border-[#1A6FC4] shadow-sm shadow-blue-200'
+                                                            : 'bg-white text-slate-600 border-slate-200 hover:border-[#1A6FC4] hover:text-[#1A6FC4] hover:bg-blue-50'
+                                                    }`}
+                                                >
+                                                    {formatSlot(slot)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Appointment Type */}
                             <div>

@@ -59,6 +59,8 @@ const EditAppointmentPage: React.FC = () => {
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
 
+    const [error, setError] = useState('');
+
     useEffect(() => {
         const loadAll = async () => {
             setLoading(true);
@@ -90,7 +92,12 @@ const EditAppointmentPage: React.FC = () => {
                     rawClinic?.clinics ??
                     rawClinic?.data ??
                     (Array.isArray(rawClinic) ? rawClinic : []);
-                setClinics(Array.isArray(clinicList) ? clinicList : []);
+                
+                const sortedClinics = (Array.isArray(clinicList) ? clinicList : []).map((c: any) => ({
+                    ...c,
+                    displayName: c.clinicNameEn || c.name || c.ClinicNameEn || c.Name || c.clinicNameAr || `Clinic #${c.id || c.Id}`
+                })).sort((a: any, b: any) => a.displayName.localeCompare(b.displayName));
+                setClinics(sortedClinics);
 
                 const rawPt: any = ptRes;
                 const ptList = 
@@ -132,7 +139,7 @@ const EditAppointmentPage: React.FC = () => {
                         }
                     }
                 }
-                console.log("Clinics parsed:", clinicList);
+                console.log("Clinics parsed:", sortedClinics);
                 console.log("Patients parsed:", ptList);
             } catch (err) {
                 console.error('Failed to load edit page data', err);
@@ -142,6 +149,11 @@ const EditAppointmentPage: React.FC = () => {
         };
         loadAll();
     }, [id]);
+
+    /* ── Clear error on input change ── */
+    useEffect(() => {
+        setError('');
+    }, [clinicId, doctorId, date, patientId, timeSlot, appointmentType, notes]);
 
     const fetchSlots = useCallback(async () => {
         if (!doctorId || !date) {
@@ -216,6 +228,7 @@ const EditAppointmentPage: React.FC = () => {
                     console.warn('Failed to fetch schedules to filter doctors:', err);
                 }
 
+                mapped.sort((a: any, b: any) => a.name.localeCompare(b.name));
                 setDoctors(mapped);
                 setNoDoctorsForClinic(mapped.length === 0);
                 // Clear doctor selection if not in new list
@@ -235,6 +248,7 @@ const EditAppointmentPage: React.FC = () => {
 
     const handleSave = async () => {
         if (!id) return;
+        setError('');
         setSaving(true);
         try {
             let appointmentDate = date;
@@ -257,9 +271,9 @@ const EditAppointmentPage: React.FC = () => {
 
             await updateAppointment(id, payload);
             navigate('/dashboard/appointments');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to update appointment', error);
-            alert('Failed to update appointment');
+            setError(error.message || 'Failed to update appointment');
         } finally {
             setSaving(false);
         }
@@ -288,6 +302,14 @@ const EditAppointmentPage: React.FC = () => {
                     <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Edit Appointment</h1>
                     <p className="text-slate-500 text-sm mt-0.5">Refine scheduling details for patient consultation.</p>
                 </div>
+                
+                {/* Error Banner */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-5 py-3 rounded-xl flex items-center gap-3">
+                        <span className="shrink-0 text-red-500 text-lg">×</span>
+                        {error}
+                    </div>
+                )}
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -342,7 +364,7 @@ const EditAppointmentPage: React.FC = () => {
                                         <option value="">Select location...</option>
                                         {clinics.map(c => {
                                             const id = c.id || c.Id;
-                                            const name = c.clinicNameEn || c.name || c.ClinicNameEn || c.Name || c.clinicNameAr || `Clinic #${id}`;
+                                            const name = c.displayName || `Clinic #${id}`;
                                             return <option key={id} value={id}>{name}</option>;
                                         })}
                                     </select>
@@ -406,41 +428,39 @@ const EditAppointmentPage: React.FC = () => {
                             </div>
 
                             {/* Time Slots */}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-3">
-                                    Available Slots
-                                    {loadingSlots && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
-                                </label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {loadingSlots ? (
-                                        <div className="col-span-3 flex items-center gap-2 text-slate-400 py-2">
-                                            <span className="text-[12px] font-medium">Loading slots...</span>
-                                        </div>
-                                    ) : timeSlots.length === 0 && !timeSlot ? (
-                                        <p className="col-span-3 text-[12px] text-amber-600 font-medium italic py-2 bg-amber-50 rounded-xl px-3 border border-amber-100">
-                                            No available slots for this day.
-                                        </p>
-                                    ) : (
-                                        Array.from(new Set(timeSlot ? [timeSlot, ...timeSlots] : timeSlots)).map((slot) => {
-                                            const isSelected = timeSlot === slot;
-                                            return (
-                                                <button
-                                                    key={slot}
-                                                    onClick={() => setTimeSlot(slot)}
-                                                    className={`
-                                                        py-2.5 rounded-lg text-xs font-bold transition-all
-                                                        ${isSelected 
-                                                            ? 'bg-[#1A6FC4] text-white shadow-md border-2 border-blue-200 ring-2 ring-[#1A6FC4] ring-offset-1' 
-                                                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent'}
-                                                    `}
-                                                >
-                                                    {formatSlot(slot)}
-                                                </button>
-                                            );
-                                        })
-                                    )}
+                            {(loadingSlots || (timeSlots.length > 0 || timeSlot)) && !error && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-3">
+                                        Available Slots
+                                        {loadingSlots && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {loadingSlots ? (
+                                            <div className="col-span-3 flex items-center gap-2 text-slate-400 py-2">
+                                                <span className="text-[12px] font-medium">Loading slots...</span>
+                                            </div>
+                                        ) : (
+                                            Array.from(new Set(timeSlot ? [timeSlot, ...timeSlots] : timeSlots)).map((slot) => {
+                                                const isSelected = timeSlot === slot;
+                                                return (
+                                                    <button
+                                                        key={slot}
+                                                        onClick={() => setTimeSlot(slot)}
+                                                        className={`
+                                                            py-2.5 rounded-lg text-xs font-bold transition-all
+                                                            ${isSelected 
+                                                                ? 'bg-[#1A6FC4] text-white shadow-md border-2 border-blue-200 ring-2 ring-[#1A6FC4] ring-offset-1' 
+                                                                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent'}
+                                                        `}
+                                                    >
+                                                        {formatSlot(slot)}
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Consultation Type */}
                             <div>

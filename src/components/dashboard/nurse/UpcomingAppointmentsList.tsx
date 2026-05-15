@@ -73,17 +73,17 @@ const UpcomingAppointmentsList: React.FC = () => {
                     v.length >= 10 &&
                     /^\d{4}-\d{2}-\d{2}/.test(v)
             );
-        if (!iso) return '--:--';
+        if (!iso) return '';
         try {
             const d = new Date(iso);
-            if (isNaN(d.getTime())) return '--:--';
+            if (isNaN(d.getTime())) return '';
             return new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
                 minute: 'numeric',
                 hour12: true
             }).format(d);
         } catch {
-            return '--:--';
+            return '';
         }
     };
 
