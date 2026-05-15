@@ -49,7 +49,11 @@ import DoctorProfileDetail from "./users/DoctorProfileDetail";
 import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import DoctorSchedulePage from "./users/Doctorschedulepage ";
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onLogout?: () => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const { user, logout, isNurse, isDoctor, isAdmin, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -102,8 +106,12 @@ const Dashboard: React.FC = () => {
   }, [location]);
 
   const handleLogout = () => {
-    logout();
-    navigate("/login");
+    if (onLogout) {
+      onLogout();
+    } else {
+      logout();
+      navigate("/login");
+    }
   };
 
   const handleProfileClick = () => {

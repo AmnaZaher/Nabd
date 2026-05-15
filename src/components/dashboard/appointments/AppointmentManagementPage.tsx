@@ -269,11 +269,11 @@ const AppointmentManagementPage: React.FC = () => {
         const fetchClinicDoctors = async () => {
             try {
                 const list = await patientApi.getDoctorsByClinic(Number(filterClinic));
-                const mapped = list.map(d => ({ id: String(d.id), name: d.name }));
+                const mapped = list.map((d: any) => ({ id: String(d.id), name: d.name }));
                 setAvailableDoctors(mapped);
 
                 // If currently selected doctor is not in the new list, reset it
-                if (filterDoctor && !mapped.find(d => d.id === filterDoctor)) {
+                if (filterDoctor && !mapped.find((d: any) => d.id === filterDoctor)) {
                     setFilterDoctor('');
                     setPage(1);
                 }

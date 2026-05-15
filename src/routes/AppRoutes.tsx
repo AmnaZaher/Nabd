@@ -113,8 +113,8 @@ const SuccessPage: React.FC = () => {
 };
 
 export const AppRoutes: React.FC = () => {
-    const { logout } = useAuth();
     const navigate = useNavigate();
+    const { logout } = useAuth();
 
     const handleLogout = () => {
         logout();
