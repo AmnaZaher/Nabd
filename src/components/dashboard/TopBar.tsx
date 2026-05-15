@@ -4,8 +4,7 @@ import { AddUserButton } from './shared/AddUserButton';
 import { useAuth } from '../../context/AuthContext';
 import { staffApi } from '../../api/staff';
 import type { StaffProfile } from '../../types/staff.types';
-import { useNavigate } from 'react-router-dom';
-import { PATHS } from '../../routes/routePaths';
+
 
 interface TopBarProps {
     onProfileClick?: () => void;
@@ -27,7 +26,7 @@ const TopBar: React.FC<TopBarProps> = ({
     showAddUser = true,
 }) => {
     const { user } = useAuth();
-    const navigate = useNavigate();
+
     const [profile, setProfile] = React.useState<StaffProfile | null>(null);
 
     React.useEffect(() => {

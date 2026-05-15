@@ -48,6 +48,8 @@ export interface AppointmentListParams {
     AppointmentType?: number;
     SearchKey?: string;
     search?: string;
+    DateAppointmentFrom?: string;
+    DateAppointmentTo?: string;
 }
 
 // ----- API Calls -----
@@ -99,6 +101,8 @@ export const listAppointments = async (params?: AppointmentListParams) => {
     const dateFilter = params?.DateAppointment || params?.StartDate;
     if (dateFilter) q.append('DateAppointment', dateFilter);
 
+    if (params?.DateAppointmentFrom) q.append('DateAppointmentFrom', params.DateAppointmentFrom);
+    if (params?.DateAppointmentTo) q.append('DateAppointmentTo', params.DateAppointmentTo);
     if (params?.SearchKey) q.append('SearchKey', params.SearchKey);
     if (params?.search) q.append('search', params.search);
 

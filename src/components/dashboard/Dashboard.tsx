@@ -97,7 +97,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   }, [user?.id, isAdmin]);
 
   // Show only first name in greeting
-  const displayName = (adminProfile?.name || user?.name || "Admin").split(
+  const displayName = (adminProfile?.name || receptionistProfile?.name || user?.name || "Admin").split(
     " ",
   )[0];
 
