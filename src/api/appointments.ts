@@ -41,12 +41,11 @@ export interface AppointmentListParams {
     Status?: number | string;
     /** Exact date filter the backend accepts */
     DateAppointment?: string;
-    /** Start date for range filtering */
     DateAppointmentFrom?: string;
-    /** End date for range filtering */
     DateAppointmentTo?: string;
     AppointmentType?: number;
-    Search?: string;
+    SearchKey?: string;
+    search?: string;
 }
 
 // ----- API Calls -----
@@ -98,7 +97,8 @@ export const listAppointments = async (params?: AppointmentListParams) => {
     if (params?.DateAppointmentFrom) q.append('DateAppointmentFrom', params.DateAppointmentFrom);
     if (params?.DateAppointmentTo) q.append('DateAppointmentTo', params.DateAppointmentTo);
 
-    if (params?.Search) q.append('Search', params.Search);
+    if (params?.SearchKey) q.append('SearchKey', params.SearchKey);
+    if (params?.search) q.append('search', params.search);
 
     const qs = q.toString();
     const res = await fetchApi<any>(`/Appointment/Appointments${qs ? `?${qs}` : ''}`);
