@@ -14,6 +14,7 @@ import {
 import TopBar from "../TopBar";
 import { listAppointments, type Appointment } from "../../../api/appointments";
 import { visitApi, type CreateVisitPayload } from "../../../api/visit";
+import { useLocation } from "react-router-dom";
 
 interface PatientVisitPageProps {
   onMenuClick?: () => void;
@@ -21,6 +22,8 @@ interface PatientVisitPageProps {
 }
 
 const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProfileClick }) => {
+  const location = useLocation();
+  const passedApptId = location.state?.selectedApptId;
   const [priority, setPriority] = useState<"routine" | "urgent">("routine");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedApptId, setSelectedApptId] = useState<string>("");
@@ -62,7 +65,9 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
         let appts: Appointment[] = raw?.data?.data || raw?.data?.appointments || raw?.data?.items || (Array.isArray(raw?.data) ? raw.data : []) || raw?.appointments || raw?.items || [];
         appts = appts.filter(a => a.status === 1 || a.status === 2);
         setAppointments(appts);
-        if (appts.length > 0) {
+        if (passedApptId && appts.some(a => a.id.toString() === passedApptId.toString())) {
+          setSelectedApptId(passedApptId.toString());
+        } else if (appts.length > 0) {
           setSelectedApptId(appts[0].id.toString());
         }
       } catch (err) {
@@ -72,7 +77,7 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
       }
     };
     fetchAppointments();
-  }, []);
+  }, [passedApptId]);
 
   const selectedAppt = appointments.find(a => a.id.toString() === selectedApptId);
 
