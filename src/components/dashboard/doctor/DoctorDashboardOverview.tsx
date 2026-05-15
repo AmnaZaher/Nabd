@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { profileApi } from '../../../api/profile';
-import type { DoctorProfile, DoctorScheduleEntry } from '../../../api/profile';
+import type { DoctorProfile } from '../../../api/profile';
 import TopBar from '../TopBar';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar, ClipboardList, CheckCircle } from 'lucide-react';
@@ -18,10 +18,10 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const [profile, setProfile] = useState<DoctorProfile | null>(null);
+    const [, setProfile] = useState<DoctorProfile | null>(null);
     const [stats, setStats] = useState({ total: 0, waiting: 0, completed: 0 });
     const [schedule, setSchedule] = useState<any[]>([]);
-    const [loadingStats, setLoadingStats] = useState(true);
+    const [, setLoadingStats] = useState(true);
 
     // Fetch Doctor Profile via /Users/Doctor/Profile/{UserId}
     useEffect(() => {
@@ -71,16 +71,6 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
         };
         fetchSchedule();
     }, [user?.id]);
-
-    // Display name: prefer the profile from the dedicated endpoint
-    const displayName = (profile?.nameEngLish || user?.name || 'Doctor').split(' ')[0];
-
-    const getGreeting = () => {
-        const hour = new Date().getHours();
-        if (hour < 12) return 'Good Morning';
-        if (hour < 17) return 'Good Afternoon';
-        return 'Good Evening';
-    };
 
     // Chart Data
     const chartData = [

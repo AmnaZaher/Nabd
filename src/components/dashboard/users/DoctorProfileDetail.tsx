@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
 import TopBar from '../TopBar';
+import type { StaffProfile, WorkingSchedule } from '../../../types/staff.types';
 import { Card, Button, Modal } from '../../ui';
 import { staffApi } from '../../../api/staff';
 import { scheduleApi } from '../../../api/schedules';
@@ -79,17 +79,9 @@ const ScheduleRow = ({
     </tr>
 );
 
-const DOC_LABELS = [
-    { key: 'UK-PASS', label: 'UK-PASS-98821-B' },
-    { key: 'CV',      label: 'CV-Dr.Sterling'  },
-    { key: 'LIC-MD',  label: 'LIC-MD-2006'     },
-    { key: 'LIC-MD2', label: 'LIC-MD-2008'     },
-    { key: 'LIC-MD3', label: 'LIC-MD-2009'     },
-];
-
 // ─── Main Component ────────────────────────────────────────
 const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
-    const { id: paramId } = useParams<{ id: string }>();
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
     const [user, setUser] = useState<StaffProfile | null>(null);
@@ -128,7 +120,7 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
 
                 // Fallback to profile schedule
                 if (data.workingSchedule?.length) {
-                    setSchedule(prev => prev.length ? prev : data.workingSchedule!);
+                    setSchedule((prev: any) => prev.length ? prev : data.workingSchedule!);
                 }
             }
         } catch (error) {
@@ -185,7 +177,7 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
         );
     }
 
-    if (!doctor) return (
+    if (!user) return (
         <div className="flex flex-col h-full bg-slate-50 w-full">
             <TopBar title={breadcrumb} onMenuClick={onMenuClick} />
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -268,7 +260,7 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                         <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
                                             <Briefcase className="text-blue-600" size={14} />
                                         </div>
-                                        <span className="text-xs font-black text-blue-600 uppercase tracking-wide">{doctor.role || 'Doctor'}</span>
+                                        <span className="text-xs font-black text-blue-600 uppercase tracking-wide">{user.role || 'Doctor'}</span>
                                     </div>
                                     {user.location && (
                                         <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -436,26 +428,25 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                     <h3 className="text-lg font-black text-slate-900">Documents &amp; Attachments</h3>
                                 </div>
                                 <div className="p-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                    {(user.documents && user.documents.length > 0
-                                        ? user.documents.map((doc) => ({ key: doc.id, label: doc.name, url: doc.url }))
-                                        : DOC_LABELS.map((d, i) => ({ key: d.key, label: d.label, url: `https://picsum.photos/seed/${i + 20}/400/300` }))
-                                    ).map((doc, i) => (
-                                        <div key={doc.key} className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer">
-                                            <img
-                                                src={(doc as any).url || `https://picsum.photos/seed/${i + 20}/400/300`}
-                                                alt={doc.label}
-                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                            />
-                                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <span className="px-3 py-1.5 rounded-lg border border-white text-white text-xs font-bold hover:bg-white hover:text-slate-900 transition-colors">
-                                                    View
-                                                </span>
-                                            </div>
-                                            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-900/80 to-transparent">
-                                                <p className="text-[10px] font-bold text-white truncate">{doc.label}</p>
-                                            </div>
-                                        </a>
-                                    )) : (
+                                    {user.documents && user.documents.length > 0 ? (
+                                        user.documents.map((doc: any) => ({ key: doc.id, label: doc.name, url: doc.url })).map((doc: any, i: number) => (
+                                            <a key={doc.key} href={doc.url} target="_blank" rel="noopener noreferrer" className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer block">
+                                                <img
+                                                    src={(doc as any).url || `https://picsum.photos/seed/${i + 20}/400/300`}
+                                                    alt={doc.label}
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                />
+                                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <span className="px-3 py-1.5 rounded-lg border border-white text-white text-xs font-bold hover:bg-white hover:text-slate-900 transition-colors">
+                                                        View
+                                                    </span>
+                                                </div>
+                                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-900/80 to-transparent">
+                                                    <p className="text-[10px] font-bold text-white truncate">{doc.label}</p>
+                                                </div>
+                                            </a>
+                                        ))
+                                    ) : (
                                         <div className="col-span-5 py-10 text-center text-slate-400 font-bold text-sm">No documents uploaded.</div>
                                     )}
                                 </div>

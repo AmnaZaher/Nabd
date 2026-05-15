@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../../../api/config';
 import TopBar from '../TopBar';
 import { 
-    User, Activity, Clock, FileText, Plus, Save, Trash2,
+    User, Activity, Clock, FileText, Plus, Trash2,
     CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle
 } from 'lucide-react';
 
@@ -18,10 +18,10 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const appointmentId = searchParams.get('appointmentId');
     const visitId = searchParams.get('visitId') || appointmentId; // Using appointmentId as fallback for visitId if not explicitly created yet
     
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
     
     // Patient & Visit State
-    const [visitDetails, setVisitDetails] = useState<any>({
+    const [visitDetails] = useState<any>({
         patientName: 'Ahmad Al-Farsi',
         age: '34 Yrs',
         gender: 'Male',
@@ -51,10 +51,10 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const [showAddPrescription, setShowAddPrescription] = useState(false);
 
     // Orders State
-    const [labOrders, setLabOrders] = useState<any[]>([
+    const [labOrders] = useState<any[]>([
         { id: 1, name: 'CBC Lab', desc: 'Full blood count with differentials' }
     ]);
-    const [radOrders, setRadOrders] = useState<any[]>([
+    const [radOrders] = useState<any[]>([
         { id: 1, name: 'Chest X-Ray', desc: 'Posterior-Anterior view' }
     ]);
 
