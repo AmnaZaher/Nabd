@@ -158,7 +158,7 @@ const AppointmentManagementPage: React.FC = () => {
                 DoctorId: filterDoctor || undefined,
                 ClinicId: filterClinic || undefined,
                 Status: filterStatus !== '' ? filterStatus : undefined,
-                Search: patientSearch || undefined,
+                search: patientSearch || undefined,
                 DateAppointment: (filterFrom && !filterTo) ? filterFrom : undefined,
                 DateAppointmentFrom: (filterFrom && filterTo) ? filterFrom : undefined,
                 DateAppointmentTo: filterTo ? `${filterTo}T23:59:59` : undefined,

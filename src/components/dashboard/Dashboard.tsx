@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { staffApi } from "../../api/staff";
+import type { StaffProfile } from "../../types/staff.types";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 
@@ -48,18 +50,43 @@ import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import DoctorSchedulePage from "./users/Doctorschedulepage ";
 
 const Dashboard: React.FC = () => {
-  const { user, logout, isNurse, isDoctor, isLoading } = useAuth();
+  const { user, logout, isNurse, isDoctor, isAdmin, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [adminProfile, setAdminProfile] = useState<StaffProfile | null>(null);
+  const [receptionistProfile, setReceptionistProfile] = useState<StaffProfile | null>(null);
+
+  // Fetch real display name for greeting
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user?.id && isAdmin) {
+        try {
+          const data = await staffApi.getMyProfile(user.id, user.name);
+          if (data) setAdminProfile(data);
+        } catch (error) {
+          console.error("Failed to fetch admin profile for greeting:", error);
+        }
+      }
+      if (user?.id && !isAdmin) {
+        try {
+          const data = await staffApi.getMyProfile(user.id, user.name);
+          if (data) setReceptionistProfile(data);
+        } catch (error) {
+          console.error("Failed to fetch receptionist profile for greeting:", error);
+        }
+      }
+    };
+    fetchProfile();
+  }, [user?.id, isAdmin]);
 
   // Sync active tab with URL
   useEffect(() => {
     const path = location.pathname;
     if (path.includes("/users") || path.includes("/patients"))    setActiveTab("users");
-    else if (path.includes("/doctor-schedule"))                    setActiveTab("doctor-schedule"); // ← before /appointments
+    else if (path.includes("/doctor-schedule"))                    setActiveTab("doctor-schedule");
     else if (path.includes("/appointments"))                       setActiveTab("appointments");
     else if (path.includes("/radiology"))                          setActiveTab("radiology");
     else if (path.includes("/lab-catalog"))                        setActiveTab("lab-catalog");
@@ -79,7 +106,13 @@ const Dashboard: React.FC = () => {
     navigate("/login");
   };
 
-  const handleProfileClick = () => navigate("/dashboard/profile");
+  const handleProfileClick = () => {
+      if (isAdmin) {
+          navigate("/dashboard/profile");
+      } else {
+          navigate("/dashboard/profile"); // or receptionist-profile if you prefer
+      }
+  };
 
   const handleAddUser = (type: "patient" | "staff") => {
     navigate(
@@ -104,7 +137,7 @@ const Dashboard: React.FC = () => {
     return "Good Evening";
   };
 
-  const displayName = user?.name || "User";
+  const displayName = (adminProfile?.name || receptionistProfile?.name || user?.name || "User").split(" ")[0];
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -206,13 +239,11 @@ const Dashboard: React.FC = () => {
 
           {/* Lab Catalog */}
           <Route path="lab-catalog">
-
-           // ACCEPT THIS (main has more routes)
-<Route index element={<LabCatalogPage />} />
-<Route path="add" element={<AddLabTest />} />
-<Route path="details/:id" element={<LabTestDetail />} />
-<Route path="edit/:id" element={<EditLabTest />} />
-<Route path=":id" element={<LabTestDetail />} />
+            <Route index element={<LabCatalogPage />} />
+            <Route path="add" element={<AddLabTest />} />
+            <Route path="details/:id" element={<LabTestDetail />} />
+            <Route path="edit/:id" element={<EditLabTest />} />
+            <Route path=":id" element={<LabTestDetail />} />
           </Route>
 
           {/* Appointments (admin / nurse / receptionist) */}
@@ -230,7 +261,7 @@ const Dashboard: React.FC = () => {
             <Route path="edit/:id" element={<EditAppointmentPage />} />
           </Route>
 
-          {/* Doctor's own schedule — uses /Users/Doctor/DoctorSchedule/{id} */}
+          {/* Doctor's own schedule */}
           <Route
             path="doctor-schedule"
             element={
@@ -265,7 +296,7 @@ const Dashboard: React.FC = () => {
           <Route
             path="profile"
             element={
-              user?.role === "Admin" ? (
+              isAdmin ? (
                 <AdminProfilePage />
               ) : isDoctor ? (
                 <DoctorProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />
@@ -277,7 +308,7 @@ const Dashboard: React.FC = () => {
           <Route
             path="profile/edit"
             element={
-              user?.role === "Admin" ? (
+              isAdmin ? (
                 <AdminProfilePage />
               ) : isDoctor ? (
                 <EditDoctorProfilePage />
