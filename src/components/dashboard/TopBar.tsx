@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, Search, User as UserIcon, UserPlus } from 'lucide-react';
 import { AddUserButton } from './shared/AddUserButton';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, type User } from '../../context/AuthContext';
 import { staffApi } from '../../api/staff';
 import { profileApi } from '../../api/profile';
 import type { StaffProfile } from '../../types/staff.types';
@@ -59,7 +59,7 @@ const TopBar: React.FC<TopBarProps> = ({
         fetchProfile();
     }, [user?.id]);
 
-    const displayUser = profile || user;
+    const displayUser: StaffProfile | User | null = profile || user;
 
     return (
         <header className="px-4 md:px-10 py-4 md:py-6 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-30 w-full overflow-visible">
