@@ -1,8 +1,9 @@
 export interface PatientListItem {
-  id: string;
+  id: string;         // user account GUID (used for navigation & API)
+  userId: string;     // alias kept for clarity
   name: string;
   subtitle: string;
-  patientId: string;
+  patientId: string;  // national ID / file number
   demographics: string;
   lastVisit: string;
   upcoming: string;

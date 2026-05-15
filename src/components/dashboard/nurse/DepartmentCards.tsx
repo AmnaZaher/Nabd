@@ -60,7 +60,7 @@ const DepartmentCards: React.FC = () => {
                 // For a real app, we would get the number of patients from a stats API.
                 // Here we fetch today's appointments and count by clinic
                 const today = new Date().toISOString().split('T')[0];
-                const apptRes = await listAppointments({ StartDate: today, EndDate: today, PageSize: 1000 });
+                const apptRes = await listAppointments({ DateAppointmentFrom: today, DateAppointmentTo: today, PageSize: 1000 });
                 let appts = apptRes?.data?.items || apptRes?.data || apptRes || [];
                 if (!Array.isArray(appts)) appts = [];
                 

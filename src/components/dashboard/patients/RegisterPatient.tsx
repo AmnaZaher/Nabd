@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, UserPlus } from 'lucide-react';
 import { AddUserButton } from '../shared/AddUserButton';
 import { registerPatient } from '../../../api/auth';
 import MedicalHistoryForm from './MedicalHistoryForm';
@@ -13,9 +13,10 @@ import type { ChronicDiseaseRecord } from './ChronicDiseasesForm';
 
 interface RegisterPatientProps {
     onSwitchView?: (type: 'patient' | 'staff', role?: string) => void;
+    isNurse?: boolean;
 }
 
-const RegisterPatient = ({ onSwitchView }: RegisterPatientProps) => {
+const RegisterPatient = ({ onSwitchView, isNurse = false }: RegisterPatientProps) => {
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -133,17 +134,29 @@ const RegisterPatient = ({ onSwitchView }: RegisterPatientProps) => {
             <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
                 {/* Breadcrumb - larger text */}
                 <div className="flex items-center gap-2 text-base">
-                    <span className="font-extrabold text-slate-900 text-lg">Add New User</span>
+                    <span className="font-extrabold text-slate-900 text-lg">
+                        {isNurse ? 'Patient Management' : 'Add New User'}
+                    </span>
                     <span className="text-slate-400 text-lg">›</span>
-                    <span className="text-slate-500 font-semibold text-base">Patient</span>
+                    <span className="text-slate-500 font-semibold text-base">Register Patient</span>
                 </div>
 
-                {/* Add User Button only */}
-                <AddUserButton
-                    onClick={(type: 'patient' | 'staff', role?: string) => {
-                        if (onSwitchView) onSwitchView(type, role);
-                    }}
-                />
+                {/* Add User/Patient Button */}
+                {isNurse ? (
+                    <button 
+                        onClick={() => onSwitchView?.('patient')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold shadow-md transition-all active:scale-95 text-sm"
+                    >
+                        <UserPlus size={17} />
+                        <span>Add Patient</span>
+                    </button>
+                ) : (
+                    <AddUserButton
+                        onClick={(type: 'patient' | 'staff', role?: string) => {
+                            if (onSwitchView) onSwitchView(type, role);
+                        }}
+                    />
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-8">

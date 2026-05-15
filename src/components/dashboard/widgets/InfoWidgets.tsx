@@ -23,7 +23,7 @@ export const PatientFeed: React.FC = () => {
             try {
                 // Fetch recent patients, sorting by newest if possible
                 const res = await patientApi.getPatients({ PageIndex: 0, PageSize: 5, sort: 0 }); // 0 = Newest
-                const list = res?.patients || (res as any)?.items || (res as any)?.data || [];
+                const list = Array.isArray(res) ? res : (res?.patients || (res as any)?.items || (res as any)?.data || []);
                 
                 const mappedPatients = list.map((item: any) => ({
                     id: item.id || item.Id || item.nationalId,
@@ -59,7 +59,7 @@ export const PatientFeed: React.FC = () => {
                         <div 
                             key={patient.id} 
                             className="flex items-center gap-3 group cursor-pointer"
-                            onClick={() => navigate(`/dashboard/users/patient/${patient.patientId || patient.id}`)}
+                            onClick={() => navigate(`/dashboard/users/patient/${patient.id}`)}
                         >
                             <img
                                 src={patient.avatar}

@@ -16,8 +16,8 @@ const TodaysScheduleTimeline: React.FC = () => {
             try {
                 const today = new Date().toISOString().split('T')[0];
                 const res = await listAppointments({ 
-                    StartDate: today, 
-                    EndDate: today, 
+                    DateAppointmentFrom: today, 
+                    DateAppointmentTo: today, 
                     PageSize: 100 
                 });
                 let appts = res?.data?.items || res?.data || res || [];
