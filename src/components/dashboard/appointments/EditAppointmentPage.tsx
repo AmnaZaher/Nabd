@@ -30,7 +30,6 @@ const EditAppointmentPage: React.FC = () => {
     
     // Data sources
     const [doctors, setDoctors] = useState<any[]>([]);
-    const [allDoctors, setAllDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
     const [patients, setPatients] = useState<any[]>([]);
     const [loadingDoctors, setLoadingDoctors] = useState(false);
@@ -167,7 +166,7 @@ const EditAppointmentPage: React.FC = () => {
             setNoDoctorsForClinic(false);
             try {
                 const list = await patientApi.getDoctorsByClinic(Number(clinicId));
-                let mapped = list.map(d => ({ id: String(d.id), name: d.name }));
+                let mapped = list.map((d: any) => ({ id: String(d.id), name: d.name }));
                 
                 try {
                     const schedulesRes = await scheduleApi.getSchedules({ ClinicId: Number(clinicId), PageSize: 1000 });
@@ -180,7 +179,7 @@ const EditAppointmentPage: React.FC = () => {
                         if (dId) doctorsWithSchedules.add(String(dId));
                     });
                     
-                    mapped = mapped.filter(d => doctorsWithSchedules.has(d.id));
+                    mapped = mapped.filter((d: any) => doctorsWithSchedules.has(d.id));
                 } catch (err) {
                     console.warn('Failed to fetch schedules to filter doctors:', err);
                 }
@@ -189,7 +188,7 @@ const EditAppointmentPage: React.FC = () => {
                 setNoDoctorsForClinic(mapped.length === 0);
                 // Clear doctor selection if not in new list
                 setDoctorId(prev => {
-                    if (prev && !mapped.find(d => d.id === prev)) return '';
+                    if (prev && !mapped.find((d: any) => d.id === prev)) return '';
                     return prev;
                 });
             } catch {
