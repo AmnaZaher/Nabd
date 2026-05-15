@@ -30,7 +30,6 @@ const EditAppointmentPage: React.FC = () => {
     
     // Data sources
     const [doctors, setDoctors] = useState<any[]>([]);
-    const [allDoctors, setAllDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
     const [patients, setPatients] = useState<any[]>([]);
     const [loadingDoctors, setLoadingDoctors] = useState(false);
