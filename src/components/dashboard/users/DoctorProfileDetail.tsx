@@ -4,11 +4,13 @@ import TopBar from '../TopBar';
 import type { StaffProfile, WorkingSchedule } from '../../../types/staff.types';
 import { Card, Button, Modal } from '../../ui';
 import { staffApi } from '../../../api/staff';
+import { profileApi } from '../../../api/profile';
 import { scheduleApi } from '../../../api/schedules';
 import {
     Mail, ShieldCheck, Pencil, AlertTriangle,
     Trash2, MapPin, User, Briefcase, Clock, FileText, CheckCircle2,
 } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
 // ─── Helpers ───────────────────────────────────────────────
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -81,7 +83,10 @@ const ScheduleRow = ({
 
 // ─── Main Component ────────────────────────────────────────
 const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
-    const { id } = useParams<{ id: string }>();
+    const { id: paramId } = useParams<{ id: string }>();
+    const { user: authUser } = useAuth();
+    const id = paramId || authUser?.id;
+    const isOwnProfile = !paramId || (authUser && String(authUser.id) === String(id));
     const navigate = useNavigate();
 
     const [user, setUser] = useState<StaffProfile | null>(null);
@@ -94,12 +99,49 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
         if (!id) return;
         setLoading(true);
         try {
-            const data = await staffApi.getStaffById(id);
-            if (data) {
-                setUser(data);
+            // Fetch directly from the doctor database instead of admin module
+            const doctor = await profileApi.getDoctorProfile(id);
+            
+            if (doctor) {
+                const files = await profileApi.getUserFiles(id);
+                
+                const mappedProfile: any = {
+                    ...doctor,
+                    id: String(doctor.id),
+                    name: doctor.nameEngLish || (doctor as any).name || 'Unknown',
+                    fullNameArabic: doctor.nameArabic || doctor.fullNameArabic,
+                    email: doctor.email,
+                    phone: doctor.phoneNumber || (doctor as any).phone,
+                    gender: doctor.gender,
+                    dateOfBirth: doctor.dateOfBirth,
+                    address: doctor.address,
+                    nationalId: doctor.nationalId,
+                    role: doctor.role || 'Doctor',
+                    department: doctor.department || doctor.assignedDept,
+                    location: doctor.location || doctor.city || doctor.assignedClinic,
+                    status: doctor.isActive ? 'Active' : 'Disabled',
+                    avatar: doctor.avatar || doctor.personalPhotos,
+                    educationalQualification: doctor.educationalQualification,
+                    graduationYear: doctor.graduationYear ? String(doctor.graduationYear) : '',
+                    syndicateNumber: doctor.medicalSyndicateNumber || doctor.syndicateNumber,
+                    dateOfAppointment: (doctor as any).dateOfAppointment || '',
+                    isHeadOfDepartment: !!(doctor as any).isHeadOfDepartment,
+                    assignedDept: doctor.department || doctor.assignedDept,
+                    assignedClinic: doctor.location || doctor.city || doctor.assignedClinic,
+                    createdAt: doctor.createdAt,
+                    updatedAt: doctor.updatedAt,
+                    updatedBy: doctor.updatedBy,
+                    documents: files.map(f => ({
+                        id: f.id,
+                        name: f.fileName,
+                        url: f.fileUrl
+                    }))
+                };
+                
+                setUser(mappedProfile as StaffProfile);
 
-                // Try fetching real schedule by doctorId
-                const numericId = parseInt(data.id ?? id, 10);
+                // Try fetching schedule
+                const numericId = parseInt(String(doctor.id ?? id), 10);
                 if (!isNaN(numericId)) {
                     try {
                         const res = await scheduleApi.getSchedules({ DoctorId: numericId, PageSize: 50 });
@@ -110,21 +152,16 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                             setSchedule(items.map((s: any) => ({
                                 apiId:     s.id,
                                 day:       DAY_NAMES[s.dayOfWeek] ?? s.dayOfWeek,
-                                startTime: formatTime(s.startTime),
-                                endTime:   formatTime(s.endTime),
+                                startTime: s.startTime?.includes('AM') || s.startTime?.includes('PM') ? s.startTime : formatTime(s.startTime),
+                                endTime:   s.endTime?.includes('AM') || s.endTime?.includes('PM') ? s.endTime : formatTime(s.endTime),
                                 shift:     getShift(s.startTime),
                             })));
                         }
                     } catch { /* schedule unavailable */ }
                 }
-
-                // Fallback to profile schedule
-                if (data.workingSchedule?.length) {
-                    setSchedule((prev: any) => prev.length ? prev : data.workingSchedule!);
-                }
             }
         } catch (error) {
-            console.error('Failed to fetch doctor:', error);
+            console.error('Failed to fetch doctor from profile database:', error);
         } finally {
             setLoading(false);
         }
@@ -156,13 +193,17 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
         }
     };
 
-    const breadcrumb = (
+    const breadcrumb = isOwnProfile ? (
         <span className="text-slate-400">
-            <span className="cursor-pointer hover:text-slate-600 transition-colors" onClick={() => navigate('/dashboard/users')}>
+            <span className="text-blue-600 font-bold uppercase tracking-widest text-xs">MY PROFILE</span>
+        </span>
+    ) : (
+        <span className="text-slate-400 text-xs">
+            <span className="cursor-pointer hover:text-slate-600 transition-colors font-bold uppercase tracking-widest" onClick={() => navigate('/dashboard/users')}>
                 USER MANAGEMENT
             </span>
             <span className="mx-2 text-slate-300">&rsaquo;</span>
-            <span className="text-blue-600 font-bold">PROFILE DETAIL</span>
+            <span className="text-blue-600 font-bold uppercase tracking-widest">PROFILE DETAIL</span>
         </span>
     );
 
@@ -186,18 +227,17 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                 </div>
                 <h2 className="text-xl font-bold text-slate-900 mb-2">Doctor Profile Not Found</h2>
                 <p className="text-slate-500 mb-6">We couldn't find the staff member you're looking for.</p>
-                <Button onClick={() => navigate('/dashboard/users')}>Back to User Management</Button>
+                {isOwnProfile ? (
+                    <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
+                ) : (
+                    <Button onClick={() => navigate('/dashboard/users')}>Back to User Management</Button>
+                )}
             </div>
         </div>
     );
 
     const isActive = user.status === 'Active';
-    const displaySchedule = schedule.length > 0 ? schedule : [
-        { day: 'Monday',    startTime: '08:00 AM', endTime: '04:00 PM', shift: 'Morning' as const },
-        { day: 'Wednesday', startTime: '08:00 AM', endTime: '04:00 PM', shift: 'Morning' as const },
-        { day: 'Thursday',  startTime: '04:00 PM', endTime: '11:00 PM', shift: 'Evening' as const },
-        { day: 'Friday',    startTime: '08:00 AM', endTime: '04:00 PM', shift: 'Morning' as const },
-    ];
+    const displaySchedule = schedule;
 
     return (
         <div className="flex flex-col flex-1 h-full w-full bg-slate-50 relative font-sans overflow-hidden">
@@ -218,12 +258,14 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                             <p className="text-slate-400 font-bold text-sm mt-1">View doctor details and information</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setDeactivateModal(true)}
-                                className="px-5 py-2 rounded-lg border border-red-300 text-red-500 font-bold text-sm hover:bg-red-50 transition-colors"
-                            >
-                                {isActive ? 'Deactivate' : 'Activate'}
-                            </button>
+                            {!isOwnProfile && (
+                                <button
+                                    onClick={() => setDeactivateModal(true)}
+                                    className="px-5 py-2 rounded-lg border border-red-300 text-red-500 font-bold text-sm hover:bg-red-50 transition-colors"
+                                >
+                                    {isActive ? 'Deactivate' : 'Activate'}
+                                </button>
+                            )}
                             <button
                                 onClick={() => navigate(`/dashboard/users/staff/edit/${id}`)}
                                 className="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -297,22 +339,22 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Created At</span>
                                         <span className="text-xs font-bold text-slate-900">
-                                            {(user as any).createdAt ? new Date((user as any).createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '12 Oct 2022, 09:14 AM'}
+                                            {(user as any).createdAt ? new Date((user as any).createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Last Updated</span>
                                         <span className="text-xs font-bold text-slate-900">
-                                            {(user as any).updatedAt ? new Date((user as any).updatedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '04 Mar 2024, 02:45 PM'}
+                                            {(user as any).updatedAt ? new Date((user as any).updatedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Updated By</span>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-5 h-5 rounded-full bg-slate-200 overflow-hidden">
-                                                <img src="https://ui-avatars.com/api/?name=Admin&size=20" alt="Admin" />
+                                            <div className="w-5 h-5 rounded-full bg-slate-200 overflow-hidden text-[10px] font-black text-slate-500 flex items-center justify-center">
+                                                {((user as any).updatedBy?.[0] || 'S').toUpperCase()}
                                             </div>
-                                            <span className="text-xs font-bold text-slate-900">Admin (Sarah Jenkins)</span>
+                                            <span className="text-xs font-bold text-slate-900">{(user as any).updatedBy || 'System Admin'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -413,9 +455,17 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {displaySchedule.map((s, idx) => (
-                                                <ScheduleRow key={(s as any).apiId ?? idx} schedule={s} onDelete={handleDeleteScheduleRow} />
-                                            ))}
+                                            {displaySchedule.length > 0 ? (
+                                                displaySchedule.map((s, idx) => (
+                                                    <ScheduleRow key={(s as any).apiId ?? idx} schedule={s} onDelete={handleDeleteScheduleRow} />
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={5} className="py-10 text-center text-slate-400 font-bold text-sm">
+                                                        No active schedule slots found.
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
