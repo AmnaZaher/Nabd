@@ -7,8 +7,7 @@ import {
     listAppointments, deleteAppointment, type Appointment
 } from '../../../api/appointments';
 import { getClinics } from '../../../api/clinics';
-import { staffApi } from '../../../api/staff';
-import { scheduleApi } from '../../../api/schedules';
+import { patientApi } from '../../../api/patient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -137,8 +136,7 @@ const AppointmentManagementPage: React.FC = () => {
     const [filterFrom, setFilterFrom] = useState('');
     const [filterTo, setFilterTo] = useState('');
 
-    // Dropdowns for modal
-    const [doctors, setDoctors] = useState<any[]>([]);
+    // Dropdowns
     const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
 
@@ -195,46 +193,14 @@ const AppointmentManagementPage: React.FC = () => {
     useEffect(() => {
         const load = async () => {
             try {
-                const [drRes, clinicRes, statsApptsRes] = await Promise.all([
-                    staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 }),
+                const [clinicRes, statsApptsRes] = await Promise.all([
                     getClinics({ PageIndex: 0, PageSize: 100 }),
-                    // Fetch today's appointments for stats
                     listAppointments({ 
                         DateAppointment: new Date().toISOString().split('T')[0], 
                         PageIndex: 0, 
                         PageSize: 1000 
                     })
                 ]);
-
-                const staffList = (drRes as any)?.staffs ?? (drRes as any)?.items ?? (drRes as any)?.data ?? (drRes as any)?.data?.data ?? (Array.isArray(drRes) ? drRes : []);
-                const drList = staffList.filter((s: any) => {
-                    const rolesMap: Record<string, string> = { 
-                        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
-                        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
-                    };
-                    let r = s.role ?? s.Role ?? s.roleName ?? s.RoleName ?? s.roleId ?? s.RoleId ?? s.staffRole ?? s.StaffRole;
-                    let rStr = typeof r === 'object' ? (r?.name ?? r?.Name ?? rolesMap[r?.id ?? r?.Id]) : String(r);
-                    rStr = rolesMap[rStr] ?? rStr;
-                    
-                    if (!rStr || rStr === 'undefined') {
-                        for (const k in s) {
-                            if (k.toLowerCase().includes('role')) {
-                                const val = s[k];
-                                rStr = typeof val === 'object' ? (val?.name ?? val?.Name ?? rolesMap[val?.id ?? val?.Id]) : String(val);
-                                rStr = rolesMap[rStr] ?? rStr;
-                                break;
-                            }
-                        }
-                    }
-                    return rStr === 'Doctor' || rStr === '2';
-                }).map((d: any) => ({
-                    ...d,
-                    id: d.id || d.Id || d.nationalId || d.NationalId,
-                    name: d.fullNameEnglish || d.FullNameEnglish || d.name || d.Name || `Dr. #${d.id || d.Id}`
-                }));
-                const sortedDrList = drList.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-                setDoctors(sortedDrList);
-                setAvailableDoctors(sortedDrList);
 
                 const rawClinic: any = clinicRes;
                 const clinicList =
@@ -263,9 +229,20 @@ const AppointmentManagementPage: React.FC = () => {
                     rawStats?.appointments ?? 
                     [];
                 
-                const waiting = todayAppts.filter(a => a.status === 2 || a.status === 6).length; // In Progress or Waiting List
-                const completed = todayAppts.filter(a => a.status === 3).length;
-                const cancelled = todayAppts.filter(a => a.status === 5).length;
+                // Coerce status to number to handle backends that return status as a string (e.g. "2", "3")
+                // Also match by label string in case the backend returns e.g. "InProgress", "Completed"
+                const resolveStatus = (s: any): number => {
+                    const n = Number(s);
+                    if (!isNaN(n) && n > 0) return n;
+                    // Try matching label from STATUS_MAP
+                    const key = Object.keys(STATUS_MAP).find(
+                        k => STATUS_MAP[Number(k)].label.replace(/\s/g, '').toLowerCase() === String(s).replace(/\s/g, '').toLowerCase()
+                    );
+                    return key ? Number(key) : 0;
+                };
+                const waiting = todayAppts.filter(a => { const st = resolveStatus(a.status); return st === 2 || st === 6; }).length;
+                const completed = todayAppts.filter(a => resolveStatus(a.status) === 3).length;
+                const cancelled = todayAppts.filter(a => resolveStatus(a.status) === 5).length;
 
                 setStats({
                     totalToday: todayAppts.length,
@@ -281,36 +258,33 @@ const AppointmentManagementPage: React.FC = () => {
         load();
     }, []);
 
-    // Filter doctors when a clinic is selected
+    // Fetch doctors for selected clinic using the dedicated endpoint
     useEffect(() => {
         if (!filterClinic) {
-            setAvailableDoctors(doctors);
+            setAvailableDoctors([]);
+            setFilterDoctor('');
             return;
         }
 
         const fetchClinicDoctors = async () => {
             try {
-                const res = await scheduleApi.getSchedules({ ClinicId: Number(filterClinic), PageSize: 1000 });
-                const rawList = (res as any)?.data?.data || (res as any)?.data?.items || (res as any)?.items || (Array.isArray((res as any)?.data) ? (res as any).data : []) || [];
-                
-                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId || s.DoctorId)));
-                
-                const filtered = doctors.filter(d => doctorIds.has(String(d.id)));
-                setAvailableDoctors(filtered);
+                const list = await patientApi.getDoctorsByClinic(Number(filterClinic));
+                const mapped = list.map(d => ({ id: String(d.id), name: d.name }));
+                setAvailableDoctors(mapped);
 
                 // If currently selected doctor is not in the new list, reset it
-                if (filterDoctor && !doctorIds.has(String(filterDoctor))) {
+                if (filterDoctor && !mapped.find(d => d.id === filterDoctor)) {
                     setFilterDoctor('');
                     setPage(1);
                 }
             } catch (err) {
-                console.error("Failed to fetch schedules for clinic:", err);
-                setAvailableDoctors(doctors); // Fallback to all doctors
+                console.error("Failed to fetch doctors for clinic:", err);
+                setAvailableDoctors([]);
             }
         };
 
         fetchClinicDoctors();
-    }, [filterClinic, doctors, filterDoctor]);
+    }, [filterClinic]);
 
     useEffect(() => { fetchAppointments(); }, [fetchAppointments, patientSearch]);
 
@@ -346,9 +320,7 @@ const AppointmentManagementPage: React.FC = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 border-b border-slate-100 mb-2">
-                            <h1 className="text-[20px] font-black text-slate-800 tracking-tighter uppercase">Appointments</h1>
-                        </div>
+
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                             <div>
                                 <h2 className="text-[32px] font-bold text-slate-800 tracking-tight">Appointments</h2>
@@ -492,8 +464,7 @@ const AppointmentManagementPage: React.FC = () => {
                                     appointments.map((apt) => {
                                         const aptDateRaw = getAptDate(apt);
                                         const { date, time } = fmtDateTime(aptDateRaw);
-                                        const foundDoctor = doctors.find(d => String(d.id) === String(apt.doctorId));
-                                        const displayDoctorName = foundDoctor ? foundDoctor.name : (apt.doctorName || '—');
+                                        const displayDoctorName = apt.doctorName || '—';
 
                                         return (
                                             <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors group">
@@ -524,7 +495,7 @@ const AppointmentManagementPage: React.FC = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">
-                                                        <button onClick={() => navigate(`/dashboard/appointments/edit/${apt.id}`)}
+                                                        <button onClick={() => navigate(`/dashboard/appointments/edit/${apt.id}`, { state: { appointment: apt } })}
                                                             className="text-slate-400 hover:text-[#1A6FC4] transition-colors" title="Edit">
                                                             <Edit2 size={16} strokeWidth={2.5} />
                                                         </button>
@@ -546,7 +517,9 @@ const AppointmentManagementPage: React.FC = () => {
                                                         {(apt.status === 5 || String(apt.status).toLowerCase() === 'cancelled') ? (
                                                             <span className="text-slate-400 font-medium">—</span>
                                                         ) : (
-                                                            <button className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white text-[12px] font-bold px-4 py-1.5 rounded-md transition-colors shadow-sm w-full max-w-[80px]">
+                                                            <button 
+                                                                onClick={() => navigate('/dashboard/patient-visit', { state: { selectedApptId: apt.id } })}
+                                                                className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white text-[12px] font-bold px-4 py-1.5 rounded-md transition-colors shadow-sm w-full max-w-[80px]">
                                                                 Create
                                                             </button>
                                                         )}
