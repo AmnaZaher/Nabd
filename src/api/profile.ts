@@ -32,6 +32,11 @@ export interface DoctorProfile {
   syndicateNumber?: string;
   assignedDept?: string;
   assignedClinic?: string;
+  
+  // Audit fields
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface DoctorScheduleEntry {
@@ -107,6 +112,10 @@ const normalizeDoctorProfile = (raw: any, userId: string | number): DoctorProfil
     syndicateNumber:          raw.medicalSyndicateNumber ?? raw.MedicalSyndicateNumber ?? raw.syndicateNumber ?? '',
     assignedDept:             raw.department       ?? raw.Department       ?? raw.dept ?? '',
     assignedClinic:           raw.location         ?? raw.Location         ?? raw.city ?? raw.City ?? '',
+
+    createdAt:                raw.createdAt        ?? raw.CreatedAt        ?? raw.createdDate ?? raw.CreatedDate ?? '',
+    updatedAt:                raw.updatedAt        ?? raw.UpdatedAt        ?? raw.updatedDate ?? raw.UpdatedDate ?? '',
+    updatedBy:                raw.updatedBy        ?? raw.UpdatedBy        ?? raw.modifiedBy ?? raw.ModifiedBy ?? '',
   };
 };
 
