@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Edit3,
@@ -10,13 +10,59 @@ import {
   Key,
   Calendar,
   UserCheck,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ChangePasswordModal from "./ChangePasswordModal";
+import { useAuth } from "../../../context/AuthContext";
+import { staffApi } from "../../../api/staff";
+import type { StaffProfile } from "../../../types/staff.types";
 
 const ReceptionistProfile: React.FC = () => {
   const navigate = useNavigate();
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
+  const { user, logout } = useAuth();
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user?.id) {
+        setLoading(true);
+        try {
+          const data = await staffApi.getMyProfile(user.id, user.name, user.role);
+          if (data) setProfile(data);
+        } catch (error) {
+          console.error("Failed to fetch profile:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    fetchProfile();
+  }, [user?.id]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#1A6FC4]" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="w-full min-h-screen bg-[#F8FAFC] flex items-center justify-center flex-col gap-4">
+        <p className="text-slate-500 font-bold">Failed to load profile data.</p>
+        <button onClick={() => navigate(-1)} className="text-blue-600 hover:underline">Go Back</button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans pb-20">
@@ -39,7 +85,7 @@ const ReceptionistProfile: React.FC = () => {
           </button>
           <button
             onClick={() => navigate("edit")}
-            className="flex items-center gap-2 bg-[#1A6FC4] text-white px-6 py-2 rounded-xl font-bold text-sm"
+            className="flex items-center gap-2 bg-[#1A6FC4] text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-[#165DA5] transition-colors"
           >
             <Edit3 size={18} /> Edit Profile
           </button>
@@ -55,26 +101,28 @@ const ReceptionistProfile: React.FC = () => {
 
             <div className="relative z-10 flex flex-col items-center">
               <div className="relative mb-6">
-                <div className="w-40 h-40 rounded-2xl overflow-hidden border-4 border-[#1A6FC4] p-1">
+                <div className="w-40 h-40 rounded-2xl overflow-hidden border-4 border-[#1A6FC4] p-1 bg-slate-50">
                   <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&h=200&auto=format&fit=crop"
-                    alt="Sarah Mitchell"
+                    src={profile.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&h=200&auto=format&fit=crop"}
+                    alt={profile.name}
                     className="w-full h-full object-cover rounded-xl"
                   />
                 </div>
-                <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 border-4 border-white rounded-full"></div>
+                <div className={`absolute bottom-2 right-2 w-6 h-6 border-4 border-white rounded-full ${profile.status === 'Active' ? 'bg-green-500' : 'bg-slate-400'}`}></div>
               </div>
 
               <h3 className="text-2xl font-black text-slate-900">
-                Sarah Mitchell
+                {profile.name}
               </h3>
-              <p className="text-slate-400 font-bold mb-4">(سارة ميتشل)</p>
+              {profile.fullNameArabic && (
+                <p className="text-slate-400 font-bold mb-4">({profile.fullNameArabic})</p>
+              )}
 
               <div className="inline-block px-4 py-1.5 bg-blue-50 text-[#1A6FC4] rounded-full text-xs font-black uppercase tracking-widest mb-2">
-                Receptionist
+                {profile.role || "Receptionist"}
               </div>
-              <div className="inline-block px-4 py-1.5 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-8">
-                ACTIVE
+              <div className={`inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-8 ${profile.status === 'Active' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
+                {profile.status}
               </div>
 
               <div className="w-full border-t border-slate-100 pt-8">
@@ -83,10 +131,7 @@ const ReceptionistProfile: React.FC = () => {
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   <span className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
-                    General Surgery
-                  </span>
-                  <span className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
-                    Orthopedics
+                    {profile.department || "General"}
                   </span>
                 </div>
               </div>
@@ -110,27 +155,27 @@ const ReceptionistProfile: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-12">
               <InfoField
                 label="Full Name (English)"
-                value="Sarah Elizabeth Mitchell"
+                value={profile.name}
               />
               <InfoField
                 label="Full Name (Arabic)"
-                value="سارة إليزابيث ميتشل"
+                value={profile.fullNameArabic || "--"}
                 isArabic
               />
-              <InfoField label="ID" value="579935" />
+              <InfoField label="ID" value={profile.id} />
               <InfoField
                 label="Email Address"
-                value="s.mitchell@clinicalprecision.com"
+                value={profile.email || "--"}
               />
-              <InfoField label="Phone Number" value="+1 (555) 902-3344" />
-              <InfoField label="Gender" value="Female" />
+              <InfoField label="Phone Number" value={profile.phone || "--"} />
+              <InfoField label="Gender" value={profile.gender || "--"} />
               <InfoField
                 label="Residential Address"
-                value="742 Evergreen Terrace, Medical District"
+                value={profile.address || "--"}
               />
-              <InfoField label="Date of Birth" value="May 14, 1992" />
-              <InfoField label="National ID" value="ID-8829-X011" />
-              <InfoField label="City / State" value="Rochester, Minnesota" />
+              <InfoField label="Date of Birth" value={profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : "--"} />
+              <InfoField label="National ID" value={profile.nationalId || "--"} />
+              <InfoField label="City / Country" value={`${profile.city || '--'}, ${profile.country || '--'}`} />
             </div>
           </section>
 
@@ -145,55 +190,23 @@ const ReceptionistProfile: React.FC = () => {
               </h3>
             </div>
 
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-              Assigned Departments
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-              <div className="flex items-center gap-4 p-4 bg-[#F8FAFC] rounded-2xl border border-slate-100">
-                <div className="bg-white p-2.5 rounded-xl text-blue-600 shadow-sm">
-                  <User size={20} />
-                </div>
-                <div>
-                  <p className="font-black text-slate-800 text-sm">
-                    General Surgery
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-bold">
-                    North Wing, Floor 4
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 bg-[#F8FAFC] rounded-2xl border border-slate-100">
-                <div className="bg-white p-2.5 rounded-xl text-blue-600 shadow-sm">
-                  <User size={20} />
-                </div>
-                <div>
-                  <p className="font-black text-slate-800 text-sm">
-                    Orthopedics
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-bold">
-                    East Wing, Floor 2
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-t border-slate-100 pt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">
-                  Account Created At
+                  Last Login
                 </p>
                 <div className="flex items-center gap-2 font-black text-slate-800">
                   <Calendar size={18} className="text-slate-400" />
-                  Jan 12, 2023
+                  {profile.lastLogin ? new Date(profile.lastLogin).toLocaleDateString() : "--"}
                 </div>
               </div>
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">
-                  Created By
+                  Department
                 </p>
                 <div className="flex items-center gap-2 font-black text-slate-800">
                   <UserCheck size={18} className="text-slate-400" />
-                  Admin (James Wilson)
+                  {profile.department || "General"}
                 </div>
               </div>
             </div>
@@ -207,26 +220,25 @@ const ReceptionistProfile: React.FC = () => {
           <div className="bg-slate-100 p-2 rounded-lg">
             <Info size={20} />
           </div>
-          Last account update was on Oct 12, 2023
+          Keep your password secure and update it regularly.
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <button className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all">
+          <button onClick={handleLogout} className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all">
             <LogOut size={18} /> Logout
           </button>
           <button className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-all border border-red-100">
             <Trash2 size={18} /> Delete Account
           </button>
           <button
-            onClick={() => setIsPasswordModalOpen(true)} // فتح الـ Modal
-            className="flex items-center cursor-pointer gap-2 bg-[#1A6FC4] text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm"
+            onClick={() => setIsPasswordModalOpen(true)}
+            className="flex items-center cursor-pointer gap-2 bg-[#1A6FC4] text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm hover:bg-[#165DA5] transition-colors"
           >
             <Key size={18} /> Change password
           </button>
         </div>
       </div>
 
-      {/* Password Change Modal */}
       <ChangePasswordModal
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
@@ -235,7 +247,6 @@ const ReceptionistProfile: React.FC = () => {
   );
 };
 
-// Helper Component for Info Fields
 const InfoField = ({
   label,
   value,
