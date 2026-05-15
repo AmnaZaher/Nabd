@@ -145,7 +145,7 @@ const NewAppointmentPage: React.FC = () => {
             setNoDoctorsForClinic(false);
             try {
                 const list = await patientApi.getDoctorsByClinic(Number(selectedClinic));
-                let mapped: DoctorOption[] = list.map(d => ({ id: String(d.id), name: d.name }));
+                let mapped: DoctorOption[] = list.map((d: any) => ({ id: String(d.id), name: d.name }));
                 
                 try {
                     const schedulesRes = await scheduleApi.getSchedules({ ClinicId: Number(selectedClinic), PageSize: 1000 });
