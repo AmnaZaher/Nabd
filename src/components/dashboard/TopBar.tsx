@@ -3,6 +3,7 @@ import { Menu, Search, User as UserIcon, UserPlus } from 'lucide-react';
 import { AddUserButton } from './shared/AddUserButton';
 import { useAuth } from '../../context/AuthContext';
 import { staffApi } from '../../api/staff';
+import { profileApi } from '../../api/profile';
 import type { StaffProfile } from '../../types/staff.types';
 
 interface TopBarProps {
@@ -35,8 +36,20 @@ const TopBar: React.FC<TopBarProps> = ({
                 try {
                     // user.id = JWT nameidentifier (internal DB id)
                     // user.name = JWT name/unique_name (often the national ID / username)
-                    const data = await staffApi.getMyProfile(user.id, user.name);
-                    if (data) setProfile(data);
+                    let data: any = null;
+                    if (user.role === 'Doctor') {
+                        const doc = await profileApi.getDoctorProfile(user.id);
+                        if (doc) {
+                            data = {
+                                name: doc.nameEngLish || doc.nameArabic || user.name,
+                                role: doc.role || 'Doctor',
+                                avatar: doc.avatar || doc.personalPhotos
+                            };
+                        }
+                    } else {
+                        data = await staffApi.getMyProfile(user.id, user.name);
+                    }
+                    if (data) setProfile(data as StaffProfile);
                 } catch (error) {
                     console.error('Failed to fetch profile:', error);
                 }
