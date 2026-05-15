@@ -12,9 +12,9 @@ import {
   Loader2
 } from "lucide-react";
 import TopBar from "../TopBar";
-import { listAppointments, type Appointment } from "../../../api/appointments";
+import { listAppointments, getAppointmentDetails, type Appointment } from "../../../api/appointments";
 import { visitApi, type CreateVisitPayload } from "../../../api/visit";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 
 interface PatientVisitPageProps {
   onMenuClick?: () => void;
@@ -23,7 +23,11 @@ interface PatientVisitPageProps {
 
 const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProfileClick }) => {
   const location = useLocation();
-  const passedApptId = location.state?.selectedApptId;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const appointmentIdFromQuery = searchParams.get('appointmentId');
+  const passedApptId = location.state?.selectedApptId || appointmentIdFromQuery;
+  
   const [priority, setPriority] = useState<"routine" | "urgent">("routine");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedApptId, setSelectedApptId] = useState<string>("");
@@ -64,8 +68,21 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
         const raw = res as any;
         let appts: Appointment[] = raw?.data?.data || raw?.data?.appointments || raw?.data?.items || (Array.isArray(raw?.data) ? raw.data : []) || raw?.appointments || raw?.items || [];
         appts = appts.filter(a => a.status === 1 || a.status === 2);
+        
+        // If passedApptId exists and is NOT in the appts list, fetch it specifically
+        if (passedApptId && !appts.some(a => a.id.toString() === passedApptId.toString())) {
+            try {
+                const singleRes = await getAppointmentDetails(passedApptId);
+                if (singleRes?.data) {
+                    appts = [singleRes.data, ...appts];
+                }
+            } catch (err) {
+                console.warn("Failed to fetch specific appointment:", passedApptId);
+            }
+        }
+
         setAppointments(appts);
-        if (passedApptId && appts.some(a => a.id.toString() === passedApptId.toString())) {
+        if (passedApptId) {
           setSelectedApptId(passedApptId.toString());
         } else if (appts.length > 0) {
           setSelectedApptId(appts[0].id.toString());
@@ -453,7 +470,10 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
 
           {/* Action Buttons Section */}
           <div className="p-6 mt-8 rounded-xl border-slate-100 flex justify-end gap-4">
-            <button className="px-10 py-3 bg-[#E2E8F0] text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition-colors text-sm">
+            <button 
+              onClick={() => navigate(-1)}
+              className="px-10 py-3 bg-[#E2E8F0] text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition-colors text-sm"
+            >
               Cancel
             </button>
             <button 

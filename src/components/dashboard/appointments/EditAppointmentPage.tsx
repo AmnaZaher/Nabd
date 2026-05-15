@@ -9,8 +9,14 @@ import { scheduleApi } from '../../../api/schedules';
 // Helper to format slot (e.g. "09:00:00" -> "09:00 AM")
 function formatSlot(timeStr: string): string {
     if (!timeStr) return '';
+    // If it's a full ISO string, extract the time part
+    const actualTime = timeStr.includes('T') ? timeStr.split('T')[1] : timeStr;
     try {
-        const [h, m] = timeStr.split(':').map(Number);
+        const parts = actualTime.split(':');
+        if (parts.length < 2) return timeStr;
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (isNaN(h) || isNaN(m)) return timeStr;
         const ampm = h >= 12 ? 'PM' : 'AM';
         const hour = h % 12 || 12;
         return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
@@ -18,6 +24,13 @@ function formatSlot(timeStr: string): string {
         return timeStr;
     }
 }
+
+const APPOINTMENT_TYPES = [
+    { value: 1, label: 'Consultation' },
+    { value: 2, label: 'Follow-up' },
+    { value: 3, label: 'Emergency' },
+    { value: 4, label: 'Check-up' },
+];
 
 const EditAppointmentPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -42,6 +55,7 @@ const EditAppointmentPage: React.FC = () => {
     const [date, setDate] = useState('');
     const [timeSlot, setTimeSlot] = useState('');
     const [notes, setNotes] = useState('');
+    const [appointmentType, setAppointmentType] = useState<number>(1);
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
 
@@ -88,6 +102,7 @@ const EditAppointmentPage: React.FC = () => {
                     setDoctorId(apt.doctorId?.toString() || apt.DoctorId?.toString() || apt.doctor?.id?.toString() || '');
                     setClinicId(resolvedClinicId);
                     setNotes(apt.notes || apt.Notes || '');
+                    setAppointmentType(apt.appointmentType || apt.AppointmentType || 1);
 
                     const rawDate = apt.appointmentDate || apt.AppointmentDate || apt.dateTime || apt.DateTime || apt.date || apt.Date || apt.appointmentDateTime || apt.AppointmentDateTime || apt.scheduledDate || apt.ScheduledDate;
                     if (rawDate) {
@@ -138,7 +153,13 @@ const EditAppointmentPage: React.FC = () => {
                 [];
 
             if (slots.length > 0 && typeof slots[0] === 'object') {
-                slots = (slots as any[]).map((s: any) => s.startTime ?? s.time ?? JSON.stringify(s));
+                slots = (slots as any[]).map((s: any) => {
+                    const val = s.slotStart ?? s.startTime ?? s.time ?? JSON.stringify(s);
+                    // Extract HH:mm:ss if it's a full ISO string
+                    return val.includes('T') ? val.split('T')[1].split('.')[0] : val;
+                });
+            } else if (slots.length > 0 && typeof slots[0] === 'string') {
+                slots = slots.map(s => s.includes('T') ? s.split('T')[1].split('.')[0] : s);
             }
 
             setTimeSlots(slots.length > 0 ? slots : []);
@@ -207,7 +228,9 @@ const EditAppointmentPage: React.FC = () => {
         try {
             let appointmentDate = date;
             if (timeSlot) {
-                appointmentDate = `${date}T${timeSlot}`;
+                // Ensure timeSlot is in HH:mm:ss format
+                const timePart = timeSlot.split(':').length === 2 ? `${timeSlot}:00` : timeSlot;
+                appointmentDate = `${date}T${timePart}`;
             } else {
                 appointmentDate = `${date}T00:00:00`;
             }
@@ -217,6 +240,7 @@ const EditAppointmentPage: React.FC = () => {
                 doctorId: Number(doctorId),
                 clinicId: clinicId ? Number(clinicId) : undefined,
                 appointmentDate: appointmentDate,
+                appointmentType: appointmentType,
                 notes: notes,
             };
 
@@ -402,12 +426,14 @@ const EditAppointmentPage: React.FC = () => {
                                         <FileText size={16} />
                                     </div>
                                     <select 
+                                        value={appointmentType}
+                                        onChange={e => setAppointmentType(Number(e.target.value))}
                                         className="w-full pl-10 pr-10 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none"
                                         style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
                                     >
-                                        <option>Follow-up Visit</option>
-                                        <option>Initial Consultation</option>
-                                        <option>Routine Checkup</option>
+                                        {APPOINTMENT_TYPES.map(t => (
+                                            <option key={t.value} value={t.value}>{t.label}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>

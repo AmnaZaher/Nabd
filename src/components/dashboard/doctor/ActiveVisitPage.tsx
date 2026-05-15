@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { fetchApi } from '../../../api/config';
+import { visitApi } from '../../../api/visit';
 import TopBar from '../TopBar';
 import { 
     User, Activity, Clock, FileText, Plus, Trash2,
-    CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle
+    CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle,
+    Loader2
 } from 'lucide-react';
 
 interface ActiveVisitPageProps {
@@ -18,45 +19,26 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const appointmentId = searchParams.get('appointmentId');
     const visitId = searchParams.get('visitId') || appointmentId; // Using appointmentId as fallback for visitId if not explicitly created yet
     
-    const [, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     
     // Patient & Visit State
-    const [visitDetails] = useState<any>({
-        patientName: 'Ahmad Al-Farsi',
-        age: '34 Yrs',
-        gender: 'Male',
-        bloodType: 'A+',
-        allergies: ['Penicillin'],
-        vitals: { bp: '120/80', temp: '37.2' },
-        chiefComplaint: 'Persistent cough and mild fever for the last 3 days.',
-        visitId: '#88291',
-        startedTime: '14:20 PM'
-    });
+    const [visitDetails, setVisitDetails] = useState<any>(null);
 
     const [clinicalNotes, setClinicalNotes] = useState('');
 
     // Diagnoses State
-    const [diagnoses, setDiagnoses] = useState<any[]>([
-        { id: 1, name: 'Acute Upper Respiratory Infection', code: 'J06', type: 'PRIMARY DIAGNOSIS' }
-    ]);
+    const [diagnoses, setDiagnoses] = useState<any[]>([]);
     const [newDiagnosis, setNewDiagnosis] = useState({ name: '', code: '', type: 'Primary', justification: '' });
     const [showAddDiagnosis, setShowAddDiagnosis] = useState(false);
 
     // Prescriptions State
-    const [prescriptions, setPrescriptions] = useState<any[]>([
-        { id: 1, name: 'Atorvastatin 20mg', dosage: '1 Tab', frequency: 'Once Daily (QD)', duration: '30 Days', instructions: 'Take at night before sleep.' },
-        { id: 2, name: 'Amoxicillin 500mg', dosage: '1 Cap', frequency: '2x daily for 7 days', duration: '7 Days', instructions: 'Dispensed: 14 Capsules' }
-    ]);
+    const [prescriptions, setPrescriptions] = useState<any[]>([]);
     const [newPrescription, setNewPrescription] = useState({ name: '', dosage: '', frequency: '', duration: '', instructions: '' });
     const [showAddPrescription, setShowAddPrescription] = useState(false);
 
     // Orders State
-    const [labOrders] = useState<any[]>([
-        { id: 1, name: 'CBC Lab', desc: 'Full blood count with differentials' }
-    ]);
-    const [radOrders] = useState<any[]>([
-        { id: 1, name: 'Chest X-Ray', desc: 'Posterior-Anterior view' }
-    ]);
+    const [labOrders] = useState<any[]>([]);
+    const [radOrders] = useState<any[]>([]);
 
     // Setup initial fetch
     useEffect(() => {
@@ -64,12 +46,19 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
             if (!visitId) return;
             setLoading(true);
             try {
-                // In a real app, we'd fetch all these from the API.
-                // For now, we rely on the initial state or a single generic fetch
-                const res = await fetchApi(`/Visit/${visitId}`);
+                const res = await visitApi.getVisit(visitId);
                 if (res?.data) {
-                    // map res.data to visitDetails
+                    setVisitDetails(res.data);
+                    setClinicalNotes(res.data.clinicalNotes || '');
                 }
+                
+                // Fetch associated data
+                const diagRes = await visitApi.getDiagnoses(visitId);
+                if (diagRes?.data) setDiagnoses(diagRes.data);
+                
+                const presRes = await visitApi.getPrescriptions(visitId);
+                if (presRes?.data) setPrescriptions(presRes.data);
+
             } catch (error) {
                 console.error("Failed to fetch visit details", error);
             } finally {
@@ -83,21 +72,28 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const handleFinishVisit = async () => {
         try {
             if (visitId) {
-                await fetchApi(`/Visit/${visitId}/MarkComplete`, { method: 'PATCH' });
+                await visitApi.markVisitComplete(visitId);
             }
             navigate('/dashboard/doctor-visits');
         } catch (error) {
             console.error("Failed to complete visit", error);
-            // navigate anyway for demo
             navigate('/dashboard/doctor-visits');
         }
     };
 
     const handleAddDiagnosis = async () => {
-        if (!newDiagnosis.name) return;
+        if (!newDiagnosis.name || !visitId) return;
         try {
-            // await fetchApi(`/Visit/${visitId}/diagnoses`, { method: 'POST', body: JSON.stringify(newDiagnosis) });
-            setDiagnoses([...diagnoses, { id: Date.now(), name: newDiagnosis.name, code: newDiagnosis.code, type: newDiagnosis.type.toUpperCase() + ' DIAGNOSIS' }]);
+            await visitApi.addDiagnosis(visitId, {
+                Name: newDiagnosis.name,
+                Code: newDiagnosis.code,
+                Type: newDiagnosis.type,
+                Justification: newDiagnosis.justification
+            });
+            // Refresh diagnoses
+            const diagRes = await visitApi.getDiagnoses(visitId);
+            if (diagRes?.data) setDiagnoses(diagRes.data);
+            
             setNewDiagnosis({ name: '', code: '', type: 'Primary', justification: '' });
             setShowAddDiagnosis(false);
         } catch (error) {
@@ -106,10 +102,19 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     };
 
     const handleAddPrescription = async () => {
-        if (!newPrescription.name) return;
+        if (!newPrescription.name || !visitId) return;
         try {
-            // await fetchApi(`/Visit/${visitId}/prescriptions`, { method: 'POST', body: JSON.stringify(newPrescription) });
-            setPrescriptions([...prescriptions, { id: Date.now(), ...newPrescription }]);
+            await visitApi.addPrescription(visitId, {
+                MedicineName: newPrescription.name,
+                Dosage: newPrescription.dosage,
+                Frequency: newPrescription.frequency,
+                Duration: newPrescription.duration,
+                Instructions: newPrescription.instructions
+            });
+            // Refresh prescriptions
+            const presRes = await visitApi.getPrescriptions(visitId);
+            if (presRes?.data) setPrescriptions(presRes.data);
+            
             setNewPrescription({ name: '', dosage: '', frequency: '', duration: '', instructions: '' });
             setShowAddPrescription(false);
         } catch (error) {
@@ -128,22 +133,28 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
             />
 
             <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                {loading ? (
+                    <div className="flex-1 flex flex-col items-center justify-center h-full min-h-[400px]">
+                        <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+                        <p className="text-slate-500 font-bold animate-pulse">Loading patient visit data...</p>
+                    </div>
+                ) : (
                 <div className="max-w-[1600px] mx-auto">
                     
                     {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-3xl font-black text-slate-800">{visitDetails.patientName}</h1>
+                                <h1 className="text-3xl font-black text-slate-800">{visitDetails?.patientName || 'Loading...'}</h1>
                                 <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-bold flex items-center gap-1.5">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                     Active Visit
                                 </span>
                             </div>
                             <div className="text-slate-500 font-medium flex items-center gap-2">
-                                <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> Visit ID: {visitDetails.visitId}</span>
+                                <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> Visit ID: {visitDetails?.visitId || visitId || 'N/A'}</span>
                                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                <span>Encounter started {visitDetails.startedTime}</span>
+                                <span>Encounter started {visitDetails?.startedTime || '--:--'}</span>
                             </div>
                         </div>
                         <button 
@@ -167,24 +178,25 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-500 font-medium text-sm">Age</span>
-                                        <span className="font-bold text-slate-800">{visitDetails.age}</span>
+                                        <span className="font-bold text-slate-800">{visitDetails?.age || '--'}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-500 font-medium text-sm">Gender</span>
-                                        <span className="font-bold text-slate-800">{visitDetails.gender}</span>
+                                        <span className="font-bold text-slate-800">{visitDetails?.gender || '--'}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-500 font-medium text-sm">Blood Type</span>
-                                        <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">{visitDetails.bloodType}</span>
+                                        <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">{visitDetails?.bloodType || '--'}</span>
                                     </div>
                                     <div>
                                         <span className="text-slate-500 font-medium text-sm block mb-2">Allergies</span>
                                         <div className="flex flex-wrap gap-2">
-                                            {visitDetails.allergies.map((alg: string) => (
+                                            {(visitDetails?.allergies || []).map((alg: string) => (
                                                 <span key={alg} className="px-3 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100">
                                                     {alg}
                                                 </span>
                                             ))}
+                                            {(!visitDetails?.allergies || visitDetails.allergies.length === 0) && <span className="text-slate-400 text-xs">No known allergies</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -198,11 +210,17 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-slate-500 text-xs font-bold mb-1">Blood Pressure</div>
-                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.bp} <span className="text-xs font-medium text-slate-400">mmHg</span></div>
+                                        <div className="font-black text-lg text-slate-800">
+                                            {visitDetails?.vitalSigns?.bloodPressureSystolic || visitDetails?.vitals?.bp || '--'}/{visitDetails?.vitalSigns?.bloodPressureDiastolic || '--'} 
+                                            <span className="text-xs font-medium text-slate-400"> mmHg</span>
+                                        </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-slate-500 text-xs font-bold mb-1">Temperature</div>
-                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.temp} <span className="text-xs font-medium text-slate-400">°C</span></div>
+                                        <div className="font-black text-lg text-slate-800">
+                                            {visitDetails?.vitalSigns?.temperature || visitDetails?.vitals?.temp || '--'} 
+                                            <span className="text-xs font-medium text-slate-400"> °C</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -248,7 +266,7 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                     <AlertCircle className="w-5 h-5 text-blue-500" /> Chief Complaint
                                 </h3>
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-medium">
-                                    {visitDetails.chiefComplaint}
+                                    {visitDetails?.chiefComplaint || visitDetails?.notes || 'No notes provided'}
                                 </div>
                             </div>
 
@@ -508,6 +526,7 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                     </div>
 
                 </div>
+                )}
             </main>
         </div>
     );

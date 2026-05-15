@@ -36,8 +36,14 @@ const APPOINTMENT_TYPES = [
 /* ─── Helpers ─── */
 function formatSlot(timeStr: string): string {
     if (!timeStr) return '';
+    // If it's a full ISO string, extract the time part
+    const actualTime = timeStr.includes('T') ? timeStr.split('T')[1] : timeStr;
     try {
-        const [h, m] = timeStr.split(':').map(Number);
+        const parts = actualTime.split(':');
+        if (parts.length < 2) return timeStr;
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (isNaN(h) || isNaN(m)) return timeStr;
         const ampm = h >= 12 ? 'PM' : 'AM';
         const hour = h % 12 || 12;
         return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
@@ -204,7 +210,13 @@ const NewAppointmentPage: React.FC = () => {
 
             // If backend returns objects {startTime, endTime}, map to start time strings
             if (slots.length > 0 && typeof slots[0] === 'object') {
-                slots = (slots as any[]).map((s: any) => s.startTime ?? s.time ?? JSON.stringify(s));
+                slots = (slots as any[]).map((s: any) => {
+                    const val = s.slotStart ?? s.startTime ?? s.time ?? JSON.stringify(s);
+                    // Extract HH:mm:ss if it's a full ISO string
+                    return val.includes('T') ? val.split('T')[1].split('.')[0] : val;
+                });
+            } else if (slots.length > 0 && typeof slots[0] === 'string') {
+                slots = slots.map(s => s.includes('T') ? s.split('T')[1].split('.')[0] : s);
             }
 
             setTimeSlots(slots.length > 0 ? slots : []);
@@ -232,7 +244,9 @@ const NewAppointmentPage: React.FC = () => {
         // Build ISO date-time
         let appointmentDate = selectedDate;
         if (selectedSlot) {
-            appointmentDate = `${selectedDate}T${selectedSlot}`;
+            // Ensure selectedSlot is in HH:mm:ss format
+            const timePart = selectedSlot.split(':').length === 2 ? `${selectedSlot}:00` : selectedSlot;
+            appointmentDate = `${selectedDate}T${timePart}`;
         } else {
             appointmentDate = `${selectedDate}T00:00:00`;
         }
