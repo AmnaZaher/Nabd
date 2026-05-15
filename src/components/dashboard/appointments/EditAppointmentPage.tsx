@@ -1,18 +1,29 @@
-// EditAppointmentPage.tsx
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, User, Stethoscope, Building2, Calendar as CalendarIcon, Clock, Lock, FileText, Loader2 } from 'lucide-react';
-import { getAppointmentDetails, updateAppointment } from '../../../api/appointments';
+import { getAppointmentDetails, updateAppointment, listAppointments } from '../../../api/appointments';
 import { patientApi } from '../../../api/patient';
 import { getClinics } from '../../../api/clinics';
-import { staffApi } from '../../../api/staff';
+import { scheduleApi } from '../../../api/schedules';
 
-// Static slots for the demo (matching screenshot)
-const TIME_SLOTS = ['09:00 AM', '10:30 AM', '11:45 AM', '01:15 PM', '03:00 PM', '04:30 PM'];
+// Helper to format slot (e.g. "09:00:00" -> "09:00 AM")
+function formatSlot(timeStr: string): string {
+    if (!timeStr) return '';
+    try {
+        const [h, m] = timeStr.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const hour = h % 12 || 12;
+        return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+    } catch {
+        return timeStr;
+    }
+}
 
 const EditAppointmentPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
+    const passedApt = location.state?.appointment;
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -21,6 +32,8 @@ const EditAppointmentPage: React.FC = () => {
     const [doctors, setDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
     const [patients, setPatients] = useState<any[]>([]);
+    const [loadingDoctors, setLoadingDoctors] = useState(false);
+    const [noDoctorsForClinic, setNoDoctorsForClinic] = useState(false);
 
     // Form state
     const [patientId, setPatientId] = useState('');
@@ -29,74 +42,69 @@ const EditAppointmentPage: React.FC = () => {
     const [date, setDate] = useState('');
     const [timeSlot, setTimeSlot] = useState('');
     const [notes, setNotes] = useState('');
+    const [timeSlots, setTimeSlots] = useState<string[]>([]);
+    const [loadingSlots, setLoadingSlots] = useState(false);
 
     useEffect(() => {
         const loadAll = async () => {
             setLoading(true);
             try {
-                const [drRes, clinicRes, ptRes, aptRes] = await Promise.all([
-                    staffApi.getStaffs({ PageIndex: 0, PageSize: 100 }),
+                const [clinicRes, ptRes, aptRes] = await Promise.all([
                     getClinics({ PageIndex: 0, PageSize: 100 }),
                     patientApi.getPatients({ PageIndex: 0, PageSize: 100 }),
-                    id ? getAppointmentDetails(id) : Promise.resolve(null),
+                    id ? (passedApt ? Promise.resolve(passedApt) : getAppointmentDetails(id).catch(async (e) => {
+                        console.warn("Details fetch failed, falling back to list", e);
+                        try {
+                            const res = await listAppointments({ PageSize: 1000 });
+                            const list = (res as any)?.data?.data || (res as any)?.data?.items || (res as any)?.data || (res as any)?.appointments || [];
+                            const arr = Array.isArray(list) ? list : (Array.isArray((res as any)?.items) ? (res as any).items : []);
+                            const found = arr.find((a: any) => String(a.id) === String(id));
+                            return found || null;
+                        } catch (err) {
+                            return null;
+                        }
+                    })) : Promise.resolve(null),
                 ]);
 
-                const staffList = (drRes as any)?.staffs ?? (drRes as any)?.items ?? (drRes as any)?.data ?? (drRes as any)?.data?.data ?? (Array.isArray(drRes) ? drRes : []);
-                const drList = staffList.filter((s: any) => {
-                    const rolesMap: Record<string, string> = { '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician' };
-                    let r = s.role ?? s.Role ?? s.roleName ?? s.RoleName ?? s.roleId ?? s.RoleId ?? s.staffRole ?? s.StaffRole;
-                    let rStr = typeof r === 'object' ? (r?.name ?? r?.Name ?? rolesMap[r?.id ?? r?.Id]) : String(r);
-                    rStr = rolesMap[rStr] ?? rStr;
-                    
-                    if (!rStr || rStr === 'undefined') {
-                        for (const k in s) {
-                            if (k.toLowerCase().includes('role')) {
-                                const val = s[k];
-                                rStr = typeof val === 'object' ? (val?.name ?? val?.Name ?? rolesMap[val?.id ?? val?.Id]) : String(val);
-                                rStr = rolesMap[rStr] ?? rStr;
-                                break;
-                            }
-                        }
-                    }
-                    return rStr === 'Doctor' || rStr === '2';
-                }).map((d: any) => ({
-                    ...d,
-                    id: d.id || d.Id || d.nationalId || d.NationalId,
-                    name: d.fullNameEnglish || d.FullNameEnglish || d.name || d.Name || `Dr. #${d.id || d.Id}`
-                }));
-                setDoctors(drList);
-
-                const clinicList = (clinicRes as any)?.data?.data ?? (clinicRes as any)?.data?.items ?? (Array.isArray((clinicRes as any)?.data) ? (clinicRes as any).data : []);
-                setClinics(clinicList);
+                const rawClinic: any = clinicRes;
+                const clinicList =
+                    rawClinic?.data?.data ??
+                    rawClinic?.data?.items ??
+                    rawClinic?.data?.clinics ??
+                    (Array.isArray(rawClinic?.data) ? rawClinic.data : null) ??
+                    rawClinic?.items ??
+                    rawClinic?.clinics ??
+                    (Array.isArray(rawClinic) ? rawClinic : []);
+                setClinics(Array.isArray(clinicList) ? clinicList : []);
 
                 const ptList = (ptRes as any)?.patients ?? (ptRes as any)?.items ?? (Array.isArray(ptRes) ? ptRes : []);
                 setPatients(ptList);
 
-                const apt = aptRes?.data ?? aptRes;
+                const apt = aptRes?.data?.data ?? aptRes?.data ?? aptRes;
+                console.log("Fetched appointment details:", apt);
                 if (apt) {
-                    setPatientId(apt.patientId?.toString() || '');
-                    setDoctorId(apt.doctorId?.toString() || '');
-                    setClinicId(apt.clinicId?.toString() || '');
-                    setNotes(apt.notes || '');
+                    const resolvedClinicId = apt.clinicId?.toString() || apt.ClinicId?.toString() || apt.clinic?.id?.toString() || '';
+                    setPatientId(apt.patientId?.toString() || apt.PatientId?.toString() || apt.patient?.id?.toString() || '');
+                    setDoctorId(apt.doctorId?.toString() || apt.DoctorId?.toString() || apt.doctor?.id?.toString() || '');
+                    setClinicId(resolvedClinicId);
+                    setNotes(apt.notes || apt.Notes || '');
 
-                    if (apt.appointmentDate || apt.dateTime) {
-                        const rawDate = apt.appointmentDate || apt.dateTime;
-                        const d = new Date(rawDate);
-                        setDate(d.toISOString().split('T')[0]); // YYYY-MM-DD
-                        
-                        // Parse time for the time slot selection
-                        const hours = d.getHours();
-                        const minutes = d.getMinutes().toString().padStart(2, '0');
-                        const ampm = hours >= 12 ? 'PM' : 'AM';
-                        const h12 = hours % 12 || 12;
-                        const timeStr = `${h12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
-                        
-                        // Try to find the exact slot or default to the parsed time
-                        if (TIME_SLOTS.includes(timeStr)) {
-                            setTimeSlot(timeStr);
+                    const rawDate = apt.appointmentDate || apt.AppointmentDate || apt.dateTime || apt.DateTime || apt.date || apt.Date || apt.appointmentDateTime || apt.AppointmentDateTime || apt.scheduledDate || apt.ScheduledDate;
+                    if (rawDate) {
+                        if (rawDate.includes('T')) {
+                            const [dPart, tPart] = rawDate.split('T');
+                            setDate(dPart);
+                            const cleanTime = tPart.split('.')[0]; // e.g. "09:00:00"
+                            setTimeSlot(cleanTime);
                         } else {
-                            setTimeSlot(timeStr); 
-                            if (!TIME_SLOTS.includes(timeStr)) TIME_SLOTS.push(timeStr);
+                            const d = new Date(rawDate);
+                            if (!isNaN(d.getTime())) {
+                                setDate(d.toISOString().split('T')[0]); // YYYY-MM-DD
+                                const hours = d.getHours().toString().padStart(2, '0');
+                                const minutes = d.getMinutes().toString().padStart(2, '0');
+                                const seconds = d.getSeconds().toString().padStart(2, '0');
+                                setTimeSlot(`${hours}:${minutes}:${seconds}`);
+                            }
                         }
                     }
                 }
@@ -109,28 +117,106 @@ const EditAppointmentPage: React.FC = () => {
         loadAll();
     }, [id]);
 
+    const fetchSlots = useCallback(async () => {
+        if (!doctorId || !date) {
+            setTimeSlots([]);
+            return;
+        }
+        setLoadingSlots(true);
+        try {
+            const res = await scheduleApi.getAvailableSlots({
+                DoctorId: Number(doctorId),
+                ClinicId: clinicId ? Number(clinicId) : undefined,
+                Date: date,
+            });
+            const raw = (res as any);
+            let slots: string[] =
+                raw?.data?.slots ??
+                raw?.data?.availableSlots ??
+                (Array.isArray(raw?.data) ? raw.data : null) ??
+                raw?.slots ??
+                [];
+
+            if (slots.length > 0 && typeof slots[0] === 'object') {
+                slots = (slots as any[]).map((s: any) => s.startTime ?? s.time ?? JSON.stringify(s));
+            }
+
+            setTimeSlots(slots.length > 0 ? slots : []);
+        } catch (e) {
+            console.error('Failed to fetch available slots:', e);
+            setTimeSlots([]);
+        } finally {
+            setLoadingSlots(false);
+        }
+    }, [doctorId, clinicId, date]);
+
+    useEffect(() => {
+        fetchSlots();
+    }, [fetchSlots]);
+
+    /* ── Load doctors for selected clinic via /Patient/Doctors?Clinic= ── */
+    useEffect(() => {
+        if (!clinicId) {
+            setDoctors([]);
+            setNoDoctorsForClinic(false);
+            return;
+        }
+        const fetchClinicDoctors = async () => {
+            setLoadingDoctors(true);
+            setNoDoctorsForClinic(false);
+            try {
+                const list = await patientApi.getDoctorsByClinic(Number(clinicId));
+                let mapped = list.map(d => ({ id: String(d.id), name: d.name }));
+                
+                try {
+                    const schedulesRes = await scheduleApi.getSchedules({ ClinicId: Number(clinicId), PageSize: 1000 });
+                    const rawSchedules = (schedulesRes as any)?.data?.data ?? (schedulesRes as any)?.data?.items ?? (schedulesRes as any)?.data ?? [];
+                    const scheduleList = Array.isArray(rawSchedules) ? rawSchedules : [];
+                    
+                    const doctorsWithSchedules = new Set<string>();
+                    scheduleList.forEach((s: any) => {
+                        const dId = s.doctorId ?? s.DoctorId;
+                        if (dId) doctorsWithSchedules.add(String(dId));
+                    });
+                    
+                    mapped = mapped.filter(d => doctorsWithSchedules.has(d.id));
+                } catch (err) {
+                    console.warn('Failed to fetch schedules to filter doctors:', err);
+                }
+
+                setDoctors(mapped);
+                setNoDoctorsForClinic(mapped.length === 0);
+                // Clear doctor selection if not in new list
+                setDoctorId(prev => {
+                    if (prev && !mapped.find(d => d.id === prev)) return '';
+                    return prev;
+                });
+            } catch {
+                setDoctors([]);
+                setNoDoctorsForClinic(true);
+            } finally {
+                setLoadingDoctors(false);
+            }
+        };
+        fetchClinicDoctors();
+    }, [clinicId]);
+
     const handleSave = async () => {
         if (!id) return;
         setSaving(true);
         try {
-            // Reconstruct dateTime from date and timeSlot
-            let isoDateTime = new Date().toISOString();
-            if (date && timeSlot) {
-                const [time, ampm] = timeSlot.split(' ');
-                let [h, m] = time.split(':').map(Number);
-                if (ampm === 'PM' && h < 12) h += 12;
-                if (ampm === 'AM' && h === 12) h = 0;
-                const d = new Date(date);
-                d.setHours(h, m, 0, 0);
-                // Adjust for local timezone offset if needed to get correct UTC, but usually local is expected by API
-                isoDateTime = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+            let appointmentDate = date;
+            if (timeSlot) {
+                appointmentDate = `${date}T${timeSlot}`;
+            } else {
+                appointmentDate = `${date}T00:00:00`;
             }
 
             const payload = {
                 patientId: Number(patientId),
                 doctorId: Number(doctorId),
                 clinicId: clinicId ? Number(clinicId) : undefined,
-                appointmentDate: isoDateTime,
+                appointmentDate: appointmentDate,
                 notes: notes,
             };
 
@@ -201,24 +287,6 @@ const EditAppointmentPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Doctor */}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Assigned Doctor</label>
-                                <div className="relative">
-                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Stethoscope size={16} />
-                                    </div>
-                                    <select 
-                                        value={doctorId} onChange={e => setDoctorId(e.target.value)}
-                                        className="w-full pl-10 pr-10 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none"
-                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
-                                    >
-                                        <option value="">Select doctor...</option>
-                                        {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
                             {/* Clinic */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1.5">Location / Clinic</label>
@@ -235,6 +303,33 @@ const EditAppointmentPage: React.FC = () => {
                                         {clinics.map(c => <option key={c.id} value={c.id}>{c.clinicNameEn || c.clinicNameAr || `Clinic #${c.id}`}</option>)}
                                     </select>
                                 </div>
+                            </div>
+
+                            {/* Doctor */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1.5">
+                                    Assigned Doctor
+                                    {loadingDoctors && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <Stethoscope size={16} />
+                                    </div>
+                                    <select 
+                                        value={doctorId} onChange={e => setDoctorId(e.target.value)}
+                                        className="w-full pl-10 pr-10 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
+                                    >
+                                        <option value="">Select doctor...</option>
+                                        {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                </div>
+                                {!clinicId && (
+                                    <p className="text-[11px] text-slate-400 mt-1 font-medium italic">Select a clinic first to see available doctors.</p>
+                                )}
+                                {clinicId && noDoctorsForClinic && !loadingDoctors && (
+                                    <p className="text-[11px] text-amber-600 mt-1 font-medium">No doctors assigned to this clinic.</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -264,25 +359,38 @@ const EditAppointmentPage: React.FC = () => {
 
                             {/* Time Slots */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-3">Available Slots</label>
+                                <label className="block text-xs font-bold text-slate-500 mb-3">
+                                    Available Slots
+                                    {loadingSlots && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
+                                </label>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {TIME_SLOTS.map((slot) => {
-                                        const isSelected = timeSlot === slot;
-                                        return (
-                                            <button
-                                                key={slot}
-                                                onClick={() => setTimeSlot(slot)}
-                                                className={`
-                                                    py-2.5 rounded-lg text-xs font-bold transition-all
-                                                    ${isSelected 
-                                                        ? 'bg-[#1A6FC4] text-white shadow-md border-2 border-blue-200 ring-2 ring-[#1A6FC4] ring-offset-1' 
-                                                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent'}
-                                                `}
-                                            >
-                                                {slot}
-                                            </button>
-                                        );
-                                    })}
+                                    {loadingSlots ? (
+                                        <div className="col-span-3 flex items-center gap-2 text-slate-400 py-2">
+                                            <span className="text-[12px] font-medium">Loading slots...</span>
+                                        </div>
+                                    ) : timeSlots.length === 0 && !timeSlot ? (
+                                        <p className="col-span-3 text-[12px] text-amber-600 font-medium italic py-2 bg-amber-50 rounded-xl px-3 border border-amber-100">
+                                            No available slots for this day.
+                                        </p>
+                                    ) : (
+                                        Array.from(new Set(timeSlot ? [timeSlot, ...timeSlots] : timeSlots)).map((slot) => {
+                                            const isSelected = timeSlot === slot;
+                                            return (
+                                                <button
+                                                    key={slot}
+                                                    onClick={() => setTimeSlot(slot)}
+                                                    className={`
+                                                        py-2.5 rounded-lg text-xs font-bold transition-all
+                                                        ${isSelected 
+                                                            ? 'bg-[#1A6FC4] text-white shadow-md border-2 border-blue-200 ring-2 ring-[#1A6FC4] ring-offset-1' 
+                                                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent'}
+                                                    `}
+                                                >
+                                                    {formatSlot(slot)}
+                                                </button>
+                                            );
+                                        })
+                                    )}
                                 </div>
                             </div>
 

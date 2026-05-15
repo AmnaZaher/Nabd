@@ -7,8 +7,7 @@ import {
     listAppointments, deleteAppointment, type Appointment
 } from '../../../api/appointments';
 import { getClinics } from '../../../api/clinics';
-import { staffApi } from '../../../api/staff';
-import { scheduleApi } from '../../../api/schedules';
+import { patientApi } from '../../../api/patient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -137,8 +136,7 @@ const AppointmentManagementPage: React.FC = () => {
     const [filterFrom, setFilterFrom] = useState('');
     const [filterTo, setFilterTo] = useState('');
 
-    // Dropdowns for modal
-    const [doctors, setDoctors] = useState<any[]>([]);
+    // Dropdowns
     const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
 
@@ -151,7 +149,6 @@ const AppointmentManagementPage: React.FC = () => {
     });
 
 
-    /* ── Fetch appointments ── */
     const fetchAppointments = useCallback(async () => {
         setLoading(true);
         try {
@@ -161,8 +158,10 @@ const AppointmentManagementPage: React.FC = () => {
                 DoctorId: filterDoctor || undefined,
                 ClinicId: filterClinic || undefined,
                 Status: filterStatus !== '' ? filterStatus : undefined,
-                SearchKey: patientSearch || undefined,
-                DateAppointment: filterFrom || undefined,
+                Search: patientSearch || undefined,
+                DateAppointment: (filterFrom && !filterTo) ? filterFrom : undefined,
+                DateAppointmentFrom: (filterFrom && filterTo) ? filterFrom : undefined,
+                DateAppointmentTo: filterTo ? `${filterTo}T23:59:59` : undefined,
             });
             const raw: any = res;
             // Normalise various API shapes
@@ -175,16 +174,6 @@ const AppointmentManagementPage: React.FC = () => {
                 raw?.items ??
                 (Array.isArray(raw) ? raw : []) ??
                 [];
-            // Client-side "to date" filter for range support
-            if (filterTo && Array.isArray(list)) {
-                const toDate = new Date(filterTo);
-                toDate.setHours(23, 59, 59, 999);
-                list = list.filter(apt => {
-                    const d = getAptDate(apt);
-                    if (!d) return true;
-                    return new Date(d) <= toDate;
-                });
-            }
             const total: number =
                 raw?.data?.totalCount ??
                 raw?.data?.total ??
@@ -204,42 +193,14 @@ const AppointmentManagementPage: React.FC = () => {
     useEffect(() => {
         const load = async () => {
             try {
-                const [drRes, clinicRes, statsApptsRes] = await Promise.all([
-                    staffApi.getStaffs({ PageIndex: 0, PageSize: 100 }),
+                const [clinicRes, statsApptsRes] = await Promise.all([
                     getClinics({ PageIndex: 0, PageSize: 100 }),
-                    // Fetch today's appointments for stats
                     listAppointments({ 
                         DateAppointment: new Date().toISOString().split('T')[0], 
                         PageIndex: 0, 
                         PageSize: 1000 
                     })
                 ]);
-
-                const staffList = (drRes as any)?.staffs ?? (drRes as any)?.items ?? (drRes as any)?.data ?? (drRes as any)?.data?.data ?? (Array.isArray(drRes) ? drRes : []);
-                const drList = staffList.filter((s: any) => {
-                    const rolesMap: Record<string, string> = { '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician' };
-                    let r = s.role ?? s.Role ?? s.roleName ?? s.RoleName ?? s.roleId ?? s.RoleId ?? s.staffRole ?? s.StaffRole;
-                    let rStr = typeof r === 'object' ? (r?.name ?? r?.Name ?? rolesMap[r?.id ?? r?.Id]) : String(r);
-                    rStr = rolesMap[rStr] ?? rStr;
-                    
-                    if (!rStr || rStr === 'undefined') {
-                        for (const k in s) {
-                            if (k.toLowerCase().includes('role')) {
-                                const val = s[k];
-                                rStr = typeof val === 'object' ? (val?.name ?? val?.Name ?? rolesMap[val?.id ?? val?.Id]) : String(val);
-                                rStr = rolesMap[rStr] ?? rStr;
-                                break;
-                            }
-                        }
-                    }
-                    return rStr === 'Doctor' || rStr === '2';
-                }).map((d: any) => ({
-                    ...d,
-                    id: d.id || d.Id || d.nationalId || d.NationalId,
-                    name: d.fullNameEnglish || d.FullNameEnglish || d.name || d.Name || `Dr. #${d.id || d.Id}`
-                }));
-                setDoctors(drList);
-                setAvailableDoctors(drList);
 
                 const rawClinic: any = clinicRes;
                 const clinicList =
@@ -250,7 +211,13 @@ const AppointmentManagementPage: React.FC = () => {
                     rawClinic?.items ??
                     rawClinic?.clinics ??
                     [];
-                setClinics(Array.isArray(clinicList) ? clinicList : []);
+                const validClinics = Array.isArray(clinicList) ? clinicList : [];
+                const sortedClinics = validClinics.sort((a: any, b: any) => {
+                    const nameA = a.clinicNameEn || a.name || a.clinicNameAr || '';
+                    const nameB = b.clinicNameEn || b.name || b.clinicNameAr || '';
+                    return nameA.localeCompare(nameB);
+                });
+                setClinics(sortedClinics);
 
                 // Calculate stats
                 const rawStats: any = statsApptsRes;
@@ -262,9 +229,20 @@ const AppointmentManagementPage: React.FC = () => {
                     rawStats?.appointments ?? 
                     [];
                 
-                const waiting = todayAppts.filter(a => a.status === 2 || a.status === 6).length; // In Progress or Waiting List
-                const completed = todayAppts.filter(a => a.status === 3).length;
-                const cancelled = todayAppts.filter(a => a.status === 5).length;
+                // Coerce status to number to handle backends that return status as a string (e.g. "2", "3")
+                // Also match by label string in case the backend returns e.g. "InProgress", "Completed"
+                const resolveStatus = (s: any): number => {
+                    const n = Number(s);
+                    if (!isNaN(n) && n > 0) return n;
+                    // Try matching label from STATUS_MAP
+                    const key = Object.keys(STATUS_MAP).find(
+                        k => STATUS_MAP[Number(k)].label.replace(/\s/g, '').toLowerCase() === String(s).replace(/\s/g, '').toLowerCase()
+                    );
+                    return key ? Number(key) : 0;
+                };
+                const waiting = todayAppts.filter(a => { const st = resolveStatus(a.status); return st === 2 || st === 6; }).length;
+                const completed = todayAppts.filter(a => resolveStatus(a.status) === 3).length;
+                const cancelled = todayAppts.filter(a => resolveStatus(a.status) === 5).length;
 
                 setStats({
                     totalToday: todayAppts.length,
@@ -280,36 +258,33 @@ const AppointmentManagementPage: React.FC = () => {
         load();
     }, []);
 
-    // Filter doctors when a clinic is selected
+    // Fetch doctors for selected clinic using the dedicated endpoint
     useEffect(() => {
         if (!filterClinic) {
-            setAvailableDoctors(doctors);
+            setAvailableDoctors([]);
+            setFilterDoctor('');
             return;
         }
 
         const fetchClinicDoctors = async () => {
             try {
-                const res = await scheduleApi.getSchedules({ ClinicId: Number(filterClinic), PageSize: 1000 });
-                const rawList = (res as any)?.data?.data || (res as any)?.data?.items || (res as any)?.items || (Array.isArray((res as any)?.data) ? (res as any).data : []) || [];
-                
-                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId)));
-                
-                const filtered = doctors.filter(d => doctorIds.has(String(d.id)));
-                setAvailableDoctors(filtered);
+                const list = await patientApi.getDoctorsByClinic(Number(filterClinic));
+                const mapped = list.map(d => ({ id: String(d.id), name: d.name }));
+                setAvailableDoctors(mapped);
 
                 // If currently selected doctor is not in the new list, reset it
-                if (filterDoctor && !doctorIds.has(String(filterDoctor))) {
+                if (filterDoctor && !mapped.find(d => d.id === filterDoctor)) {
                     setFilterDoctor('');
                     setPage(1);
                 }
             } catch (err) {
-                console.error("Failed to fetch schedules for clinic:", err);
-                setAvailableDoctors(doctors); // Fallback to all doctors
+                console.error("Failed to fetch doctors for clinic:", err);
+                setAvailableDoctors([]);
             }
         };
 
         fetchClinicDoctors();
-    }, [filterClinic, doctors, filterDoctor]);
+    }, [filterClinic]);
 
     useEffect(() => { fetchAppointments(); }, [fetchAppointments, patientSearch]);
 
@@ -345,9 +320,7 @@ const AppointmentManagementPage: React.FC = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 border-b border-slate-100 mb-2">
-                            <h1 className="text-[20px] font-black text-slate-800 tracking-tighter uppercase">Appointments</h1>
-                        </div>
+
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                             <div>
                                 <h2 className="text-[32px] font-bold text-slate-800 tracking-tight">Appointments</h2>
@@ -408,89 +381,50 @@ const AppointmentManagementPage: React.FC = () => {
                     </>
                 )}
 
-                {/* ── Role Based Filters ── */}
+                {/* ── Unified Filters ── */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                    {isAdmin ? (
-                        /* Admin Filters */
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">PATIENT</label>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                    <input type="text" placeholder="Name or ID..." value={patientSearch}
-                                        onChange={e => { setPatientSearch(e.target.value); setPage(1); }}
-                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] focus:bg-white transition-all" />
-                                </div>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
-                                <select value={filterDoctor} onChange={e => { setFilterDoctor(e.target.value); setPage(1); }}
-                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
-                                    <option value="">All Doctors</option>
-                                    {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
-                                <select value={filterClinic} onChange={e => { setFilterClinic(e.target.value); setPage(1); }}
-                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
-                                    <option value="">All Clinics</option>
-                                    {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</label>
-                                <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
-                                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
-                                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DATE RANGE</label>
-                                <div className="flex items-center gap-2 bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2">
-                                    <input type="date" value={filterFrom} onChange={e => { setFilterFrom(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
-                                    <span className="text-slate-300 font-bold">-</span>
-                                    <input type="date" value={filterTo} min={filterFrom || undefined} onChange={e => { setFilterTo(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none w-full" />
-                                </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">PATIENT</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input type="text" placeholder="Name or ID..." value={patientSearch}
+                                    onChange={e => { setPatientSearch(e.target.value); setPage(1); }}
+                                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] focus:bg-white transition-all" />
                             </div>
                         </div>
-                    ) : (
-                        /* Nurse Filters */
-                        <div className="flex flex-wrap items-end gap-4">
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Doctor</label>
-                                <select value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
-                                    <option value="">All Doctors</option>
-                                    {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Clinic</label>
-                                <select value={filterClinic} onChange={e => setFilterClinic(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
-                                    <option value="">All Clinics</option>
-                                    {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">From Date</label>
-                                <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">To Date</label>
-                                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
-                            </div>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase">Status</label>
-                                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50">
-                                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => { setPage(1); fetchAppointments(); }} className="bg-[#1A6FC4] text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all hover:bg-[#155ba0]">Apply Filters</button>
-                                <button onClick={() => { setFilterDoctor(''); setFilterClinic(''); setFilterStatus(''); setFilterFrom(''); setFilterTo(''); }} className="bg-white border border-slate-200 text-slate-600 px-6 py-2.5 rounded-lg font-bold text-sm transition-all hover:bg-slate-50">Reset</button>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CLINIC</label>
+                            <select value={filterClinic} onChange={e => { setFilterClinic(e.target.value); setPage(1); }}
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                <option value="">All Clinics</option>
+                                {clinics.map((c: any) => <option key={c.id} value={c.id}>{c.clinicNameEn || c.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DOCTOR</label>
+                            <select value={filterDoctor} onChange={e => { setFilterDoctor(e.target.value); setPage(1); }}
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                <option value="">All Doctors</option>
+                                {availableDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</label>
+                            <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
+                                className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] bg-slate-50/50 appearance-none transition-all">
+                                {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5 sm:col-span-2 md:col-span-2 lg:col-span-2">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">DATE RANGE</label>
+                            <div className="flex items-center bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2.5 transition-all focus-within:ring-2 focus-within:ring-[#1A6FC4] focus-within:bg-white">
+                                <input type="date" value={filterFrom} onChange={e => { setFilterFrom(e.target.value); setPage(1); }} className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none w-full" />
+                                <span className="text-slate-300 font-bold mx-2">-</span>
+                                <input type="date" value={filterTo} min={filterFrom || undefined} onChange={e => { setFilterTo(e.target.value); setPage(1); }} className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none w-full" />
                             </div>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* ── Table ── */}
@@ -501,8 +435,8 @@ const AppointmentManagementPage: React.FC = () => {
                                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
                                     <th className="px-6 py-4">ID</th>
                                     <th className="px-6 py-4">PATIENT NAME</th>
-                                    <th className="px-6 py-4">{isAdmin ? 'DOCTOR NAME' : 'DOCTOR'}</th>
                                     <th className="px-6 py-4">CLINIC</th>
+                                    <th className="px-6 py-4">{isAdmin ? 'DOCTOR NAME' : 'DOCTOR'}</th>
                                     <th className="px-6 py-4">DATE & TIME</th>
                                     <th className="px-6 py-4">STATUS</th>
                                     <th className="px-6 py-4">ACTIONS</th>
@@ -530,8 +464,7 @@ const AppointmentManagementPage: React.FC = () => {
                                     appointments.map((apt) => {
                                         const aptDateRaw = getAptDate(apt);
                                         const { date, time } = fmtDateTime(aptDateRaw);
-                                        const foundDoctor = doctors.find(d => String(d.id) === String(apt.doctorId));
-                                        const displayDoctorName = foundDoctor ? foundDoctor.name : (apt.doctorName || '—');
+                                        const displayDoctorName = apt.doctorName || '—';
 
                                         return (
                                             <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors group">
@@ -551,8 +484,8 @@ const AppointmentManagementPage: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-semibold text-slate-800">{displayDoctorName}</td>
                                                 <td className="px-6 py-4 text-sm font-semibold text-slate-600">{apt.clinicName || '—'}</td>
+                                                <td className="px-6 py-4 text-sm font-semibold text-slate-800">{displayDoctorName}</td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-[13px] font-semibold text-slate-700">{date}</div>
                                                     <div className="text-[12px] font-medium text-slate-400 mt-0.5">{time}</div>
@@ -562,7 +495,7 @@ const AppointmentManagementPage: React.FC = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">
-                                                        <button onClick={() => navigate(`/dashboard/appointments/edit/${apt.id}`)}
+                                                        <button onClick={() => navigate(`/dashboard/appointments/edit/${apt.id}`, { state: { appointment: apt } })}
                                                             className="text-slate-400 hover:text-[#1A6FC4] transition-colors" title="Edit">
                                                             <Edit2 size={16} strokeWidth={2.5} />
                                                         </button>
@@ -584,7 +517,9 @@ const AppointmentManagementPage: React.FC = () => {
                                                         {(apt.status === 5 || String(apt.status).toLowerCase() === 'cancelled') ? (
                                                             <span className="text-slate-400 font-medium">—</span>
                                                         ) : (
-                                                            <button className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white text-[12px] font-bold px-4 py-1.5 rounded-md transition-colors shadow-sm w-full max-w-[80px]">
+                                                            <button 
+                                                                onClick={() => navigate('/dashboard/patient-visit', { state: { selectedApptId: apt.id } })}
+                                                                className="bg-[#1A6FC4] hover:bg-[#155ba0] text-white text-[12px] font-bold px-4 py-1.5 rounded-md transition-colors shadow-sm w-full max-w-[80px]">
                                                                 Create
                                                             </button>
                                                         )}
