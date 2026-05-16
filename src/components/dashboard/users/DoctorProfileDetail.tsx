@@ -1,24 +1,42 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
 import TopBar from '../TopBar';
-import { Card, Badge, Button, Modal } from '../../ui';
+import type { StaffProfile, WorkingSchedule } from '../../../types/staff.types';
+import { Card, Button, Modal } from '../../ui';
+import { staffApi } from '../../../api/staff';
 import { profileApi } from '../../../api/profile';
-import type { DoctorProfile, DoctorScheduleEntry, DoctorFile } from '../../../api/profile';
+import { scheduleApi } from '../../../api/schedules';
 import {
-    Mail,
-    ShieldCheck,
-    Pencil,
-    AlertTriangle,
-    Trash2,
-    MapPin,
-    User,
-    Briefcase,
-    Clock,
-    FileText,
+    Mail, ShieldCheck, Pencil, AlertTriangle,
+    Trash2, MapPin, User, Briefcase, Clock, FileText, CheckCircle2,
 } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
-// ==================== Helper Components ====================
+// ─── Helpers ───────────────────────────────────────────────
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function formatTime(t: string): string {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function getShift(startTime: string): 'Morning' | 'Evening' | 'Night' {
+    const h = parseInt(startTime?.split(':')[0] ?? '8');
+    if (h >= 6 && h < 14) return 'Morning';
+    if (h >= 14 && h < 22) return 'Evening';
+    return 'Night';
+}
+
+const SHIFT_COLORS: Record<string, string> = {
+    Morning: 'bg-blue-50 text-blue-600',
+    Evening: 'bg-amber-50 text-amber-600',
+    Night:   'bg-violet-50 text-violet-600',
+};
+
+// ─── Sub-components ────────────────────────────────────────
 const InfoSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <Card className="flex flex-col !p-0 overflow-hidden h-full">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30">
@@ -28,41 +46,51 @@ const InfoSection = ({ title, children }: { title: string; children: React.React
     </Card>
 );
 
-const InfoItem = ({ label, value, subValue }: { label: string; value: string | React.ReactNode; subValue?: string }) => (
+const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div className="flex flex-col gap-1">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-        <div className="text-sm font-bold text-slate-900 break-words">{value || 'N/A'}</div>
-        {subValue && <div className="text-xs text-slate-400 font-medium">{subValue}</div>}
+        <div className="text-sm font-bold text-slate-900 break-words">
+            {typeof value === 'string' && !value.trim() ? 'N/A' : (value || 'N/A')}
+        </div>
     </div>
 );
 
-const ScheduleRow = ({ schedule }: { schedule: DoctorScheduleEntry }) => (
+const ScheduleRow = ({
+    schedule, onDelete,
+}: {
+    schedule: WorkingSchedule & { apiId?: number };
+    onDelete?: (id: number) => void;
+}) => (
     <tr className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-        <td className="py-4 px-4 text-sm font-bold text-slate-900">{schedule.day}</td>
+        <td className="py-4 px-8 text-sm font-bold text-slate-900">{schedule.day}</td>
         <td className="py-4 px-4 text-sm font-bold text-slate-600">{schedule.startTime}</td>
         <td className="py-4 px-4 text-sm font-bold text-slate-600">{schedule.endTime}</td>
         <td className="py-4 px-4">
-            <Badge variant="info" size="sm" className="bg-blue-50 text-blue-600 border-0">{schedule.shift}</Badge>
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black ${SHIFT_COLORS[schedule.shift] ?? 'bg-slate-50 text-slate-600'}`}>
+                {schedule.shift}
+            </span>
         </td>
-        <td className="py-4 px-4 text-right">
-            <button className="text-slate-300 hover:text-red-500 transition-colors">
+        <td className="py-4 px-8 text-right">
+            <button
+                onClick={() => schedule.apiId && onDelete?.(schedule.apiId)}
+                className="text-slate-300 hover:text-red-500 transition-colors"
+            >
                 <Trash2 size={16} />
             </button>
         </td>
     </tr>
 );
 
-// ==================== Main Component ====================
+// ─── Main Component ────────────────────────────────────────
 const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
     const { id: paramId } = useParams<{ id: string }>();
-    const navigate = useNavigate();
     const { user: authUser } = useAuth();
-
     const id = paramId || authUser?.id;
+    const isOwnProfile = !paramId || (authUser && String(authUser.id) === String(id));
+    const navigate = useNavigate();
 
-    const [doctor, setDoctor] = useState<DoctorProfile | null>(null);
-    const [schedule, setSchedule] = useState<DoctorScheduleEntry[]>([]);
-    const [files, setFiles] = useState<DoctorFile[]>([]);
+    const [user, setUser] = useState<StaffProfile | null>(null);
+    const [schedule, setSchedule] = useState<(WorkingSchedule & { apiId?: number })[]>([]);
     const [loading, setLoading] = useState(true);
     const [deactivateModal, setDeactivateModal] = useState(false);
     const [isDeactivating, setIsDeactivating] = useState(false);
@@ -71,49 +99,111 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
         if (!id) return;
         setLoading(true);
         try {
-            // Fetch profile, schedule, and files in parallel
-            const [profileData, scheduleData, filesData] = await Promise.all([
-                profileApi.getDoctorProfile(id),
-                profileApi.getDoctorSchedule(id),
-                profileApi.getUserFiles(id),
-            ]);
-            setDoctor(profileData);
-            setSchedule(scheduleData);
-            setFiles(filesData);
+            // Fetch directly from the doctor database instead of admin module
+            const doctor = await profileApi.getDoctorProfile(id);
+            
+            if (doctor) {
+                const files = await profileApi.getUserFiles(id);
+                
+                const mappedProfile: any = {
+                    ...doctor,
+                    id: String(doctor.id),
+                    name: doctor.nameEngLish || (doctor as any).name || 'Unknown',
+                    fullNameArabic: doctor.nameArabic || doctor.fullNameArabic,
+                    email: doctor.email,
+                    phone: doctor.phoneNumber || (doctor as any).phone,
+                    gender: doctor.gender,
+                    dateOfBirth: doctor.dateOfBirth,
+                    address: doctor.address,
+                    nationalId: doctor.nationalId,
+                    role: doctor.role || 'Doctor',
+                    department: doctor.department || doctor.assignedDept,
+                    location: doctor.location || doctor.city || doctor.assignedClinic,
+                    status: doctor.isActive ? 'Active' : 'Disabled',
+                    avatar: doctor.avatar || doctor.personalPhotos,
+                    educationalQualification: doctor.educationalQualification,
+                    graduationYear: doctor.graduationYear ? String(doctor.graduationYear) : '',
+                    syndicateNumber: doctor.medicalSyndicateNumber || doctor.syndicateNumber,
+                    dateOfAppointment: (doctor as any).dateOfAppointment || '',
+                    isHeadOfDepartment: !!(doctor as any).isHeadOfDepartment,
+                    assignedDept: doctor.department || doctor.assignedDept,
+                    assignedClinic: doctor.location || doctor.city || doctor.assignedClinic,
+                    createdAt: doctor.createdAt,
+                    updatedAt: doctor.updatedAt,
+                    updatedBy: doctor.updatedBy,
+                    documents: files.map(f => ({
+                        id: f.id,
+                        name: f.fileName,
+                        url: f.fileUrl
+                    }))
+                };
+                
+                setUser(mappedProfile as StaffProfile);
+
+                // Try fetching schedule
+                const numericId = parseInt(String(doctor.id ?? id), 10);
+                if (!isNaN(numericId)) {
+                    try {
+                        const res = await scheduleApi.getSchedules({ DoctorId: numericId, PageSize: 50 });
+                        const items: any[] = Array.isArray(res?.data)
+                            ? res.data
+                            : res?.data?.schedules ?? res?.data?.items ?? res?.data?.data ?? [];
+                        if (items.length > 0) {
+                            setSchedule(items.map((s: any) => ({
+                                apiId:     s.id,
+                                day:       DAY_NAMES[s.dayOfWeek] ?? s.dayOfWeek,
+                                startTime: s.startTime?.includes('AM') || s.startTime?.includes('PM') ? s.startTime : formatTime(s.startTime),
+                                endTime:   s.endTime?.includes('AM') || s.endTime?.includes('PM') ? s.endTime : formatTime(s.endTime),
+                                shift:     getShift(s.startTime),
+                            })));
+                        }
+                    } catch { /* schedule unavailable */ }
+                }
+            }
         } catch (error) {
-            console.error('Failed to load doctor data:', error);
+            console.error('Failed to fetch doctor from profile database:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        loadData();
-    }, [id]);
+    useEffect(() => { loadData(); }, [id]);
 
     const handleDeactivate = async () => {
-        if (!doctor || !id) return;
+        if (!user) return;
         setIsDeactivating(true);
         try {
-            await profileApi.editDoctorProfile(id, {
-                IsActive: doctor.isActive ? false : true,
-            });
-            setDoctor(prev => prev ? { ...prev, isActive: !prev.isActive, status: prev.isActive ? 'Disabled' : 'Active' } : prev);
+            const activate = user.status !== 'Active';
+            await staffApi.toggleStatus(user.id, activate);
+            setUser(prev => prev ? { ...prev, status: activate ? 'Active' : 'Disabled' } : prev);
             setDeactivateModal(false);
         } catch (err) {
-            console.error('Deactivation failed:', err);
+            console.error('Toggle status failed:', err);
         } finally {
             setIsDeactivating(false);
         }
     };
 
-    const breadcrumb = (
+    const handleDeleteScheduleRow = async (apiId: number) => {
+        try {
+            await scheduleApi.deleteSchedule(apiId);
+            setSchedule(prev => prev.filter(s => s.apiId !== apiId));
+        } catch (e) {
+            console.error('Delete schedule failed:', e);
+        }
+    };
+
+    const breadcrumb = isOwnProfile ? (
         <span className="text-slate-400">
-            <span className="cursor-pointer hover:text-slate-600 transition-colors" onClick={() => navigate('/dashboard/users')}>
+            <span className="text-blue-600 font-bold uppercase tracking-widest text-xs">MY PROFILE</span>
+        </span>
+    ) : (
+        <span className="text-slate-400 text-xs">
+            <span className="cursor-pointer hover:text-slate-600 transition-colors font-bold uppercase tracking-widest" onClick={() => navigate('/dashboard/users')}>
                 USER MANAGEMENT
             </span>
             <span className="mx-2 text-slate-300">&rsaquo;</span>
-            <span className="text-blue-600 font-bold">PROFILE DETAIL</span>
+            <span className="text-blue-600 font-bold uppercase tracking-widest">PROFILE DETAIL</span>
         </span>
     );
 
@@ -122,13 +212,13 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
             <div className="flex flex-col h-full bg-slate-50 w-full">
                 <TopBar title={breadcrumb} onMenuClick={onMenuClick} />
                 <div className="flex-1 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
                 </div>
             </div>
         );
     }
 
-    if (!doctor) return (
+    if (!user) return (
         <div className="flex flex-col h-full bg-slate-50 w-full">
             <TopBar title={breadcrumb} onMenuClick={onMenuClick} />
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -137,10 +227,17 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                 </div>
                 <h2 className="text-xl font-bold text-slate-900 mb-2">Doctor Profile Not Found</h2>
                 <p className="text-slate-500 mb-6">We couldn't find the staff member you're looking for.</p>
-                <Button onClick={() => navigate('/dashboard/users')}>Back to User Management</Button>
+                {isOwnProfile ? (
+                    <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
+                ) : (
+                    <Button onClick={() => navigate('/dashboard/users')}>Back to User Management</Button>
+                )}
             </div>
         </div>
     );
+
+    const isActive = user.status === 'Active';
+    const displaySchedule = schedule;
 
     return (
         <div className="flex flex-col flex-1 h-full w-full bg-slate-50 relative font-sans overflow-hidden">
@@ -149,137 +246,187 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
             <div className="flex-1 overflow-y-auto p-4 md:p-8">
                 <div className="max-w-[1600px] mx-auto pb-10">
 
-                    {/* Header Controls */}
+                    {/* ── Page Header ── */}
                     <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
                         <div className="flex flex-col">
                             <h1 className="text-2xl font-black text-slate-900 flex items-center gap-3">
                                 Doctor Profile
-                                <Badge variant="info" className="text-[10px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 border-blue-100">
-                                    {doctor.id}
-                                </Badge>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[11px] font-black uppercase tracking-widest border border-blue-100">
+                                    {user.id || 'DR-0921-S'}
+                                </span>
                             </h1>
-                            <p className="text-slate-400 font-bold text-sm">View doctor details and information</p>
+                            <p className="text-slate-400 font-bold text-sm mt-1">View doctor details and information</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button
-                                variant="danger"
-                                className="bg-red-50 text-red-500 hover:bg-red-100 border-0 font-bold px-6"
-                                onClick={() => setDeactivateModal(true)}
-                            >
-                                {doctor.isActive ? 'Deactivate' : 'Activate'}
-                            </Button>
-                            <Button
-                                className="bg-blue-600 text-white hover:bg-blue-700 font-bold px-6 flex items-center gap-2"
+                            {!isOwnProfile && (
+                                <button
+                                    onClick={() => setDeactivateModal(true)}
+                                    className="px-5 py-2 rounded-lg border border-red-300 text-red-500 font-bold text-sm hover:bg-red-50 transition-colors"
+                                >
+                                    {isActive ? 'Deactivate' : 'Activate'}
+                                </button>
+                            )}
+                            <button
                                 onClick={() => navigate(`/dashboard/users/staff/edit/${id}`)}
+                                className="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
                             >
-                                <Pencil size={16} />
-                                Edit Profile
-                            </Button>
+                                <Pencil size={15} /> Edit Profile
+                            </button>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                        {/* Sidebar */}
-                        <div className="xl:col-span-3 space-y-8">
+
+                        {/* ── Left Sidebar ── */}
+                        <div className="xl:col-span-3 space-y-6">
+
+                            {/* Avatar Card */}
                             <Card className="p-8 flex flex-col items-center text-center">
                                 <div className="relative mb-6">
-                                    <div className="w-40 h-40 rounded-2xl overflow-hidden border-4 border-white shadow-xl">
+                                    <div className="w-36 h-36 rounded-2xl overflow-hidden border-4 border-white shadow-xl">
                                         <img
-                                            src={doctor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.nameEngLish)}&background=random`}
-                                            alt={doctor.nameEngLish}
+                                            src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=3b82f6&color=fff&size=200`}
+                                            alt={user.name}
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
-                                    <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-white shadow-lg ${doctor.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
+                                    <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-white shadow-lg ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                                 </div>
-                                <h2 className="text-2xl font-black text-slate-900 mb-1">{doctor.nameEngLish}</h2>
-                                <p className="text-slate-400 font-bold text-sm mb-6">{doctor.nameArabic}</p>
+                                <h2 className="text-xl font-black text-slate-900 mb-1">{user.name}</h2>
+                                <p className="text-slate-400 font-bold text-sm mb-6 font-arabic leading-relaxed">
+                                    {user.fullNameArabic || ''}
+                                </p>
 
                                 <div className="w-full space-y-3">
-                                    <div className="flex items-center gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-50">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                            <Briefcase className="text-blue-600" size={16} />
+                                    <div className="flex items-center gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                        <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                                            <Briefcase className="text-blue-600" size={14} />
                                         </div>
-                                        <span className="text-xs font-black text-blue-600 uppercase tracking-wide">{doctor.role || 'Doctor'}</span>
+                                        <span className="text-xs font-black text-blue-600 uppercase tracking-wide">{user.role || 'Doctor'}</span>
                                     </div>
-                                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center">
-                                            <MapPin className="text-slate-600" size={16} />
+                                    {user.location && (
+                                        <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+                                                <MapPin className="text-slate-600" size={14} />
+                                            </div>
+                                            <span className="text-xs font-black text-slate-600 uppercase tracking-wide truncate">{user.location}</span>
                                         </div>
-                                        <span className="text-xs font-black text-slate-600 uppercase tracking-wide">{doctor.location || doctor.city}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 overflow-hidden">
-                                        <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
-                                            <Mail className="text-slate-600" size={16} />
+                                    )}
+                                    {user.email && (
+                                        <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 overflow-hidden">
+                                            <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+                                                <Mail className="text-slate-600" size={14} />
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-600 truncate">{user.email}</span>
                                         </div>
-                                        <span className="text-xs font-bold text-slate-600 truncate">{doctor.email}</span>
-                                    </div>
+                                    )}
                                 </div>
                             </Card>
 
+                            {/* Account & System Info */}
                             <Card className="p-0 overflow-hidden">
                                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
-                                    <ShieldCheck className="text-blue-600" size={18} />
-                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Account & System Info</h3>
+                                    <ShieldCheck className="text-blue-600" size={17} />
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Account &amp; System Info</h3>
                                 </div>
-                                <div className="p-6 space-y-5">
+                                <div className="p-5 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">System Status</span>
-                                        <Badge
-                                            variant={doctor.isActive ? 'success' : 'danger'}
-                                            className={`${doctor.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'} border-0 uppercase text-[10px] font-black`}
-                                        >
-                                            {doctor.status}
-                                        </Badge>
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase ${isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                            {user.status}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Created At</span>
+                                        <span className="text-xs font-bold text-slate-900">
+                                            {(user as any).createdAt ? new Date((user as any).createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Last Updated</span>
+                                        <span className="text-xs font-bold text-slate-900">
+                                            {(user as any).updatedAt ? new Date((user as any).updatedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Updated By</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-5 h-5 rounded-full bg-slate-200 overflow-hidden text-[10px] font-black text-slate-500 flex items-center justify-center">
+                                                {((user as any).updatedBy?.[0] || 'S').toUpperCase()}
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-900">{(user as any).updatedBy || 'System Admin'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </Card>
                         </div>
 
-                        {/* Main Content */}
+                        {/* ── Main Content ── */}
                         <div className="xl:col-span-9 space-y-8">
+
+                            {/* Personal + Professional */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
                                 {/* Personal Information */}
                                 <InfoSection title="Personal Information">
-                                    <div className="grid grid-cols-1 gap-6">
-                                        <InfoItem label="Full Name (English)" value={doctor.nameEngLish} />
-                                        <InfoItem label="Full Name (Arabic)" value={doctor.nameArabic} />
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <InfoItem label="Email" value={doctor.email} />
-                                            <InfoItem label="Phone" value={doctor.phoneNumber} />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <InfoItem label="Gender" value={doctor.gender} />
-                                            <InfoItem label="DOB" value={doctor.dateOfBirth ? new Date(doctor.dateOfBirth).toLocaleDateString() : 'N/A'} />
-                                        </div>
-                                        <InfoItem label="Address" value={doctor.address} />
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <InfoItem label="City" value={doctor.city} />
-                                            <InfoItem label="Country" value={doctor.country} />
-                                        </div>
-                                        <InfoItem label="National ID" value={doctor.nationalId} />
+                                    <InfoItem label="Full Name (English)" value={user.name} />
+                                    <InfoItem label="Full Name (Arabic)" value={
+                                        <span className="font-arabic text-base leading-relaxed">{user.fullNameArabic || '—'}</span>
+                                    } />
+                                    <InfoItem label="Email" value={user.email} />
+                                    <InfoItem label="Phone" value={user.phone} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <InfoItem label="Gender" value={user.gender} />
+                                        <InfoItem label="DOB" value={
+                                            user.dateOfBirth
+                                                ? new Date(user.dateOfBirth).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+                                                : (user as any).DateOfBirth || '—'
+                                        } />
                                     </div>
+                                    <InfoItem label="Address" value={user.address} />
+                                    <InfoItem label="National ID" value={user.nationalId} />
                                 </InfoSection>
 
                                 {/* Professional Information */}
                                 <InfoSection title="Professional Information">
-                                    <div className="grid grid-cols-1 gap-6">
-                                        <InfoItem label="Specialization" value={doctor.specialization} />
-                                        <InfoItem label="Educational Qualification" value={doctor.educationalQualification} />
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <InfoItem label="Graduation Year" value={String(doctor.graduationYear)} />
-                                            <InfoItem label="Medical Syndicate No." value={doctor.medicalSyndicateNumber} />
+                                    <InfoItem
+                                        label="Educational Qualification"
+                                        value={user.educationalQualification || (user as any).qualification || '—'}
+                                    />
+                                    <InfoItem label="Graduation Year" value={user.graduationYear || '—'} />
+                                    <InfoItem label="Syndicate Number" value={user.syndicateNumber || (user as any).licenseNumber || user.licenseId || '—'} />
+                                    <InfoItem label="Date of Appointment" value={
+                                        user.dateOfAppointment
+                                            ? new Date(user.dateOfAppointment).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+                                            : '—'
+                                    } />
+
+                                    {/* Head of Department Badge */}
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Head of Department</span>
+                                        <div className="flex items-center gap-2">
+                                            {user.isHeadOfDepartment ? (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-black">
+                                                    <CheckCircle2 size={13} /> Yes
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-black">
+                                                    No
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-3">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Organization Assignment</span>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-slate-500">Department</span>
-                                                <span className="text-xs font-black text-slate-900">{doctor.department || 'N/A'}</span>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-slate-500">Clinic ID</span>
-                                                <span className="text-xs font-black text-slate-900">{doctor.clinicId || 'N/A'}</span>
-                                            </div>
+                                    </div>
+
+                                    {/* Organization Assignment */}
+                                    <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-3 mt-2">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Organization Assignment</span>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-slate-500">Assigned Dept</span>
+                                            <span className="text-xs font-black text-slate-900">{user.assignedDept || user.department || '—'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-slate-500">AssignedClinic</span>
+                                            <span className="text-xs font-black text-slate-900">{user.assignedClinic || user.location || '—'}</span>
                                         </div>
                                     </div>
                                 </InfoSection>
@@ -292,61 +439,64 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                         <Clock className="text-blue-600" size={20} />
                                         Current Working Schedule
                                     </h3>
-                                    <Badge variant="info" className="bg-blue-50 text-blue-600 border-0 font-black">
-                                        {schedule.length} Slots Active
-                                    </Badge>
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-black border border-blue-100">
+                                        {displaySchedule.length} Slots Active
+                                    </span>
                                 </div>
                                 <div className="overflow-x-auto">
-                                    {schedule.length > 0 ? (
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-slate-50/50">
-                                                    <th className="py-4 px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Day</th>
-                                                    <th className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Start Time</th>
-                                                    <th className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">End Time</th>
-                                                    <th className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Shift</th>
-                                                    <th className="py-4 px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-right">Actions</th>
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/50">
+                                                {['Day', 'Start Time', 'End Time', 'Shift', 'Actions'].map((h, i) => (
+                                                    <th key={h} className={`py-4 ${i === 0 ? 'px-8' : 'px-4'} ${i === 4 ? 'text-right px-8' : ''} text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100`}>
+                                                        {h}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {displaySchedule.length > 0 ? (
+                                                displaySchedule.map((s, idx) => (
+                                                    <ScheduleRow key={(s as any).apiId ?? idx} schedule={s} onDelete={handleDeleteScheduleRow} />
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={5} className="py-10 text-center text-slate-400 font-bold text-sm">
+                                                        No active schedule slots found.
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                {schedule.map((s, idx) => <ScheduleRow key={idx} schedule={s} />)}
-                                            </tbody>
-                                        </table>
-                                    ) : (
-                                        <div className="py-12 text-center text-slate-400 font-bold text-sm">No schedule assigned yet.</div>
-                                    )}
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </Card>
 
-                            {/* Documents */}
+                            {/* Documents & Attachments */}
                             <Card className="!p-0 overflow-hidden">
                                 <div className="px-8 py-5 border-b border-slate-100 flex items-center gap-3 bg-white">
                                     <FileText className="text-blue-600" size={20} />
-                                    <h3 className="text-lg font-black text-slate-900">Documents & Attachments</h3>
+                                    <h3 className="text-lg font-black text-slate-900">Documents &amp; Attachments</h3>
                                 </div>
                                 <div className="p-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                    {files.length > 0 ? files.map((file) => (
-                                        <a
-                                            key={file.id}
-                                            href={file.fileUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer block"
-                                        >
-                                            <img
-                                                src={file.fileUrl}
-                                                alt={file.fileName}
-                                                onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=DOC&background=e2e8f0&color=94a3b8`; }}
-                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                            />
-                                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <span className="text-white text-xs font-bold border border-white rounded px-3 py-1">View</span>
-                                            </div>
-                                            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-900/80 to-transparent">
-                                                <p className="text-[10px] font-bold text-white truncate">{file.fileName}</p>
-                                            </div>
-                                        </a>
-                                    )) : (
+                                    {user.documents && user.documents.length > 0 ? (
+                                        user.documents.map((doc: any) => ({ key: doc.id, label: doc.name, url: doc.url })).map((doc: any, i: number) => (
+                                            <a key={doc.key} href={doc.url} target="_blank" rel="noopener noreferrer" className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer block">
+                                                <img
+                                                    src={(doc as any).url || `https://picsum.photos/seed/${i + 20}/400/300`}
+                                                    alt={doc.label}
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                />
+                                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <span className="px-3 py-1.5 rounded-lg border border-white text-white text-xs font-bold hover:bg-white hover:text-slate-900 transition-colors">
+                                                        View
+                                                    </span>
+                                                </div>
+                                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-slate-900/80 to-transparent">
+                                                    <p className="text-[10px] font-bold text-white truncate">{doc.label}</p>
+                                                </div>
+                                            </a>
+                                        ))
+                                    ) : (
                                         <div className="col-span-5 py-10 text-center text-slate-400 font-bold text-sm">No documents uploaded.</div>
                                     )}
                                 </div>
@@ -356,22 +506,22 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                 </div>
             </div>
 
-            {/* Deactivation Modal */}
+            {/* ── Deactivate / Activate Modal ── */}
             <Modal isOpen={deactivateModal} onClose={() => setDeactivateModal(false)} size="sm">
                 <div className="text-center py-4">
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <AlertTriangle className="w-8 h-8 text-red-600" />
                     </div>
                     <h3 className="text-xl font-extrabold text-slate-900 mb-2">
-                        {doctor.isActive ? 'Deactivate Doctor Profile?' : 'Activate Doctor Profile?'}
+                        {isActive ? 'Deactivate Doctor Profile?' : 'Activate Doctor Profile?'}
                     </h3>
                     <p className="text-slate-500 font-medium mb-8">
-                        This will {doctor.isActive ? 'disable' : 'enable'} the doctor's access to the system.
+                        This will {isActive ? 'disable' : 'restore'} the doctor's access to the system.
                     </p>
                     <div className="flex gap-3">
                         <Button variant="outline" fullWidth onClick={() => setDeactivateModal(false)}>Cancel</Button>
                         <Button variant="danger" fullWidth isLoading={isDeactivating} onClick={handleDeactivate}>
-                            {doctor.isActive ? 'Yes, Deactivate' : 'Yes, Activate'}
+                            {isActive ? 'Yes, Deactivate' : 'Yes, Activate'}
                         </Button>
                     </div>
                 </div>

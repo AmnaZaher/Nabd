@@ -74,9 +74,34 @@ export const staffApi = {
         return null;
       }
 
+      // Augment the list item with full profile details if possible
+      const realId = item.id || item.Id || item.userId || item.UserId;
+      if (realId) {
+        try {
+          const fullProfileResponse = await fetchApi<any>(`/Staff/${realId}`);
+          if (fullProfileResponse?.data) {
+            item = { ...item, ...fullProfileResponse.data };
+          }
+        } catch (e) {
+          console.warn(`Failed to fetch full profile details via /Staff/${realId}:`, e);
+          // Fallback for Admin profile
+          if (idOrNationalId === 'admin1' || String(item.role) === '1' || String(item.Role) === '1' || item.roleName === 'Admin') {
+            try {
+              const adminProfileResponse = await fetchApi<any>('/Admin/Profile');
+              if (adminProfileResponse?.data) {
+                item = { ...item, ...adminProfileResponse.data };
+              }
+            } catch (e2) {
+              console.warn("Failed to fetch admin profile fallback:", e2);
+            }
+          }
+        }
+      }
+
+
       const rolesMap: Record<string, string> = {
         '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
-        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician'
+        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
       };
       
       // Comprehensive search for role

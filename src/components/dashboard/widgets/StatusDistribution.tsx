@@ -18,7 +18,7 @@ const StatusDistribution: React.FC = () => {
             try {
                 // Fetch up to 100 recent appointments to calculate distribution
                 const res = await listAppointments({ PageIndex: 0, PageSize: 100 });
-                const list = (res?.data as any)?.items || (res?.data as any)?.data || (res?.data as any)?.appointments || (Array.isArray(res?.data) ? res.data : []) || [];
+                const list = Array.isArray(res) ? res : ((res?.data as any)?.items || (res?.data as any)?.data || (res?.data as any)?.appointments || (Array.isArray(res?.data) ? res.data : []) || []);
                 
                 if (list && list.length > 0) {
                     let scheduled = 0;

@@ -1,8 +1,9 @@
 import React from 'react';
 import { Menu, Search, User as UserIcon, UserPlus } from 'lucide-react';
 import { AddUserButton } from './shared/AddUserButton';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, type User } from '../../context/AuthContext';
 import { staffApi } from '../../api/staff';
+import { profileApi } from '../../api/profile';
 import type { StaffProfile } from '../../types/staff.types';
 
 interface TopBarProps {
@@ -35,8 +36,20 @@ const TopBar: React.FC<TopBarProps> = ({
                 try {
                     // user.id = JWT nameidentifier (internal DB id)
                     // user.name = JWT name/unique_name (often the national ID / username)
-                    const data = await staffApi.getMyProfile(user.id, user.name);
-                    if (data) setProfile(data);
+                    let data: any = null;
+                    if (user.role === 'Doctor') {
+                        const doc = await profileApi.getDoctorProfile(user.id);
+                        if (doc) {
+                            data = {
+                                name: doc.nameEngLish || doc.nameArabic || user.name,
+                                role: doc.role || 'Doctor',
+                                avatar: doc.avatar || doc.personalPhotos
+                            };
+                        }
+                    } else {
+                        data = await staffApi.getMyProfile(user.id, user.name);
+                    }
+                    if (data) setProfile(data as StaffProfile);
                 } catch (error) {
                     console.error('Failed to fetch profile:', error);
                 }
@@ -46,7 +59,7 @@ const TopBar: React.FC<TopBarProps> = ({
         fetchProfile();
     }, [user?.id]);
 
-    const displayUser = profile || user;
+    const displayUser: StaffProfile | User | null = profile || user;
 
     return (
         <header className="px-4 md:px-10 py-4 md:py-6 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-30 w-full overflow-visible">

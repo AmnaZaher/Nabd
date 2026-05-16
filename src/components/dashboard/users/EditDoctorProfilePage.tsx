@@ -84,6 +84,7 @@ const EditDoctorProfilePage = () => {
     const { user: authUser } = useAuth();
 
     const id = paramId || authUser?.id;
+    const isOwnProfile = !paramId || (authUser && String(authUser.id) === String(id));
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -141,7 +142,7 @@ const EditDoctorProfilePage = () => {
                 Country:                  form.Country                  || undefined,
             };
             await profileApi.editDoctorProfile(id, payload);
-            navigate(`/dashboard/users/staff/${id}`);
+            navigate(isOwnProfile ? '/dashboard/profile' : `/dashboard/users/staff/${id}`);
         } catch (error) {
             console.error('Failed to update doctor profile:', error);
             alert('Failed to save changes. Please try again.');
@@ -150,13 +151,21 @@ const EditDoctorProfilePage = () => {
         }
     };
 
-    const breadcrumb = (
+    const breadcrumb = isOwnProfile ? (
         <span className="text-slate-400">
-            <span className="cursor-pointer hover:text-slate-600 transition-colors" onClick={() => navigate('/dashboard/users')}>
+            <span className="cursor-pointer hover:text-slate-600 transition-colors uppercase tracking-widest text-xs font-bold" onClick={() => navigate('/dashboard/profile')}>
+                MY PROFILE
+            </span>
+            <span className="mx-2 text-slate-300">&rsaquo;</span>
+            <span className="text-blue-600 font-bold uppercase tracking-widest text-xs">EDIT</span>
+        </span>
+    ) : (
+        <span className="text-slate-400 text-xs">
+            <span className="cursor-pointer hover:text-slate-600 transition-colors font-bold uppercase tracking-widest" onClick={() => navigate('/dashboard/users')}>
                 USER MANAGEMENT
             </span>
             <span className="mx-2 text-slate-300">&rsaquo;</span>
-            <span className="text-blue-600 font-bold">EDIT DOCTOR PROFILE</span>
+            <span className="text-blue-600 font-bold uppercase tracking-widest">EDIT DOCTOR PROFILE</span>
         </span>
     );
 
@@ -391,14 +400,18 @@ const EditDoctorProfilePage = () => {
 
             {/* Sticky Footer */}
             <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-100 px-8 py-4 flex items-center justify-between z-10">
-                <button
-                    className="text-red-500 hover:text-red-600 font-bold text-sm underline decoration-red-200 underline-offset-4"
-                    onClick={() => setForm(prev => ({ ...prev, IsActive: false }))}
-                >
-                    Deactivate Doctor Profile
-                </button>
+                <div>
+                    {!isOwnProfile && (
+                        <button
+                            className="text-red-500 hover:text-red-600 font-bold text-sm underline decoration-red-200 underline-offset-4"
+                            onClick={() => setForm(prev => ({ ...prev, IsActive: false }))}
+                        >
+                            Deactivate Doctor Profile
+                        </button>
+                    )}
+                </div>
                 <div className="flex items-center gap-4">
-                    <Button variant="outline" className="px-10 font-bold" onClick={() => navigate(-1)}>Cancel</Button>
+                    <Button variant="outline" className="px-10 font-bold" onClick={() => isOwnProfile ? navigate('/dashboard/profile') : navigate(-1)}>Cancel</Button>
                     <Button
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-10 shadow-lg shadow-blue-200"
                         isLoading={saving}

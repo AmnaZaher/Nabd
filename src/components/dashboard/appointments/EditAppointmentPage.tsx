@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, User, Stethoscope, Building2, Calendar as CalendarIcon, Clock, Lock, FileText, Loader2 } from 'lucide-react';
-import { getAppointmentDetails, updateAppointment } from '../../../api/appointments';
+import { getAppointmentDetails, updateAppointment, listAppointments } from '../../../api/appointments';
 import { patientApi } from '../../../api/patient';
 import { getClinics } from '../../../api/clinics';
-import { staffApi } from '../../../api/staff';
 import { scheduleApi } from '../../../api/schedules';
 
 // Helper to format slot (e.g. "09:00:00" -> "09:00 AM")
@@ -23,16 +22,18 @@ function formatSlot(timeStr: string): string {
 const EditAppointmentPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
+    const passedApt = location.state?.appointment;
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     
     // Data sources
     const [doctors, setDoctors] = useState<any[]>([]);
-    const [allDoctors, setAllDoctors] = useState<any[]>([]);
     const [clinics, setClinics] = useState<any[]>([]);
     const [patients, setPatients] = useState<any[]>([]);
     const [loadingDoctors, setLoadingDoctors] = useState(false);
+    const [noDoctorsForClinic, setNoDoctorsForClinic] = useState(false);
 
     // Form state
     const [patientId, setPatientId] = useState('');
@@ -48,54 +49,48 @@ const EditAppointmentPage: React.FC = () => {
         const loadAll = async () => {
             setLoading(true);
             try {
-                const [drRes, clinicRes, ptRes, aptRes] = await Promise.all([
-                    staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 }),
+                const [clinicRes, ptRes, aptRes] = await Promise.all([
                     getClinics({ PageIndex: 0, PageSize: 100 }),
                     patientApi.getPatients({ PageIndex: 0, PageSize: 100 }),
-                    id ? getAppointmentDetails(id) : Promise.resolve(null),
+                    id ? (passedApt ? Promise.resolve(passedApt) : getAppointmentDetails(id).catch(async (e) => {
+                        console.warn("Details fetch failed, falling back to list", e);
+                        try {
+                            const res = await listAppointments({ PageSize: 1000 });
+                            const list = (res as any)?.data?.data || (res as any)?.data?.items || (res as any)?.data || (res as any)?.appointments || [];
+                            const arr = Array.isArray(list) ? list : (Array.isArray((res as any)?.items) ? (res as any).items : []);
+                            const found = arr.find((a: any) => String(a.id) === String(id));
+                            return found || null;
+                        } catch (err) {
+                            return null;
+                        }
+                    })) : Promise.resolve(null),
                 ]);
 
-                const staffList = (drRes as any)?.staffs ?? (drRes as any)?.items ?? (drRes as any)?.data ?? (drRes as any)?.data?.data ?? (Array.isArray(drRes) ? drRes : []);
-                const drList = staffList.filter((s: any) => {
-                    const rolesMap: Record<string, string> = { '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician' };
-                    let r = s.role ?? s.Role ?? s.roleName ?? s.RoleName ?? s.roleId ?? s.RoleId ?? s.staffRole ?? s.StaffRole;
-                    let rStr = typeof r === 'object' ? (r?.name ?? r?.Name ?? rolesMap[r?.id ?? r?.Id]) : String(r);
-                    rStr = rolesMap[rStr] ?? rStr;
-                    
-                    if (!rStr || rStr === 'undefined') {
-                        for (const k in s) {
-                            if (k.toLowerCase().includes('role')) {
-                                const val = s[k];
-                                rStr = typeof val === 'object' ? (val?.name ?? val?.Name ?? rolesMap[val?.id ?? val?.Id]) : String(val);
-                                rStr = rolesMap[rStr] ?? rStr;
-                                break;
-                            }
-                        }
-                    }
-                    return rStr === 'Doctor' || rStr === '2';
-                }).map((d: any) => ({
-                    ...d,
-                    id: d.id || d.Id || d.nationalId || d.NationalId,
-                    name: d.fullNameEnglish || d.FullNameEnglish || d.name || d.Name || `Dr. #${d.id || d.Id}`
-                }));
-                setAllDoctors(drList);
-                setDoctors(drList);
-
-                const clinicList = (clinicRes as any)?.data?.data ?? (clinicRes as any)?.data?.items ?? (Array.isArray((clinicRes as any)?.data) ? (clinicRes as any).data : []);
-                setClinics(clinicList);
+                const rawClinic: any = clinicRes;
+                const clinicList =
+                    rawClinic?.data?.data ??
+                    rawClinic?.data?.items ??
+                    rawClinic?.data?.clinics ??
+                    (Array.isArray(rawClinic?.data) ? rawClinic.data : null) ??
+                    rawClinic?.items ??
+                    rawClinic?.clinics ??
+                    (Array.isArray(rawClinic) ? rawClinic : []);
+                setClinics(Array.isArray(clinicList) ? clinicList : []);
 
                 const ptList = (ptRes as any)?.patients ?? (ptRes as any)?.items ?? (Array.isArray(ptRes) ? ptRes : []);
                 setPatients(ptList);
 
-                const apt = aptRes?.data ?? aptRes;
+                const apt = aptRes?.data?.data ?? aptRes?.data ?? aptRes;
+                console.log("Fetched appointment details:", apt);
                 if (apt) {
-                    setPatientId(apt.patientId?.toString() || '');
-                    setDoctorId(apt.doctorId?.toString() || '');
-                    setClinicId(apt.clinicId?.toString() || '');
-                    setNotes(apt.notes || '');
+                    const resolvedClinicId = apt.clinicId?.toString() || apt.ClinicId?.toString() || apt.clinic?.id?.toString() || '';
+                    setPatientId(apt.patientId?.toString() || apt.PatientId?.toString() || apt.patient?.id?.toString() || '');
+                    setDoctorId(apt.doctorId?.toString() || apt.DoctorId?.toString() || apt.doctor?.id?.toString() || '');
+                    setClinicId(resolvedClinicId);
+                    setNotes(apt.notes || apt.Notes || '');
 
-                    if (apt.appointmentDate || apt.dateTime) {
-                        const rawDate = apt.appointmentDate || apt.dateTime;
+                    const rawDate = apt.appointmentDate || apt.AppointmentDate || apt.dateTime || apt.DateTime || apt.date || apt.Date || apt.appointmentDateTime || apt.AppointmentDateTime || apt.scheduledDate || apt.ScheduledDate;
+                    if (rawDate) {
                         if (rawDate.includes('T')) {
                             const [dPart, tPart] = rawDate.split('T');
                             setDate(dPart);
@@ -103,11 +98,13 @@ const EditAppointmentPage: React.FC = () => {
                             setTimeSlot(cleanTime);
                         } else {
                             const d = new Date(rawDate);
-                            setDate(d.toISOString().split('T')[0]); // YYYY-MM-DD
-                            const hours = d.getHours().toString().padStart(2, '0');
-                            const minutes = d.getMinutes().toString().padStart(2, '0');
-                            const seconds = d.getSeconds().toString().padStart(2, '0');
-                            setTimeSlot(`${hours}:${minutes}:${seconds}`);
+                            if (!isNaN(d.getTime())) {
+                                setDate(d.toISOString().split('T')[0]); // YYYY-MM-DD
+                                const hours = d.getHours().toString().padStart(2, '0');
+                                const minutes = d.getMinutes().toString().padStart(2, '0');
+                                const seconds = d.getSeconds().toString().padStart(2, '0');
+                                setTimeSlot(`${hours}:${minutes}:${seconds}`);
+                            }
                         }
                     }
                 }
@@ -157,33 +154,52 @@ const EditAppointmentPage: React.FC = () => {
         fetchSlots();
     }, [fetchSlots]);
 
+    /* ── Load doctors for selected clinic via /Patient/Doctors?Clinic= ── */
     useEffect(() => {
         if (!clinicId) {
-            setDoctors(allDoctors);
+            setDoctors([]);
+            setNoDoctorsForClinic(false);
             return;
         }
         const fetchClinicDoctors = async () => {
             setLoadingDoctors(true);
+            setNoDoctorsForClinic(false);
             try {
-                const res = await scheduleApi.getSchedules({ ClinicId: Number(clinicId), PageSize: 1000 });
-                const rawList = (res as any)?.data?.data || (res as any)?.data?.items || (Array.isArray((res as any)?.data) ? (res as any).data : []) || [];
-                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId || s.DoctorId)));
-                const filtered = allDoctors.filter(d => doctorIds.has(String(d.id)));
+                const list = await patientApi.getDoctorsByClinic(Number(clinicId));
+                let mapped = list.map((d: any) => ({ id: String(d.id), name: d.name }));
                 
-                setDoctors(filtered.length > 0 ? filtered : allDoctors);
+                try {
+                    const schedulesRes = await scheduleApi.getSchedules({ ClinicId: Number(clinicId), PageSize: 1000 });
+                    const rawSchedules = (schedulesRes as any)?.data?.data ?? (schedulesRes as any)?.data?.items ?? (schedulesRes as any)?.data ?? [];
+                    const scheduleList = Array.isArray(rawSchedules) ? rawSchedules : [];
+                    
+                    const doctorsWithSchedules = new Set<string>();
+                    scheduleList.forEach((s: any) => {
+                        const dId = s.doctorId ?? s.DoctorId;
+                        if (dId) doctorsWithSchedules.add(String(dId));
+                    });
+                    
+                    mapped = mapped.filter((d: any) => doctorsWithSchedules.has(d.id));
+                } catch (err) {
+                    console.warn('Failed to fetch schedules to filter doctors:', err);
+                }
 
+                setDoctors(mapped);
+                setNoDoctorsForClinic(mapped.length === 0);
+                // Clear doctor selection if not in new list
                 setDoctorId(prev => {
-                    if (prev && !doctorIds.has(String(prev))) return '';
+                    if (prev && !mapped.find((d: any) => d.id === prev)) return '';
                     return prev;
                 });
             } catch {
-                setDoctors(allDoctors);
+                setDoctors([]);
+                setNoDoctorsForClinic(true);
             } finally {
                 setLoadingDoctors(false);
             }
         };
         fetchClinicDoctors();
-    }, [clinicId, allDoctors]);
+    }, [clinicId]);
 
     const handleSave = async () => {
         if (!id) return;
@@ -308,7 +324,10 @@ const EditAppointmentPage: React.FC = () => {
                                         {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                     </select>
                                 </div>
-                                {clinicId && doctors.length === 0 && !loadingDoctors && (
+                                {!clinicId && (
+                                    <p className="text-[11px] text-slate-400 mt-1 font-medium italic">Select a clinic first to see available doctors.</p>
+                                )}
+                                {clinicId && noDoctorsForClinic && !loadingDoctors && (
                                     <p className="text-[11px] text-amber-600 mt-1 font-medium">No doctors assigned to this clinic.</p>
                                 )}
                             </div>

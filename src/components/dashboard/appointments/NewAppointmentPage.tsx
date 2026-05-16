@@ -6,9 +6,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { bookAppointment } from '../../../api/appointments';
 import { getClinics } from '../../../api/clinics';
-import { staffApi } from '../../../api/staff';
-import { scheduleApi } from '../../../api/schedules';
 import { patientApi } from '../../../api/patient';
+import { scheduleApi } from '../../../api/schedules';
 
 /* ─── Types ─── */
 interface PatientOption {
@@ -63,7 +62,6 @@ const NewAppointmentPage: React.FC = () => {
 
     // Lists
     const [clinics, setClinics] = useState<ClinicOption[]>([]);
-    const [allDoctors, setAllDoctors] = useState<DoctorOption[]>([]);
     const [availableDoctors, setAvailableDoctors] = useState<DoctorOption[]>([]);
     const [patientResults, setPatientResults] = useState<PatientOption[]>([]);
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
@@ -73,44 +71,34 @@ const NewAppointmentPage: React.FC = () => {
     const [loadingPatients, setLoadingPatients] = useState(false);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [loadingDoctors, setLoadingDoctors] = useState(false);
+    const [noDoctorsForClinic, setNoDoctorsForClinic] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [showPatientDropdown, setShowPatientDropdown] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    /* ── Load clinics & all doctors on mount ── */
+    /* ── Load clinics on mount ── */
     useEffect(() => {
         const init = async () => {
             setLoadingInit(true);
             try {
-                const [clinicRes, staffRes] = await Promise.all([
-                    getClinics({ PageSize: 100 }),
-                    staffApi.getStaffs({ Role: '2', PageSize: 1000 }),
-                ]);
-
-                const clinicList: ClinicOption[] = (
-                    (clinicRes as any)?.data?.data ??
-                    (clinicRes as any)?.data?.items ??
-                    (Array.isArray((clinicRes as any)?.data) ? (clinicRes as any).data : [])
-                ).map((c: any) => ({ id: c.id, name: c.clinicNameEn || c.clinicNameAr || `Clinic #${c.id}` }));
-                setClinics(clinicList);
-
-                const staffList: any[] = (staffRes as any)?.staffs ?? (staffRes as any)?.items ?? (staffRes as any)?.data ?? [];
-                const rolesMap: Record<string, string> = {
-                    '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician'
-                };
-                const doctorList: DoctorOption[] = staffList.filter((s: any) => {
-                    let r = s.role ?? s.Role ?? s.roleId ?? s.RoleId ?? '';
-                    let rStr = typeof r === 'object' ? (r?.name ?? rolesMap[r?.id]) : String(r);
-                    return (rolesMap[rStr] ?? rStr) === 'Doctor' || rStr === '2';
-                }).map((d: any) => ({
-                    id: String(d.id || d.Id || d.nationalId),
-                    name: d.fullNameEnglish || d.FullNameEnglish || d.name || `Dr. #${d.id}`,
+                const clinicRes = await getClinics({ PageSize: 100 });
+                const rawClinic: any = clinicRes;
+                const clinicsArr =
+                    rawClinic?.data?.data ??
+                    rawClinic?.data?.items ??
+                    rawClinic?.data?.clinics ??
+                    (Array.isArray(rawClinic?.data) ? rawClinic.data : null) ??
+                    rawClinic?.items ??
+                    rawClinic?.clinics ??
+                    (Array.isArray(rawClinic) ? rawClinic : []);
+                const clinicList: ClinicOption[] = clinicsArr.map((c: any) => ({
+                    id: c.id,
+                    name: c.clinicNameEn || c.clinicNameAr || `Clinic #${c.id}`,
                 }));
-                setAllDoctors(doctorList);
-                setAvailableDoctors(doctorList);
+                setClinics(clinicList);
             } catch (e) {
-                console.error('Failed to load init data:', e);
+                console.error('Failed to load clinics:', e);
             } finally {
                 setLoadingInit(false);
             }
@@ -145,32 +133,51 @@ const NewAppointmentPage: React.FC = () => {
         return () => clearTimeout(timeout);
     }, [patientSearch]);
 
-    /* ── Filter doctors by clinic ── */
+    /* ── Load doctors for selected clinic via /Patient/Doctors?Clinic= ── */
     useEffect(() => {
         if (!selectedClinic) {
-            setAvailableDoctors(allDoctors);
+            setAvailableDoctors([]);
+            setNoDoctorsForClinic(false);
             return;
         }
         const fetchClinicDoctors = async () => {
             setLoadingDoctors(true);
+            setNoDoctorsForClinic(false);
             try {
-                const res = await scheduleApi.getSchedules({ ClinicId: Number(selectedClinic), PageSize: 1000 });
-                const rawList = (res as any)?.data?.data || (res as any)?.data?.items || (Array.isArray((res as any)?.data) ? (res as any).data : []) || [];
-                const doctorIds = new Set(rawList.map((s: any) => String(s.doctorId || s.DoctorId)));
-                const filtered = allDoctors.filter(d => doctorIds.has(String(d.id)));
-                setAvailableDoctors(filtered.length > 0 ? filtered : allDoctors);
+                const list = await patientApi.getDoctorsByClinic(Number(selectedClinic));
+                let mapped: DoctorOption[] = list.map((d: any) => ({ id: String(d.id), name: d.name }));
+                
+                try {
+                    const schedulesRes = await scheduleApi.getSchedules({ ClinicId: Number(selectedClinic), PageSize: 1000 });
+                    const rawSchedules = (schedulesRes as any)?.data?.data ?? (schedulesRes as any)?.data?.items ?? (schedulesRes as any)?.data ?? [];
+                    const scheduleList = Array.isArray(rawSchedules) ? rawSchedules : [];
+                    
+                    const doctorsWithSchedules = new Set<string>();
+                    scheduleList.forEach((s: any) => {
+                        const dId = s.doctorId ?? s.DoctorId;
+                        if (dId) doctorsWithSchedules.add(String(dId));
+                    });
+                    
+                    mapped = mapped.filter(d => doctorsWithSchedules.has(d.id));
+                } catch (err) {
+                    console.warn('Failed to fetch schedules to filter doctors:', err);
+                }
 
-                if (selectedDoctor && !doctorIds.has(String(selectedDoctor))) {
+                setAvailableDoctors(mapped);
+                setNoDoctorsForClinic(mapped.length === 0);
+                // Reset doctor if not in new list
+                if (selectedDoctor && !mapped.find(d => d.id === selectedDoctor)) {
                     setSelectedDoctor('');
                 }
             } catch {
-                setAvailableDoctors(allDoctors);
+                setAvailableDoctors([]);
+                setNoDoctorsForClinic(true);
             } finally {
                 setLoadingDoctors(false);
             }
         };
         fetchClinicDoctors();
-    }, [selectedClinic, allDoctors]);
+    }, [selectedClinic]);
 
     /* ── Fetch available time slots when doctor + clinic + date are chosen ── */
     const fetchSlots = useCallback(async () => {
@@ -419,8 +426,11 @@ const NewAppointmentPage: React.FC = () => {
                                     </select>
                                     <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                 </div>
-                                {selectedClinic && availableDoctors.length === 0 && !loadingDoctors && (
-                                    <p className="text-[11px] text-amber-600 mt-1 font-medium">No doctors assigned to this clinic yet.</p>
+                                {!selectedClinic && (
+                                    <p className="text-[11px] text-slate-400 mt-1 font-medium italic">Select a clinic first to see available doctors.</p>
+                                )}
+                                {selectedClinic && noDoctorsForClinic && !loadingDoctors && (
+                                    <p className="text-[11px] text-amber-600 mt-1 font-medium">No doctors assigned to this clinic.</p>
                                 )}
                             </div>
 

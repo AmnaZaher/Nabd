@@ -31,52 +31,57 @@ export const patientApi = {
   },
 
   getPatientById: async (idOrNationalId: string): Promise<PatientProfile | null> => {
-    // 1. First attempt: Direct fetch by ID if supported by the new PatientBasicInfo endpoint
     try {
       let item: any = null;
 
+      // --- Primary: fetch by user GUID via PatientBasicInfo ---
       try {
         const basicInfoResp = await fetchApi<any>(`/Admin/PatientBasicInfo/${idOrNationalId}`);
         if (basicInfoResp.data) {
           item = basicInfoResp.data;
         }
-      } catch (err) {
-        console.warn(`Direct fetch for PatientBasicInfo failed for ${idOrNationalId}, falling back to search.`);
+      } catch {
+        // GUID fetch failed – fall through to search
+      }
+
+      // --- Fallback: search by the given string (national ID, name, etc.) ---
+      if (!item) {
+        const response = await fetchApi<PatientListResponse>(
+          `/Admin/Patients?SearchKey=${encodeURIComponent(idOrNationalId)}&PageIndex=0&PageSize=20`
+        );
+        const list =
+          response.data?.patients ||
+          (response.data as any)?.items ||
+          (response.data as any)?.data ||
+          [];
+        const searchId = idOrNationalId.toLowerCase().trim();
+        item = list.find((p: any) => {
+          const idFields = [p.id, p.Id, p.nationalId, p.NationalId, p.patientId, p.PatientId, p.userId, p.UserId];
+          return idFields.some(
+            (val) => val !== null && val !== undefined && String(val).toLowerCase().trim() === searchId
+          );
+        });
+      }
+
+      // --- Last-resort: fetch recent patients and search locally ---
+      if (!item) {
+        const fallbackResponse = await fetchApi<PatientListResponse>(`/Admin/Patients?PageIndex=0&PageSize=100`);
+        const fallbackList =
+          fallbackResponse.data?.patients ||
+          (fallbackResponse.data as any)?.items ||
+          (fallbackResponse.data as any)?.data ||
+          [];
+        const searchId = idOrNationalId.toLowerCase().trim();
+        item = fallbackList.find((p: any) => {
+          const idFields = [p.id, p.Id, p.nationalId, p.NationalId, p.patientId, p.PatientId, p.userId, p.UserId];
+          return idFields.some(
+            (val) => val !== null && val !== undefined && String(val).toLowerCase().trim() === searchId
+          );
+        });
       }
 
       if (!item) {
-        const response = await fetchApi<PatientListResponse>(`/Admin/Patients?SearchKey=${encodeURIComponent(idOrNationalId)}&PageIndex=0&PageSize=20`);
-        
-        const list = response.data?.patients || (response.data as any)?.items || (response.data as any)?.data || [];
-        
-        // Find the exact match in the returned search results
-        const searchId = idOrNationalId.toLowerCase().trim();
-        item = list.find((p: any) => {
-          const idFields = [p.id, p.Id, p.nationalId, p.NationalId, p.patientId, p.PatientId];
-          return idFields.some(val => 
-            val !== null && 
-            val !== undefined && 
-            String(val).toLowerCase().trim() === searchId
-          );
-        });
-      
-      // Secondary Fallback: If SearchKey failed entirely (backend doesn't search by ID), fetch recent patients and search locally
-      if (!item) {
-        const fallbackResponse = await fetchApi<PatientListResponse>(`/Admin/Patients?PageIndex=0&PageSize=100`);
-        const fallbackList = fallbackResponse.data?.patients || (fallbackResponse.data as any)?.items || (fallbackResponse.data as any)?.data || [];
-        item = fallbackList.find((p: any) => {
-          const idFields = [p.id, p.Id, p.nationalId, p.NationalId, p.patientId, p.PatientId];
-          return idFields.some(val => 
-            val !== null && 
-            val !== undefined && 
-            String(val).toLowerCase().trim() === searchId
-          );
-        });
-      }
-      } // Close if (!item) search block
-      
-      if (!item) {
-        console.warn(`No exact identity match found in search results for: ${idOrNationalId}.`);
+        console.warn(`No patient match found for: ${idOrNationalId}`);
         return null;
       }
 
@@ -88,45 +93,48 @@ export const patientApi = {
           const today = new Date();
           let age = today.getFullYear() - birthDate.getFullYear();
           const m = today.getMonth() - birthDate.getMonth();
-          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
-          }
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
           return age;
-        } catch (e) { return 0; }
+        } catch { return 0; }
       };
 
       const dob = item.dateOfBirth || item.DateOfBirth || 'N/A';
       const rawAge = item.age || item.Age;
       const calculatedAge = rawAge && rawAge > 0 ? rawAge : calculateAge(dob);
 
-      // Gender mapping: 1 for Male, 2 for Female ($int32)
+      // Gender mapping: 1 → Male, 2 → Female
       const rawGender = item.gender ?? item.Gender;
-      const genderStr = rawGender === 1 || rawGender === '1' || String(rawGender).toLowerCase() === 'male' ? 'Male' :
-        rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 'Not Specified';
+      const genderStr =
+        rawGender === 1 || rawGender === '1' || String(rawGender).toLowerCase() === 'male' ? 'Male' :
+        rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' :
+        'Not Specified';
 
-      // Safe mapping to prevent UI crashes if backend fields are missing or PascalCase
       return {
-        ...item, // Spread at top so our mappings can overwrite
-        id: item.id || item.Id || idOrNationalId,
-        name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
-        nameArabic: item.fullNameArabic || item.FullNameArabic || '',
-        patientId: item.patientId || item.PatientId || idOrNationalId,
+        ...item,
+        id: item.id || item.Id || item.userId || item.UserId || idOrNationalId,
+        name: item.nameEnglish || item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
+        nameArabic: item.nameArabic || item.fullNameArabic || item.FullNameArabic || '',
+        patientId: item.fileNum || item.patientId || item.PatientId || item.nationalId || item.NationalId || idOrNationalId,
         gender: genderStr,
         age: calculatedAge,
         dateOfBirth: dob,
         nationalId: item.nationalId || item.NationalId || idOrNationalId,
-        phone: item.phoneNumber || item.phone || item.PhoneNumber || 'N/A',
+        phone: item.phone || item.phoneNumber || item.PhoneNumber || 'N/A',
         email: item.email || item.Email || 'No Email',
         address: item.address || item.Address || 'N/A',
         city: item.city || item.City || 'N/A',
         country: item.country || item.Country || 'N/A',
         bloodType: item.bloodType || item.BloodType || 'N/A',
         primaryLanguage: item.primaryLanguage || item.PrimaryLanguage || 'Arabic',
-        insuranceType: item.insuranceType || item.InsuranceType || 'None',
+        insuranceType: item.insurance || item.insuranceType || item.InsuranceType || 'None',
         status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
         lastVisit: item.lastVisit || item.LastVisit || 'N/A',
         upcomingAppointment: item.upcoming || item.UpcomingAppointment || 'N/A',
-        nextOfKin: item.nextOfKin || item.NextOfKin || null,
+        nextOfKin: item.nextOfKin || item.NextOfKin || (item.firstNextOfKin_Name ? {
+          name: item.firstNextOfKin_Name,
+          relationship: item.nextOfKin_Relation,
+          phone: item.nextOfKin_Num
+        } : null),
         allergies: item.allergies || item.Allergies || [],
         chronicDiseases: item.chronicDiseases || item.ChronicDiseases || [],
         medications: item.medications || item.Medications || [],
@@ -146,10 +154,101 @@ export const patientApi = {
     }
   },
 
+
   getPatientProfile: async (): Promise<PatientProfile> => {
     const response = await fetchApi<PatientProfile>(`/Patient/My/Profile`);
     return response.data!;
   },
+
+  // Fetch the upcoming appointment for the currently logged-in patient
+  getUpcomingAppointment: async (): Promise<string> => {
+    try {
+      const response = await fetchApi<any>(`/Patient/UpComingAppointment`);
+      const data = response.data;
+      if (!data) return '-';
+      // Try to extract a date string from the response
+      const raw =
+        data.appointmentDate || data.AppointmentDate ||
+        data.dateTime || data.DateTime ||
+        data.date || data.Date ||
+        data.scheduledDate || data.ScheduledDate ||
+        (typeof data === 'string' ? data : null);
+      if (!raw) return '-';
+      try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      } catch {
+        return raw;
+      }
+    } catch {
+      return '-';
+    }
+  },
+
+  // Fetch upcoming appointment for a specific patient (by user/patient ID) — admin use
+  getUpcomingAppointmentForPatient: async (userId: string): Promise<string> => {
+    // --- User Requested Token Debug ---
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const roleClaim = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || payload.role || payload.Role;
+        const subClaim = payload.sub || payload.id || payload.nameid;
+        console.log(`[Token Debug for userId=${userId}] Role:`, roleClaim, '| Sub:', subClaim);
+      }
+    } catch (e) { /* ignore */ }
+    // ----------------------------------
+
+    try {
+      // Attempt primary Patient endpoint
+      const response = await fetchApi<any>(`/Patient/UpComingAppointment?userId=${encodeURIComponent(userId)}`);
+      const data = response.data;
+      if (!data) throw new Error('No data');
+      
+      const raw =
+        data.appointmentDate || data.AppointmentDate ||
+        data.dateTime || data.DateTime ||
+        data.date || data.Date ||
+        data.scheduledDate || data.ScheduledDate ||
+        (typeof data === 'string' ? data : null);
+        
+      if (!raw) throw new Error('No date found');
+      
+      try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      } catch {
+        return raw;
+      }
+    } catch (err: any) {
+      // Fallback for Admin/Nurse (403 Forbidden)
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        // Fetch scheduled (Status=1) appointments for this user from today onwards
+        const fallbackResp = await fetchApi<any>(`/Appointment/Appointments?Search=${encodeURIComponent(userId)}&Status=1&DateAppointmentFrom=${today}&PageIndex=0&PageSize=1`);
+        
+        const firstItem = fallbackResp?.data?.data?.[0] || fallbackResp?.data?.appointments?.[0] || fallbackResp?.data?.items?.[0] || (Array.isArray(fallbackResp?.data) ? fallbackResp.data[0] : null);
+        
+        if (firstItem) {
+          const rawFallback = firstItem.appointmentDate || firstItem.AppointmentDate || firstItem.dateTime || firstItem.DateTime || firstItem.date || firstItem.Date;
+          if (rawFallback) {
+             const d = new Date(rawFallback);
+             if (!isNaN(d.getTime())) {
+                 return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+             }
+             return rawFallback;
+          }
+        }
+      } catch (fallbackErr) {
+        console.warn(`Fallback appointment fetch failed for user ${userId}`);
+      }
+      return '-';
+    }
+  },
+
+
 
   getVisitHistory: async (): Promise<Visit[]> => {
       const response = await fetchApi<Visit[]>('/MedicalRecorde/VisitHistory');
@@ -212,6 +311,22 @@ export const patientApi = {
       method: 'POST',
       body: JSON.stringify(upsertPayload)
     });
+  },
+
+  /** Fetch doctors assigned to a specific clinic using the Patient/Doctors endpoint */
+  getDoctorsByClinic: async (clinicId: number): Promise<{ id: number; name: string }[]> => {
+    try {
+      const res = await fetchApi<any>(`/Patient/Doctors?Clinic=${clinicId}`);
+      const raw = res.data;
+      // Response shape: { isSuccess, message, data: [ { id, name }, ... ] }
+      const list: any[] =
+        raw?.data ??
+        (Array.isArray(raw) ? raw : []);
+      return list.map((d: any) => ({ id: Number(d.id), name: d.name || `Dr. #${d.id}` }));
+    } catch (err) {
+      console.error('[getDoctorsByClinic] Failed:', err);
+      return [];
+    }
   },
 
   deletePatient: async (id: string): Promise<void> => {
