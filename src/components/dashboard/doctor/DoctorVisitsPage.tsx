@@ -13,48 +13,56 @@ interface DoctorVisitsPageProps {
 const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProfileClick }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
-    
+    const [profile, setProfile] = useState<any>(null);
+
     const [activeTab, setActiveTab] = useState<'open' | 'closed'>('open');
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('Time');
     const [currentPage, setCurrentPage] = useState(1);
-    
+
     const [visits, setVisits] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [totalItems, setTotalItems] = useState(0);
 
     const pageSize = 10;
 
+    useEffect(() => {
+        const fetchProfile = async () => {
+            if (!user?.id) return;
+            try {
+                const { profileApi } = await import('../../../api/profile');
+                const data = await profileApi.getDoctorProfile(user.id);
+                if (data) setProfile(data);
+            } catch (error) {
+                console.error('Failed to fetch doctor profile:', error);
+            }
+        };
+        fetchProfile();
+    }, [user?.id]);
+
     const fetchVisits = async () => {
         setLoading(true);
         try {
-            const today = new Date().toISOString().split('T')[0];
-            
-            let statusFilter = undefined;
-            if (activeTab === 'closed') {
-                statusFilter = 3; // Assuming 3 = Completed for visits too
-            }
+            const now = new Date();
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
 
             const res = await visitApi.listVisits({
-                DoctorId: user?.id,
-                StartDate: today,
-                EndDate: today,
+                DoctorId: profile?.id,
+
                 PageIndex: currentPage,
                 PageSize: pageSize,
-                VisitStatus: statusFilter,
                 Search: searchQuery // Assuming backend handles this or we can drop it if it doesn't, but let's pass it
             });
-            
+
             const list = (res?.data as any)?.items || (res?.data as any)?.data || (Array.isArray(res?.data) ? res.data : []) || [];
-            
+
             // Client side filter (if backend doesn't filter Open correctly)
-            let filteredList = list;
-            if (activeTab === 'open') {
-                filteredList = list.filter((v: any) => v.status !== 3); // Anything not completed
-            } else {
-                filteredList = list;
-            }
-            
+            const filteredList = list.filter((v: any) =>
+                activeTab === 'open'
+                    ? v.visitStatus?.toLowerCase() === 'open'
+                    : v.visitStatus?.toLowerCase() === 'closed'
+            );
             // Client side pagination
             setTotalItems(filteredList.length);
             const paginated = filteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -62,28 +70,20 @@ const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProf
             setVisits(paginated);
         } catch (error) {
             console.error("Failed to fetch visits:", error);
-            // Dummy data for design preview if API fails
-            const dummy = [
-                { id: 1, patientName: 'Ahmad Al-Farsi', fileNumber: '#44210', appointmentDate: new Date().setHours(9, 30), type: 'Examination', status: 1, chiefComplaint: 'Persistent cough and mild...' },
-                { id: 2, patientName: 'Sarah Ahmed', fileNumber: '#44215', appointmentDate: new Date().setHours(10, 15), type: 'Follow-up', status: 1, chiefComplaint: 'Post-surgery checkup' },
-                { id: 3, patientName: 'Mark Hudson', fileNumber: '#44222', appointmentDate: new Date().setHours(11, 0), type: 'Consultation', status: 2, chiefComplaint: 'Routine health screening' },
-            ];
-            setVisits(dummy);
-            setTotalItems(dummy.length);
-        } finally {
+
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (user?.id) fetchVisits();
+        if (profile?.id) fetchVisits();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, activeTab, currentPage]);
+    }, [profile?.id, activeTab, currentPage]);
 
     // Handle search debounce
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (user?.id) fetchVisits();
+            if (profile?.id) fetchVisits();
         }, 500);
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,41 +102,39 @@ const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProf
         <div className="flex-1 flex flex-col min-h-0 bg-[#f8fafc]">
             <TopBar
                 title="VISITS"
-                onMenuClick={onMenuClick || (() => {})}
+                onMenuClick={onMenuClick || (() => { })}
                 onProfileClick={onProfileClick}
                 showAddUser={false}
                 isNurse={false}
             />
-            
+
             <main className="flex-1 overflow-y-auto p-4 md:p-8">
                 <div className="max-w-[1400px] mx-auto space-y-8">
-                    
+
                     {/* Header Section */}
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div>
                             <h2 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">Today's Visits</h2>
                             <p className="text-slate-500 font-medium text-lg">Manage your daily patient visits</p>
                         </div>
-                        
+
                         {/* Tabs */}
                         <div className="bg-slate-100/80 backdrop-blur p-1.5 rounded-2xl inline-flex shadow-inner">
                             <button
                                 onClick={() => { setActiveTab('open'); setCurrentPage(1); }}
-                                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
-                                    activeTab === 'open'
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                }`}
+                                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'open'
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
                             >
                                 Open Visits
                             </button>
                             <button
                                 onClick={() => { setActiveTab('closed'); setCurrentPage(1); }}
-                                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
-                                    activeTab === 'closed'
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                }`}
+                                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'closed'
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
                             >
                                 Closed Visits
                             </button>
@@ -190,10 +188,10 @@ const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProf
                                 <tbody>
                                     {visits.map((visit, i) => {
                                         const initials = (visit.patientName || 'P N').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
-                                        const typeObj = getTypeDetails(visit.type || visit.appointmentType);
-                                        const timeString = visit.time || (visit.appointmentDate ? new Date(visit.appointmentDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--');
-                                        const fileNum = visit.fileNumber || visit.patientId || 'N/A';
-                                        
+                                        const typeObj = getTypeDetails(visit.visitType || '');
+                                        const timeString = new Date(visit.visitDate || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                        const fileNum = visit.patientFileNumber || visit.visitNumber || 'N/A';
+
                                         return (
                                             <tr key={visit.id || i} className="group border-b border-slate-50 hover:bg-slate-50/80 transition-all">
                                                 <td className="py-6 pl-8">
@@ -227,22 +225,25 @@ const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProf
                                                 </td>
                                                 <td className="py-6">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`w-2 h-2 rounded-full ${activeTab === 'open' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-400'}`}></span>
+                                                        <span className={`w-2 h-2 rounded-full ${visit.visitStatus?.toLowerCase() === 'open' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-400'}`}></span>
                                                         <span className="font-bold text-slate-700 text-xs tracking-wider">
-                                                            {activeTab === 'open' ? 'OPEN' : 'CLOSED'}
+                                                            {visit.visitStatus?.toUpperCase() || 'UNKNOWN'}
                                                         </span>
                                                     </div>
                                                 </td>
                                                 <td className="py-6 pr-8 text-right">
-                                                    <button 
-                                                        onClick={() => navigate(`/dashboard/patient-visit?appointmentId=${visit.id}`)}
-                                                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                                                            activeTab === 'open' 
+                                                    <button
+                                                        onClick={() => navigate(
+                                                            visit.visitStatus?.toLowerCase() === 'open'
+                                                                ? `/dashboard/patient-visit?appointmentId=${visit.visitId}`
+                                                                : `/dashboard/visit-details?appointmentId=${visit.visitId}`
+                                                        )}
+                                                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${visit.visitStatus?.toLowerCase() === 'open'
                                                             ? 'bg-[#0f62fe] text-white hover:bg-blue-700 shadow-md shadow-blue-600/20'
                                                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                                        }`}
+                                                            }`}
                                                     >
-                                                        {activeTab === 'open' ? 'Start Visit' : 'View Visit'}
+                                                        {visit.visitStatus?.toLowerCase() === 'open' ? 'Start Visit' : 'View Details'}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -265,29 +266,28 @@ const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProf
                                 Showing {visits.length} of {totalItems} scheduled visits
                             </span>
                             <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
                                     className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
                                 >
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
-                                
+
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
-                                        className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${
-                                            currentPage === page 
-                                            ? 'bg-blue-50 text-blue-600' 
+                                        className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${currentPage === page
+                                            ? 'bg-blue-50 text-blue-600'
                                             : 'text-slate-500 hover:bg-slate-100'
-                                        }`}
+                                            }`}
                                     >
                                         {page}
                                     </button>
                                 ))}
 
-                                <button 
+                                <button
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage === totalPages}
                                     className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
