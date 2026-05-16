@@ -13,6 +13,7 @@ import QuickActions from "./widgets/QuickActions";
 import StatusDistribution from "./widgets/StatusDistribution";
 
 // Pages
+import VisitDetailsPage from './doctor/VisitDetailsPage';
 import UserManagementList from "./users/UserManagementList";
 import RegisterPatient from "./patients/RegisterPatient";
 import RegisterStaff from "./staff/RegisterStaff";
@@ -57,18 +58,18 @@ const Dashboard: React.FC = () => {
   // Sync active tab with URL
   useEffect(() => {
     const path = location.pathname;
-    if (path.includes("/users") || path.includes("/patients"))    setActiveTab("users");
-    else if (path.includes("/doctor-schedule"))                    setActiveTab("doctor-schedule"); // ← before /appointments
-    else if (path.includes("/appointments"))                       setActiveTab("appointments");
-    else if (path.includes("/radiology"))                          setActiveTab("radiology");
-    else if (path.includes("/lab-catalog"))                        setActiveTab("lab-catalog");
-    else if (path.includes("/clinics"))                            setActiveTab("clinics");
-    else if (path.includes("/settings"))                           setActiveTab("settings");
-    else if (path.includes("/profile"))                            setActiveTab("profile");
-    else if (path.includes("/dr-schedule"))                        setActiveTab("dr-schedule");
-    else if (path.includes("/patient-visit"))                      setActiveTab("patient-visit");
-    else if (path.includes("/doctor-visits"))                      setActiveTab("doctor-visits");
-    else                                                           setActiveTab("dashboard");
+    if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
+    else if (path.includes("/doctor-schedule")) setActiveTab("doctor-schedule"); // ← before /appointments
+    else if (path.includes("/appointments")) setActiveTab("appointments");
+    else if (path.includes("/radiology")) setActiveTab("radiology");
+    else if (path.includes("/lab-catalog")) setActiveTab("lab-catalog");
+    else if (path.includes("/clinics")) setActiveTab("clinics");
+    else if (path.includes("/settings")) setActiveTab("settings");
+    else if (path.includes("/profile")) setActiveTab("profile");
+    else if (path.includes("/dr-schedule")) setActiveTab("dr-schedule");
+    else if (path.includes("/patient-visit")) setActiveTab("patient-visit");
+    else if (path.includes("/doctor-visits")) setActiveTab("doctor-visits");
+    else setActiveTab("dashboard");
 
     setIsSidebarOpen(false);
   }, [location]);
@@ -187,26 +188,26 @@ const Dashboard: React.FC = () => {
           <Route path="users">
             <Route index element={<UserManagementList onMenuClick={() => setIsSidebarOpen(true)} onAddUserClick={handleAddUser} onProfileClick={handleProfileClick} />} />
             <Route path="register-patient" element={<RegisterPatient onSwitchView={() => navigate("/dashboard/users")} />} />
-            <Route path="register-staff"   element={<RegisterStaff   onSwitchView={() => navigate("/dashboard/users")} />} />
-            <Route path="patient/:id"      element={<PatientProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />} />
+            <Route path="register-staff" element={<RegisterStaff onSwitchView={() => navigate("/dashboard/users")} />} />
+            <Route path="patient/:id" element={<PatientProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />} />
             <Route path="patient/edit/:id" element={<EditPatientProfilePage />} />
-            <Route path="staff/:id"        element={<StaffProfilePage onMenuClick={() => setIsSidebarOpen(true)} />} />
-            <Route path="doctor/:id"       element={<DoctorProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />} />
-            <Route path="staff/edit/:id"   element={<EditDoctorProfilePage />} />
+            <Route path="staff/:id" element={<StaffProfilePage onMenuClick={() => setIsSidebarOpen(true)} />} />
+            <Route path="doctor/:id" element={<DoctorProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />} />
+            <Route path="staff/edit/:id" element={<EditDoctorProfilePage />} />
           </Route>
 
           {/* Clinics */}
           <Route path="clinics">
             <Route index element={<ClinicsList onAddClinic={() => navigate("/dashboard/clinics/add")} />} />
-            <Route path="add"      element={<AddClinic  onCancel={() => navigate("/dashboard/clinics")} onSuccess={() => navigate("/dashboard/clinics")} />} />
-            <Route path=":id"      element={<ClinicDetails />} />
+            <Route path="add" element={<AddClinic onCancel={() => navigate("/dashboard/clinics")} onSuccess={() => navigate("/dashboard/clinics")} />} />
+            <Route path=":id" element={<ClinicDetails />} />
             <Route path="edit/:id" element={<EditClinic />} />
           </Route>
 
           {/* Lab Catalog */}
           <Route path="lab-catalog">
-            <Route index        element={<LabCatalogPage />} />
-            <Route path=":id"      element={<LabTestDetail />} />
+            <Route index element={<LabCatalogPage />} />
+            <Route path=":id" element={<LabTestDetail />} />
             <Route path="edit/:id" element={<EditLabTest />} />
           </Route>
 
@@ -221,7 +222,7 @@ const Dashboard: React.FC = () => {
                 </div>
               }
             />
-            <Route path="new"      element={<NewAppointmentPage />} />
+            <Route path="new" element={<NewAppointmentPage />} />
             <Route path="edit/:id" element={<EditAppointmentPage />} />
           </Route>
 
@@ -237,7 +238,7 @@ const Dashboard: React.FC = () => {
           />
 
           {/* Radiology */}
-          <Route path="radiology"     element={<div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]"><RadiologyPage /></div>} />
+          <Route path="radiology" element={<div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]"><RadiologyPage /></div>} />
           <Route path="radiology/add" element={<div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]"><AddRadiologyTest /></div>} />
 
           {/* Nurse patients alias */}
@@ -284,13 +285,14 @@ const Dashboard: React.FC = () => {
 
           {/* Doctor Visits */}
           <Route path="doctor-visits" element={<DoctorVisitsPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="visit-details" element={<VisitDetailsPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
 
           {/* Patient Visit */}
           <Route
             path="patient-visit"
             element={
               isDoctor ? (
-                <ActiveVisitPage  onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />
+                <ActiveVisitPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />
               ) : (
                 <PatientVisitPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />
               )

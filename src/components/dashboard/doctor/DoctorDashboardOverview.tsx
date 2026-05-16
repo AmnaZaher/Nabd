@@ -40,14 +40,13 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
     // Fetch Today's Visits for stats + schedule table
     useEffect(() => {
         const fetchSchedule = async () => {
-            if (!user?.id) return;
+            if (!profile?.id) return;
             setLoadingStats(true);
             try {
                 const today = new Date().toISOString().split('T')[0];
                 const res = await visitApi.listVisits({
-                    DoctorId: user.id,
-                    StartDate: today,
-                    EndDate: today,
+                    DoctorId: profile?.id,
+                    pageIndex: 1,
                     PageSize: 100,
                 });
 
@@ -56,6 +55,7 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
                     (res?.data as any)?.data ||
                     (Array.isArray(res?.data) ? res.data : []);
 
+                console.log(list)
                 setSchedule(list);
 
                 const total = list.length || 18;
@@ -70,7 +70,7 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
             }
         };
         fetchSchedule();
-    }, [user?.id]);
+    }, [profile?.id]);
 
     // Display name: prefer the profile from the dedicated endpoint
     const displayName = (profile?.nameEngLish || user?.name || 'Doctor').split(' ')[0];
@@ -106,21 +106,24 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
         { id: 4, patientName: 'Robert Junior', time: '11:15 AM', type: 'Follow-up', status: 1 },
     ];
 
-    const getStatusDetails = (status: number) => {
-        switch (status) {
-            case 1: return { label: 'Scheduled', color: 'text-green-600 bg-green-100/50' };
-            case 2: return { label: 'In Progress', color: 'text-blue-600 bg-blue-100/50' };
-            case 3: return { label: 'Completed', color: 'text-slate-600 bg-slate-100/50' };
-            case 6: return { label: 'Waiting', color: 'text-amber-600 bg-amber-100/50' };
-            default: return { label: 'Scheduled', color: 'text-green-600 bg-green-100/50' };
+    const getStatusDetails = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case 'open': return { label: 'Open', color: 'text-blue-600 bg-blue-100/50' };
+            case 'closed': return { label: 'Closed', color: 'text-slate-600 bg-slate-100/50' };
+            case 'waiting': return { label: 'Waiting', color: 'text-amber-600 bg-amber-100/50' };
+            default: return { label: status || 'Scheduled', color: 'text-green-600 bg-green-100/50' };
         }
     };
 
-    const getTypeDetails = (typeStr: string | number) => {
-        const type = String(typeStr).toLowerCase();
-        if (type.includes('follow') || type === '2') return { label: 'Follow-up', color: 'text-slate-600 bg-slate-100' };
-        if (type.includes('exam') || type === '1') return { label: 'Examination', color: 'text-blue-600 bg-blue-50' };
-        return { label: 'Consultation', color: 'text-slate-600 bg-slate-100' };
+    const getTypeDetails = (typeStr: string) => {
+        switch (typeStr?.toLowerCase()) {
+            case 'examination': return { label: 'Examination', color: 'text-blue-600 bg-blue-50' };
+            case 'follow-up':
+            case 'followup': return { label: 'Follow-up', color: 'text-purple-600 bg-purple-50' };
+            case 'new': return { label: 'New', color: 'text-green-600 bg-green-50' };
+            case 'consultation': return { label: 'Consultation', color: 'text-amber-600 bg-amber-50' };
+            default: return { label: typeStr || 'Visit', color: 'text-slate-600 bg-slate-100' };
+        }
     };
 
     return (
@@ -266,8 +269,8 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
                                             .join('')
                                             .substring(0, 2)
                                             .toUpperCase();
-                                        const statusObj = getStatusDetails(appt.status);
-                                        const typeObj = getTypeDetails(appt.type || appt.appointmentType || '');
+                                        const statusObj = getStatusDetails(appt.visitStatus);
+                                        const typeObj = getTypeDetails(appt.visitType || '');
 
                                         return (
                                             <tr key={appt.id || i} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
@@ -293,12 +296,18 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
                                                     </span>
                                                 </td>
                                                 <td className="py-4 pr-4 text-right">
-                                                    <button
-                                                        onClick={() => navigate(`/dashboard/patient-visit?appointmentId=${appt.id}`)}
-                                                        className="px-5 py-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-colors rounded-xl font-bold text-sm"
-                                                    >
-                                                        Start Visit
-                                                    </button>
+                                                    {appt.visitStatus?.toLowerCase() === 'open' ? (
+                                                        <button
+                                                            onClick={() => navigate(`/dashboard/patient-visit?appointmentId=${appt.visitId}`)}
+                                                            className="px-5 py-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-colors rounded-xl font-bold text-sm"
+                                                        >
+                                                            Start Visit
+                                                        </button>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 rounded-full text-xs font-bold">
+                                                            <CheckCircle className="w-3.5 h-3.5" /> Completed
+                                                        </span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );

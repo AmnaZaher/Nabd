@@ -28,33 +28,33 @@ interface NavItem {
 const getNavItems = (isNurse: boolean, isDoctor: boolean): NavItem[] => {
     if (isDoctor) {
         return [
-            { id: 'dashboard',       icon: LayoutDashboard, label: 'Overview',     path: PATHS.DASHBOARD       },
-            { id: 'doctor-visits',   icon: Users,           label: 'Visits',       path: PATHS.DOCTOR_VISITS   },
-            { id: 'patient-visit',   icon: Activity,        label: 'Active Visit', path: PATHS.PATIENT_VISIT   },
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Overview', path: PATHS.DASHBOARD },
+            { id: 'doctor-visits', icon: Users, label: 'Visits', path: PATHS.DOCTOR_VISITS },
+            // { id: 'patient-visit',   icon: Activity,        label: 'Active Visit', path: PATHS.PATIENT_VISIT   },
             // Points to the new doctor-only schedule page, NOT the shared appointments page
-            { id: 'doctor-schedule', icon: CalendarClock,   label: 'Schedule',     path: PATHS.DOCTOR_SCHEDULE },
-            { id: 'settings',        icon: Settings,        label: 'Setting',      path: PATHS.SETTINGS        },
+            { id: 'doctor-schedule', icon: CalendarClock, label: 'Schedule', path: PATHS.DOCTOR_SCHEDULE },
+            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
     if (isNurse) {
         return [
-            { id: 'dashboard',    icon: LayoutDashboard, label: 'Dashboard',    path: PATHS.DASHBOARD       },
-            { id: 'users',        icon: Users,           label: 'Patients',     path: PATHS.USER_MANAGEMENT },
-            { id: 'appointments', icon: CalendarCheck,   label: 'Appointments', path: PATHS.APPOINTMENTS    },
-            { id: 'patient-visit',icon: Activity,        label: 'Patient Visit',path: PATHS.PATIENT_VISIT   },
-            { id: 'dr-schedule',  icon: CalendarClock,   label: 'DR. Schedule', path: PATHS.DR_SCHEDULE     },
-            { id: 'settings',     icon: Settings,        label: 'Setting',      path: PATHS.SETTINGS        },
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+            { id: 'users', icon: Users, label: 'Patients', path: PATHS.USER_MANAGEMENT },
+            { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
+            { id: 'patient-visit', icon: Activity, label: 'Patient Visit', path: PATHS.PATIENT_VISIT },
+            { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
+            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
     return [
-        { id: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard',       path: PATHS.DASHBOARD       },
-        { id: 'users',       icon: Users,           label: 'User Management', path: PATHS.USER_MANAGEMENT },
-        { id: 'appointments',icon: CalendarCheck,   label: 'Appointments',    path: PATHS.APPOINTMENTS    },
-        { id: 'dr-schedule', icon: CalendarClock,   label: 'DR. Schedule',    path: PATHS.DR_SCHEDULE     },
-        { id: 'radiology',   icon: Microscope,      label: 'Radiology',       path: PATHS.RADIOLOGY       },
-        { id: 'lab-catalog', icon: FlaskConical,    label: 'Lab Catalog',     path: PATHS.LAB_CATALOG     },
-        { id: 'clinics',     icon: Building2,       label: 'Clinics',         path: PATHS.CLINICS         },
-        { id: 'settings',    icon: Settings,        label: 'Setting',         path: PATHS.SETTINGS        },
+        { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+        { id: 'users', icon: Users, label: 'User Management', path: PATHS.USER_MANAGEMENT },
+        { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
+        { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
+        { id: 'radiology', icon: Microscope, label: 'Radiology', path: PATHS.RADIOLOGY },
+        { id: 'lab-catalog', icon: FlaskConical, label: 'Lab Catalog', path: PATHS.LAB_CATALOG },
+        { id: 'clinics', icon: Building2, label: 'Clinics', path: PATHS.CLINICS },
+        { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
     ];
 };
 

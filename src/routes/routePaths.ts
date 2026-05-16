@@ -27,4 +27,5 @@ export const PATHS = {
   PATIENT_VISIT: "/dashboard/patient-visit",
   RECEPTIONIST_PROFILE: "/dashboard/receptionist-profile",
   DOCTOR_VISITS: "/dashboard/doctor-visits",
+  VISIT_DETAILS: "/dashboard/visit-details",
 } as const;
