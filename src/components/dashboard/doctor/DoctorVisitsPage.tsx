@@ -43,8 +43,6 @@ const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProf
     const fetchVisits = async () => {
         setLoading(true);
         try {
-            const now = new Date();
-            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
 
             const res = await visitApi.listVisits({

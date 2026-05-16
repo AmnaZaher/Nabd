@@ -18,7 +18,7 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const [, setProfile] = useState<DoctorProfile | null>(null);
+    const [profile, setProfile] = useState<DoctorProfile | null>(null);
     const [stats, setStats] = useState({ total: 0, waiting: 0, completed: 0 });
     const [schedule, setSchedule] = useState<any[]>([]);
     const [, setLoadingStats] = useState(true);
@@ -43,7 +43,7 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
             if (!profile?.id) return;
             setLoadingStats(true);
             try {
-                const today = new Date().toISOString().split('T')[0];
+
                 const res = await visitApi.listVisits({
                     DoctorId: profile?.id,
                     pageIndex: 1,

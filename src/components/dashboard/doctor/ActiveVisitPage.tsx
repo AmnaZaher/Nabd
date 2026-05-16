@@ -30,8 +30,8 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const [newPrescription, setNewPrescription] = useState({ name: '', dosage: '', frequency: '', duration: '', instructions: '' });
     const [showAddPrescription, setShowAddPrescription] = useState(false);
 
-    const [labOrders, setLabOrders] = useState<any[]>([]);
-    const [radOrders, setRadOrders] = useState<any[]>([]);
+    const [labOrders] = useState<any[]>([]);
+    const [radOrders] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchVisitData = async () => {
