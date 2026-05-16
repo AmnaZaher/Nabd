@@ -60,6 +60,13 @@ export const visitApi = {
     });
   },
 
+  updateVisit: async (visitId: number | string, payload: any) => {
+    return await fetchApi(`/Visit/${visitId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
   getVitalSigns: async (visitId: number | string) => {
     return await fetchApi(`/Visit/${visitId}/vital-signs`);
   },
