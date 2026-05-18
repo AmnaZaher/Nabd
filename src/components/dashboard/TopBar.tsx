@@ -47,7 +47,7 @@ const TopBar: React.FC<TopBarProps> = ({
                             };
                         }
                     } else {
-                        data = await staffApi.getMyProfile(user.id, user.name);
+                        data = await staffApi.getMyProfile(user.id, user.name, user.role);
                     }
                     if (data) setProfile(data as StaffProfile);
                 } catch (error) {
