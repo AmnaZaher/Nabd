@@ -1,13 +1,12 @@
 // src/api/labs.ts
 import { fetchApi } from './config';
-import type { LabTest, CreateLabTestDto } from '../types/labs.types';
+import type { LabTest, CreateLabTestDto, PaginatedResponse } from '../types/labs.types';
 
 /**
  * Fetch the full lab test catalog.
- * Note: The endpoint has a typo "GetCataliog".
  */
-export const getLabCatalog = async () => {
-  return await fetchApi<LabTest[]>('/Lab/GetCataliog', {
+export const getLabCatalog = async (pageIndex = 1, pageSize = 5) => {
+  return await fetchApi<PaginatedResponse<LabTest>>(`/Lab/LabCatologs?pageIndex=${pageIndex}&pageSize=${pageSize}`, {
     method: 'GET',
   });
 };
@@ -17,7 +16,7 @@ export const getLabCatalog = async () => {
  * @param id The ID of the test.
  */
 export const getLabTestDetails = async (id: number | string) => {
-  return await fetchApi<LabTest>(`/Lab/GetAnalysis?id=${id}`, {
+  return await fetchApi<LabTest>(`/Lab/LabCatologs?id=${id}`, {
     method: 'GET',
   });
 };

@@ -82,9 +82,17 @@ const StatCards: React.FC = () => {
             // 2. Lab catalog count (not part of DashboardData)
             try {
                 const { getLabCatalog } = await import('../../api/labs');
-                const labRes = await getLabCatalog();
+                const labRes = await getLabCatalog(1, 1);
                 const labsData = (labRes as any)?.data || labRes;
-                totalLabs = Array.isArray(labsData) ? labsData.length : 0;
+                if (labsData && typeof labsData.total === 'number') {
+                    totalLabs = labsData.total;
+                } else if (Array.isArray(labsData)) {
+                    totalLabs = labsData.length;
+                } else if (labsData && Array.isArray(labsData.data)) {
+                    totalLabs = labsData.data.length;
+                } else {
+                    totalLabs = 0;
+                }
             } catch (error) {
                 console.warn('Failed to fetch lab catalog:', error);
                 totalLabs = 'Error';
