@@ -22,7 +22,7 @@ const LabCatalogPage = () => {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const pageSize = 5;
   const [totalPages, setTotalPages] = useState(1);
   const [totalTests, setTotalTests] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -107,7 +107,7 @@ const LabCatalogPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <button 
-            onClick={fetchCatalog}
+            onClick={() => fetchCatalog(currentPage)}
             className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
             title="Refresh Catalog"
           >
@@ -119,7 +119,7 @@ const LabCatalogPage = () => {
       {error && (
         <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchCatalog} className="underline hover:no-underline">Retry</button>
+          <button onClick={() => fetchCatalog(currentPage)} className="underline hover:no-underline">Retry</button>
         </div>
       )}
 
