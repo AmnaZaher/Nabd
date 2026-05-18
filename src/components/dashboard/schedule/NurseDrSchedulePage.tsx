@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Building2, Eye, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import TopBar from '../TopBar';
 import { scheduleApi, type DoctorSchedule } from '../../../api/schedules';
-import { staffApi } from '../../../api/staff';
 import { getClinics } from '../../../api/clinics';
 
 interface NurseDrSchedulePageProps {
@@ -12,6 +11,14 @@ interface NurseDrSchedulePageProps {
 }
 
 const DAY_OPTIONS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const getDayName = (dayVal: any): string => {
+  if (dayVal === undefined || dayVal === null) return '';
+  if (typeof dayVal === 'number') return DAY_OPTIONS[dayVal] || '';
+  if (!isNaN(Number(dayVal))) return DAY_OPTIONS[Number(dayVal)] || '';
+  // It's already a string like "Monday"
+  return String(dayVal);
+};
 
 const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, onProfileClick }) => {
   const navigate = useNavigate();
@@ -35,24 +42,20 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
 
   useEffect(() => {
     const loadDropdowns = async () => {
+      // 1. Load Clinics (highly accessible and robust)
       try {
-        const [staffRes, clinicRes] = await Promise.all([
-          staffApi.getStaffs({ Role: '2', PageIndex: 0, PageSize: 1000 }),
-          getClinics({ PageIndex: 0, PageSize: 100 }),
-        ]);
-        const staffList: any[] = (staffRes as any)?.staffs ?? (staffRes as any)?.data?.staffs ?? (staffRes as any)?.items ?? [];
-        setDoctors(staffList.map((s: any) => ({
-          id: s.id ?? s.Id,
-          name: s.fullNameEnglish ?? s.name ?? s.FullNameEnglish ?? 'Unknown',
-        })));
-
+        const clinicRes = await getClinics({ PageIndex: 0, PageSize: 100 });
         const clinicAny = clinicRes as any;
         const clinicList: any[] = clinicAny?.data?.data ?? clinicAny?.data?.clinics ?? clinicAny?.data?.items ?? (Array.isArray(clinicAny?.data) ? clinicAny.data : []);
         setClinics(clinicList.map((c: any) => ({
           id: c.id ?? c.Id,
           name: c.clinicNameEn ?? c.clinicNameAr ?? `Clinic #${c.id}`,
         })));
-      } catch (e) { console.error('Failed to load dropdowns', e); }
+      } catch (e) {
+        console.error('Failed to load clinics dropdown', e);
+      }
+
+
     };
     loadDropdowns();
   }, []);
@@ -84,7 +87,10 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
       const currentM = now.getMinutes();
       const currentMins = currentH * 60 + currentM;
 
-      const activeTodaySchedules = allSchedulesList.filter(s => s.isActive && s.dayOfWeek === currentDay);
+      const activeTodaySchedules = allSchedulesList.filter(s => {
+        const schedDay = typeof s.dayOfWeek === 'number' ? s.dayOfWeek : !isNaN(Number(s.dayOfWeek)) ? Number(s.dayOfWeek) : -1;
+        return s.isActive && schedDay === currentDay;
+      });
       
       const uniqueDoctorsToday = new Set(activeTodaySchedules.map(s => s.doctorId));
       const uniqueClinicsToday = new Set(activeTodaySchedules.map(s => s.clinicId));
@@ -102,6 +108,29 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
         availableNow: availableDoctors.size,
         clinicsOpen: uniqueClinicsToday.size,
       });
+
+      // Extract unique doctors from schedules list as a fallback for the filter dropdown
+      if (allSchedulesList.length > 0) {
+        const uniqueDocsMap = new Map<number, string>();
+        allSchedulesList.forEach((s: any) => {
+          const dId = s.doctorId ?? s.DoctorId;
+          const dName = s.doctorName ?? s.DoctorName;
+          if (dId && dName) {
+            uniqueDocsMap.set(dId, dName);
+          }
+        });
+        if (uniqueDocsMap.size > 0) {
+          setDoctors(prev => {
+            const merged = new Map(prev.map(d => [d.id, d.name]));
+            uniqueDocsMap.forEach((name, id) => {
+              if (!merged.has(id)) {
+                merged.set(id, name);
+              }
+            });
+            return Array.from(merged.entries()).map(([id, name]) => ({ id, name }));
+          });
+        }
+      }
     } catch (e) {
       console.error('Failed to fetch stats schedules:', e);
     }
@@ -157,7 +186,8 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
     
     const now = new Date();
     const currentDay = now.getDay();
-    if (schedule.dayOfWeek !== currentDay) return { text: 'UPCOMING', color: 'bg-blue-50 text-blue-600' };
+    const schedDay = typeof schedule.dayOfWeek === 'number' ? schedule.dayOfWeek : !isNaN(Number(schedule.dayOfWeek)) ? Number(schedule.dayOfWeek) : -1;
+    if (schedDay !== currentDay) return { text: 'UPCOMING', color: 'bg-blue-50 text-blue-600' };
 
     const [startH, startM] = schedule.startTime.split(':').map(Number);
     const [endH, endM] = schedule.endTime.split(':').map(Number);
@@ -178,7 +208,7 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f8fafc] font-sans">
+    <div className="flex flex-col h-screen bg-[#f8fafc] overflow-y-auto font-sans">
       <TopBar title="DR. SCHEDULE" onMenuClick={onMenuClick} showAddUser={false} onProfileClick={onProfileClick} />
 
       <main className="flex-1 p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
@@ -304,15 +334,15 @@ const NurseDrSchedulePage: React.FC<NurseDrSchedulePageProps> = ({ onMenuClick, 
                     </td>
                   </tr>
                 ) : (
-                  schedules.map((schedule) => {
+                  schedules.map((schedule, index) => {
                     const docName = schedule.doctorName || doctors.find(d => d.id === (schedule.doctorId || (schedule as any).DoctorId))?.name || 'Unknown Doctor';
                     const clinicName = schedule.clinicName || clinics.find(c => c.id === schedule.clinicId)?.name || 'Unknown Clinic';
-                    const dayName = DAY_OPTIONS[schedule.dayOfWeek];
+                    const dayName = getDayName(schedule.dayOfWeek);
                     const initials = docName.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase();
                     const status = getStatus(schedule);
 
                     return (
-                      <tr key={schedule.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={schedule.id || `${schedule.doctorId || ''}-${schedule.dayOfWeek || ''}-${index}`} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center shrink-0">

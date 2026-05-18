@@ -14,6 +14,22 @@ interface NurseDrScheduleDetailsProps {
 
 const DAY_OPTIONS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const getDayIndex = (dayVal: any): number => {
+  if (dayVal === undefined || dayVal === null) return -1;
+  if (typeof dayVal === 'number') return dayVal;
+  if (!isNaN(Number(dayVal))) return Number(dayVal);
+  const dayStr = String(dayVal).trim().toLowerCase();
+  const index = DAY_OPTIONS.findIndex(d => d.toLowerCase() === dayStr);
+  return index;
+};
+
+const getDayName = (dayVal: any): string => {
+  const index = getDayIndex(dayVal);
+  if (index >= 0 && index < 7) return DAY_OPTIONS[index];
+  if (dayVal !== undefined && dayVal !== null) return String(dayVal);
+  return '';
+};
+
 const extractList = (resObj: any): any[] => {
   if (!resObj) return [];
   if (Array.isArray(resObj)) return resObj;
@@ -42,7 +58,7 @@ const NurseDrScheduleDetails: React.FC<NurseDrScheduleDetailsProps> = ({ onMenuC
       setLoading(true);
       try {
         const [profileRes, scheduleRes, clinicRes] = await Promise.all([
-          staffApi.getStaffById(id),
+          staffApi.getProfile(id).catch(() => staffApi.getStaffById(id)),
           scheduleApi.getSchedules({ DoctorId: Number(id), PageSize: 100 }),
           getClinics({ PageIndex: 0, PageSize: 100 }),
         ]);
@@ -149,11 +165,11 @@ const NurseDrScheduleDetails: React.FC<NurseDrScheduleDetailsProps> = ({ onMenuC
   });
 
   // Next Shift logic (simplistic)
-  const sortedSchedules = [...schedules].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  const sortedSchedules = [...schedules].sort((a, b) => getDayIndex(a.dayOfWeek) - getDayIndex(b.dayOfWeek));
   const nextShift = sortedSchedules.find(s => s.isActive);
   
   return (
-    <div className="flex flex-col min-h-screen bg-[#f8fafc] font-sans">
+    <div className="flex flex-col h-screen bg-[#f8fafc] overflow-y-auto font-sans">
       <TopBar title="DR. SCHEDULE › DETAILS" onMenuClick={onMenuClick} showAddUser={false} onProfileClick={onProfileClick} />
 
       <main className="flex-1 p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
@@ -232,14 +248,14 @@ const NurseDrScheduleDetails: React.FC<NurseDrScheduleDetailsProps> = ({ onMenuC
                       </td>
                     </tr>
                   ) : (
-                    schedules.sort((a,b) => a.dayOfWeek - b.dayOfWeek).map(schedule => {
-                      const dayName = DAY_OPTIONS[schedule.dayOfWeek];
+                    schedules.sort((a,b) => getDayIndex(a.dayOfWeek) - getDayIndex(b.dayOfWeek)).map((schedule, idx) => {
+                      const dayName = getDayName(schedule.dayOfWeek);
                       const clinicName = schedule.clinicName || clinics.find(c => c.id === schedule.clinicId)?.name || 'Clinic';
                       const shift = getShiftType(schedule);
                       const status = getStatus(schedule);
 
                       return (
-                        <tr key={schedule.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr key={schedule.id || `${schedule.doctorId || ''}-${schedule.dayOfWeek || ''}-${idx}`} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-5">
                             <p className="font-bold text-slate-800 text-base">{dayName}</p>
                           </td>
@@ -286,7 +302,7 @@ const NurseDrScheduleDetails: React.FC<NurseDrScheduleDetailsProps> = ({ onMenuC
                       <Clock className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold mb-1">{DAY_OPTIONS[nextShift.dayOfWeek]}, {formatTimeAMPM(nextShift.startTime)}</h2>
+                      <h2 className="text-xl font-bold mb-1">{getDayName(nextShift.dayOfWeek)}, {formatTimeAMPM(nextShift.startTime)}</h2>
                       <p className="text-blue-100 text-sm">{nextShift.clinicName || clinics.find(c => c.id === nextShift.clinicId)?.name || 'Clinic'}</p>
                     </div>
                   </div>
@@ -330,7 +346,7 @@ const NurseDrScheduleDetails: React.FC<NurseDrScheduleDetailsProps> = ({ onMenuC
                 <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl">
                   <span className="text-sm font-semibold text-slate-600">On-Call Days</span>
                   <span className="text-sm font-extrabold text-red-500">
-                    {schedules.filter(s => parseInt(s.startTime.split(':')[0], 10) >= 18).map(s => DAY_OPTIONS[s.dayOfWeek].substring(0,3)).join(', ') || 'None'}
+                    {schedules.filter(s => parseInt(s.startTime.split(':')[0], 10) >= 18).map(s => getDayName(s.dayOfWeek).substring(0,3)).join(', ') || 'None'}
                   </span>
                 </div>
               </div>

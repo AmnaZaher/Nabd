@@ -47,6 +47,22 @@ const DAY_OPTIONS = [
   "Friday",
   "Saturday",
 ];
+
+const getDayIndex = (dayVal: any): number => {
+  if (dayVal === undefined || dayVal === null) return -1;
+  if (typeof dayVal === 'number') return dayVal;
+  if (!isNaN(Number(dayVal))) return Number(dayVal);
+  const dayStr = String(dayVal).trim().toLowerCase();
+  const index = DAY_OPTIONS.findIndex(d => d.toLowerCase() === dayStr);
+  return index;
+};
+
+const getDayName = (dayVal: any): string => {
+  const index = getDayIndex(dayVal);
+  if (index >= 0 && index < 7) return DAY_OPTIONS[index];
+  if (dayVal !== undefined && dayVal !== null) return String(dayVal);
+  return '';
+};
 const DAY_COLORS: Record<string, string> = {
   Monday: "bg-blue-500 text-white",
   Tuesday: "bg-blue-500 text-white",
@@ -606,8 +622,8 @@ const DrSchedulePage = ({
                     </td>
                   </tr>
                 ) : (
-                  schedules.map((s) => {
-                    const dayName = DAY_OPTIONS[s.dayOfWeek] ?? "Unknown";
+                  schedules.map((s, index) => {
+                    const dayName = getDayName(s.dayOfWeek) || "Unknown";
                     const docName = s.doctorName ?? getDoctorName(s.doctorId);
                     const clinicName =
                       s.clinicName ?? getClinicName(s.clinicId);
@@ -620,7 +636,7 @@ const DrSchedulePage = ({
                       .toUpperCase();
                     return (
                       <tr
-                        key={s.id}
+                        key={s.id || `${s.doctorId}-${s.dayOfWeek}-${index}`}
                         className="hover:bg-slate-50/60 transition-colors"
                       >
                         <td className="px-5 py-4">

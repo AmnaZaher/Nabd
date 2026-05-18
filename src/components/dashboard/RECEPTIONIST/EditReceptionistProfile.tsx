@@ -92,7 +92,7 @@ const EditReceptionistProfile: React.FC = () => {
   if (!profile) return null;
 
   return (
-    <div className="w-full min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans pb-10">
+    <div className="w-full h-screen overflow-y-auto bg-[#F8FAFC] p-4 md:p-8 font-sans pb-10">
       <div className="w-full bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-8">
           {error && (
