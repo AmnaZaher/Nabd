@@ -43,12 +43,12 @@ const EditLabTest = () => {
         const data = response.data;
         if (data) {
           setTestData({
-            testCode: data.testCode,
-            testNameArabic: data.testNameArabic,
-            testNameEnglish: data.testNameEnglish,
-            category: data.category,
-            sampleType: data.sampleType,
-            fasting_required: data.fasting_required,
+            testCode: data.testCode || data.code || "",
+            testNameArabic: data.testNameArabic || "",
+            testNameEnglish: data.testNameEnglish || data.testName || "",
+            category: data.category || "",
+            sampleType: data.sampleType || "",
+            fasting_required: data.fasting_required ?? data.fasting ?? false,
           });
           setParameters(data.parameters || []);
         }

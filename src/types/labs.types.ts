@@ -9,6 +9,17 @@ export interface LabParameter {
   gender: string; // "Male", "Female", "Both"
 }
 
+export interface PaginatedResponse<T> {
+  pageIndex: number;
+  pageSize: number;
+  total: number;
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  data: T[];
+}
+
 export interface LabTest {
   id: number;
   testCode: string;
@@ -18,6 +29,12 @@ export interface LabTest {
   sampleType: string;
   fasting_required: boolean;
   parameters: LabParameter[];
+
+  // Fallbacks for /api/Lab/LabCatologs
+  code?: string;
+  testName?: string;
+  fasting?: boolean;
+  isActive?: boolean;
 }
 
 export interface CreateLabTestDto {

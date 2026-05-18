@@ -72,11 +72,11 @@ const TestDetails = () => {
                                 <ArrowLeft size={18} /> Back to List
                             </button>
                             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                {test.testCode}
+                                {test.testCode || test.code}
                             </span>
                         </div>
                         <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-                            {test.testNameEnglish}
+                            {test.testNameEnglish || test.testName}
                         </h1>
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold border border-emerald-100">
@@ -125,12 +125,12 @@ const TestDetails = () => {
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sample Type</p>
                                 <p className="text-sm font-black text-slate-700">{test.sampleType}</p>
                             </div>
-                            <div className={`p-4 rounded-2xl border flex items-center gap-3 ${test.fasting_required ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${test.fasting_required ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>🍱</div>
+                            <div className={`p-4 rounded-2xl border flex items-center gap-3 ${(test.fasting_required ?? test.fasting) ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${(test.fasting_required ?? test.fasting) ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>🍱</div>
                                 <div>
-                                    <p className={`text-[10px] font-black uppercase ${test.fasting_required ? 'text-blue-400' : 'text-slate-400'}`}>Requirement</p>
-                                    <p className={`text-sm font-black ${test.fasting_required ? 'text-blue-700' : 'text-slate-500'}`}>
-                                        {test.fasting_required ? 'Fasting Required' : 'No Fasting Required'}
+                                    <p className={`text-[10px] font-black uppercase ${(test.fasting_required ?? test.fasting) ? 'text-blue-400' : 'text-slate-400'}`}>Requirement</p>
+                                    <p className={`text-sm font-black ${(test.fasting_required ?? test.fasting) ? 'text-blue-700' : 'text-slate-500'}`}>
+                                        {(test.fasting_required ?? test.fasting) ? 'Fasting Required' : 'No Fasting Required'}
                                     </p>
                                 </div>
                             </div>
