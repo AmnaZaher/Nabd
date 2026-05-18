@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Building2, Eye, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import TopBar from '../TopBar';
 import { scheduleApi, type DoctorSchedule } from '../../../api/schedules';
-import { staffApi } from '../../../api/staff';
 import { getClinics } from '../../../api/clinics';
 
 interface NurseDrSchedulePageProps {
