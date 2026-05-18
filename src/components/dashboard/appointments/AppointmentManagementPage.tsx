@@ -4,7 +4,7 @@ import {
     Hourglass, CheckCircle2, XCircle, Ban
 } from 'lucide-react';
 import {
-    listAppointments, deleteAppointment, type Appointment
+    listAppointments, deleteAppointment, changeAppointmentStatus, type Appointment, type AppointmentStatus
 } from '../../../api/appointments';
 import { getClinics } from '../../../api/clinics';
 import { patientApi } from '../../../api/patient';
@@ -127,6 +127,11 @@ const AppointmentManagementPage: React.FC = () => {
 
     // Modal state for deletion
     const [cancelModalData, setCancelModalData] = useState<Appointment | null>(null);
+
+    // Modal state for status change
+    const [statusModalData, setStatusModalData] = useState<Appointment | null>(null);
+    const [selectedStatus, setSelectedStatus] = useState<AppointmentStatus | null>(null);
+    const [statusChanging, setStatusChanging] = useState(false);
 
     // Filters
     const [patientSearch, setPatientSearch] = useState('');
@@ -302,6 +307,28 @@ const AppointmentManagementPage: React.FC = () => {
             fetchAppointments();
         } catch (err: any) {
             alert(err.message || 'Failed to delete appointment.');
+        }
+    };
+
+    const handleStatusClick = (apt: Appointment) => {
+        setStatusModalData(apt);
+        // pre-select current status
+        const current = Number(apt.status) as AppointmentStatus;
+        setSelectedStatus(isNaN(current) ? null : current);
+    };
+
+    const executeStatusChange = async () => {
+        if (!statusModalData || selectedStatus === null) return;
+        setStatusChanging(true);
+        try {
+            await changeAppointmentStatus(statusModalData.id, selectedStatus);
+            setStatusModalData(null);
+            setSelectedStatus(null);
+            fetchAppointments();
+        } catch (err: any) {
+            alert(err.message || 'Failed to update appointment status.');
+        } finally {
+            setStatusChanging(false);
         }
     };
 
@@ -491,7 +518,13 @@ const AppointmentManagementPage: React.FC = () => {
                                                     <div className="text-[12px] font-medium text-slate-400 mt-0.5">{time}</div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <StatusBadge status={apt.status} />
+                                                    <button
+                                                        onClick={() => handleStatusClick(apt)}
+                                                        className="cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                                                        title="Click to change status"
+                                                    >
+                                                        <StatusBadge status={apt.status} />
+                                                    </button>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">
@@ -564,7 +597,7 @@ const AppointmentManagementPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* Delete / Cancel Modal */}
             {cancelModalData && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-md p-6 sm:p-8 transform transition-all animate-in fade-in zoom-in-95 duration-200">
@@ -588,6 +621,73 @@ const AppointmentManagementPage: React.FC = () => {
                         <div className="flex flex-col-reverse sm:flex-row items-center gap-3">
                             <button onClick={() => setCancelModalData(null)} className="w-full sm:w-1/2 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">No, Keep It</button>
                             <button onClick={executeDelete} className="w-full sm:w-1/2 py-3 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-sm hover:shadow-md transition-all">Yes, {isAdmin ? 'Delete' : 'Cancel'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Change Status Modal ── */}
+            {statusModalData && (
+                <div
+                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-[3px] z-50 flex items-center justify-center p-4"
+                    onClick={() => { setStatusModalData(null); setSelectedStatus(null); }}
+                >
+                    <div
+                        className="bg-white rounded-[24px] shadow-2xl w-full max-w-md p-7 relative"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Close button */}
+                        <button
+                            onClick={() => { setStatusModalData(null); setSelectedStatus(null); }}
+                            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors text-lg font-bold"
+                            aria-label="Close"
+                        >✕</button>
+
+                        <h2 className="text-[18px] font-extrabold text-slate-800 mb-1">Change Appointment Status</h2>
+                        <p className="text-[13px] text-slate-400 font-medium mb-6">
+                            {statusModalData.patientName || 'Patient'} · {fmtDateTime(getAptDate(statusModalData)).date}
+                        </p>
+
+                        {/* Status pills */}
+                        <div className="flex flex-wrap gap-2 mb-8">
+                            {([
+                                { value: 1, label: 'Scheduled',   bg: '#1A6FC4' },
+                                { value: 2, label: 'In Progress', bg: '#ca8a04' },
+                                { value: 3, label: 'Completed',   bg: '#16a34a' },
+                                { value: 4, label: 'No Show',     bg: '#64748b' },
+                                { value: 5, label: 'Cancelled',   bg: '#dc2626' },
+                                { value: 6, label: 'Waiting List',bg: '#ea580c' },
+                            ] as { value: AppointmentStatus; label: string; bg: string }[]).map(opt => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => setSelectedStatus(opt.value)}
+                                    style={{
+                                        background: selectedStatus === opt.value ? opt.bg : '#f1f5f9',
+                                        color: selectedStatus === opt.value ? '#fff' : '#475569',
+                                        border: selectedStatus === opt.value ? `2px solid ${opt.bg}` : '2px solid transparent',
+                                        boxShadow: selectedStatus === opt.value ? `0 0 0 3px ${opt.bg}33` : 'none',
+                                    }}
+                                    className="px-4 py-1.5 rounded-full text-[13px] font-bold transition-all active:scale-95 focus:outline-none"
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => { setStatusModalData(null); setSelectedStatus(null); }}
+                                className="flex-1 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                            >Keep Status</button>
+                            <button
+                                onClick={executeStatusChange}
+                                disabled={selectedStatus === null || statusChanging}
+                                className="flex-1 py-3 bg-[#1A6FC4] hover:bg-[#155ba0] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
+                            >
+                                {statusChanging && <Loader2 size={15} className="animate-spin" />}
+                                {statusChanging ? 'Saving...' : 'Change Status'}
+                            </button>
                         </div>
                     </div>
                 </div>

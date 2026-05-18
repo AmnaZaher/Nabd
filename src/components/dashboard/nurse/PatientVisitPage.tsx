@@ -153,8 +153,20 @@ const PatientVisitPage: React.FC<PatientVisitPageProps> = ({ onMenuClick, onProf
     setSubmitting(true);
     setError(null);
     try {
+      // Map VisitType string to integer values expected by the backend enum:
+      // 1: Initial Admit / Emergency / Examination
+      // 2: Follow-up
+      // 3: Consultation
+      let visitTypeNum = "3"; // default to Consultation
+      if (formData.VisitType === "Follow-up") {
+        visitTypeNum = "2";
+      } else if (formData.VisitType === "Emergency" || formData.VisitType === "Initial Admit") {
+        visitTypeNum = "1";
+      }
+
       const payload: CreateVisitPayload = {
         ...formData,
+        VisitType: visitTypeNum,
         Notes: `${priority.toUpperCase()} Priority - ${formData.Notes || ''}`,
       };
       

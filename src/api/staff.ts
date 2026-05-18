@@ -246,10 +246,28 @@ export const staffApi = {
       avatar: item.avatar || item.PersonalPhotos || '',
     } as StaffProfile);
 
-    // ── Strategy 0: /Admin/Profile (self-profile, works for all roles) ──
+    // ── Short-circuit for roles that have no profile endpoint yet ──
+    // Nurses (and any other non-Admin, non-Doctor roles) don't have a dedicated
+    // profile API endpoint yet. Skip all server calls and use JWT data directly
+    // to avoid 403/404 error spam in the console.
+    const adminOnlyRoles = ['Admin'];
+    const hasProfileEndpoint = adminOnlyRoles.includes(jwtRole || '');
+
+    if (!hasProfileEndpoint) {
+      return buildProfile({
+        id: userId,
+        name: jwtUsername || 'Staff Member',
+        role: jwtRole || 'Staff',
+        status: 'Active',
+        email: '',
+        phone: '',
+        department: 'General'
+      }, userId, jwtUsername);
+    }
+
+    // ── Strategy 0: /Admin/Profile (Admin only) ──
     try {
       const response = await fetchApi<any>('/Admin/Profile');
-      console.log("Strategy 0 (/Admin/Profile) raw response:", response);
       const item = response?.data;
       if (item) {
         const name = resolveName(item);
@@ -260,7 +278,6 @@ export const staffApi = {
     // ── Strategy 1: /Staff/{userId} (direct lookup by internal ID) ──
     try {
       const response = await fetchApi<any>(`/Staff/${userId}`);
-      console.log("Strategy 1 (/Staff/{userId}) raw response:", response);
       const item = response?.data;
       if (item) {
         const name = resolveName(item);
@@ -269,12 +286,6 @@ export const staffApi = {
     } catch (err) { console.log("Strategy 1 failed:", err); }
 
     // ── Strategy 2: Admin search by national ID (admins only) ──
-    if (jwtUsername && !/^\d+$/.test(jwtUsername)) {
-      // Only attempt if jwtUsername looks like a real search key (not a pure number)
-      try {
-        return await staffApi.getStaffById(jwtUsername);
-      } catch { /* admin-only, fails for nurses */ }
-    }
     if (jwtUsername) {
       try {
         const result = await staffApi.getStaffById(jwtUsername);
@@ -282,15 +293,15 @@ export const staffApi = {
       } catch { /* also failed */ }
     }
 
-    // ── Strategy 3: Fallback to JWT data (when backend lacks profile endpoints for non-admins) ──
+    // ── Final Fallback: JWT data ──
     console.warn("All profile fetch strategies failed. Falling back to JWT data.");
     return buildProfile({
       id: userId,
       name: jwtUsername || 'Staff Member',
       role: jwtRole || '',
       status: 'Active',
-      email: 'Not available',
-      phone: 'Not available',
+      email: '',
+      phone: '',
       department: 'General'
     }, userId, jwtUsername);
   },
