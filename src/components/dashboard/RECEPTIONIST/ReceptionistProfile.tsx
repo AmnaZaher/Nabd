@@ -65,7 +65,7 @@ const ReceptionistProfile: React.FC = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans pb-20">
+    <div className="w-full h-screen overflow-y-auto bg-[#F8FAFC] p-4 md:p-8 font-sans pb-20">
       {/* Main Profile Header */}
       <div className="flex justify-between items-start mb-8">
         <div>
