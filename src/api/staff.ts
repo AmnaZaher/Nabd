@@ -225,26 +225,40 @@ export const staffApi = {
     };
 
     /** Helper: build a StaffProfile from a raw backend item */
-    const buildProfile = (item: any, fallbackId: string, fallbackNationalId?: string): StaffProfile => ({
-      ...item,
-      id: item.id || item.Id || fallbackId,
-      name: resolveName(item),
-      fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
-      role: item.role || item.Role || '',
-      department: item.department || item.Department || '',
-      licenseId: item.licenseId || item.licenseNumber || '',
-      location: item.location || item.city || '',
-      email: item.email || item.Email || '',
-      nationalId: item.nationalId || item.NationalId || fallbackNationalId || '',
-      phone: item.phoneNumber || item.phone || '',
-      address: item.address || '',
-      gender: item.gender || '',
-      experience: item.experience || '',
-      qualifications: item.qualifications || item.qualification || '',
-      status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
-      lastLogin: item.lastLogin || '',
-      avatar: item.avatar || item.PersonalPhotos || '',
-    } as StaffProfile);
+    const buildProfile = (item: any, fallbackId: string, fallbackNationalId?: string): StaffProfile => {
+      const rolesMap: Record<string, string> = {
+        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
+        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
+      };
+      
+      let rawRole = item.role ?? item.Role ?? item.roleId ?? item.RoleId ?? item.staffRole ?? item.StaffRole ?? item.roleName ?? item.RoleName ?? '';
+      if (typeof rawRole === 'object' && rawRole !== null) {
+          rawRole = rawRole.name ?? rawRole.Name ?? rawRole.id ?? rawRole.Id ?? '';
+      }
+      const roleStr = String(rawRole).trim();
+      let finalRole = rolesMap[roleStr] || (roleStr && isNaN(parseInt(roleStr)) ? roleStr : '');
+
+      return {
+        ...item,
+        id: item.id || item.Id || fallbackId,
+        name: resolveName(item),
+        fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
+        role: finalRole || jwtRole || 'Staff',
+        department: item.department || item.Department || '',
+        licenseId: item.licenseId || item.licenseNumber || '',
+        location: item.location || item.city || '',
+        email: item.email || item.Email || '',
+        nationalId: item.nationalId || item.NationalId || fallbackNationalId || '',
+        phone: item.phoneNumber || item.phone || '',
+        address: item.address || '',
+        gender: item.gender || '',
+        experience: item.experience || '',
+        qualifications: item.qualifications || item.qualification || '',
+        status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
+        lastLogin: item.lastLogin || '',
+        avatar: item.avatar || item.PersonalPhotos || '',
+      } as StaffProfile;
+    };
 
     // ── Short-circuit for roles that have no profile endpoint yet ──
     // Nurses (and any other non-Admin, non-Doctor roles) don't have a dedicated

@@ -25,7 +25,7 @@ interface NavItem {
     path: string;
 }
 
-const getNavItems = (isNurse: boolean, isDoctor: boolean): NavItem[] => {
+const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boolean): NavItem[] => {
     if (isDoctor) {
         return [
             { id: 'dashboard', icon: LayoutDashboard, label: 'Overview', path: PATHS.DASHBOARD },
@@ -43,6 +43,16 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean): NavItem[] => {
             { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
             { id: 'patient-visit', icon: Activity, label: 'Patient Visit', path: PATHS.PATIENT_VISIT },
             { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
+            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
+        ];
+    }
+    if (isLabTechnician) {
+        return [
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+            { id: 'users', icon: Users, label: 'User Management', path: PATHS.USER_MANAGEMENT },
+            { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
+            { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
+            { id: 'radiology', icon: Microscope, label: 'Radiology', path: PATHS.RADIOLOGY },
             { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
@@ -74,9 +84,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onTabChange,
 }) => {
     const navigate = useNavigate();
-    const { logout, isNurse, isDoctor } = useAuth();
+    const { logout, isNurse, isDoctor, isLabTechnician } = useAuth();
 
-    const currentNavItems = getNavItems(isNurse, isDoctor);
+    const currentNavItems = getNavItems(isNurse, isDoctor, isLabTechnician);
 
     const handleNavClick = (item: NavItem) => {
         onTabChange?.(item.id);
