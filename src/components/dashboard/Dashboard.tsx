@@ -34,6 +34,7 @@ import DRSchedulePage from "./schedule/DrSchedulePage";
 import AdminProfilePage from "./profile/AdminProfile";
 import PatientVisitPage from "./nurse/PatientVisitPage";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
+import LabTechnicianDashboardOverview from "./lab/LabTechnicianDashboardOverview";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import NewAppointmentPage from "./appointments/NewAppointmentPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
@@ -55,7 +56,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
-  const { user, logout, isNurse, isDoctor, isAdmin, isLoading } = useAuth();
+  const { user, logout, isNurse, isDoctor, isLabTechnician, isAdmin, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -69,7 +70,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const fetchProfile = async () => {
       if (user?.id && isAdmin) {
         try {
-          const data = await staffApi.getMyProfile(user.id, user.name);
+          const data = await staffApi.getMyProfile(user.id, user.name, user?.role);
           if (data) setAdminProfile(data);
         } catch (error) {
           console.error("Failed to fetch admin profile for greeting:", error);
@@ -77,7 +78,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       }
       if (user?.id && !isAdmin) {
         try {
-          const data = await staffApi.getMyProfile(user.id, user.name);
+          const data = await staffApi.getMyProfile(user.id, user.name, user?.role);
           if (data) setReceptionistProfile(data);
         } catch (error) {
           console.error("Failed to fetch receptionist profile for greeting:", error);
@@ -85,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       }
     };
     fetchProfile();
-  }, [user?.id, isAdmin]);
+  }, [user?.id, isAdmin, user?.name, user?.role]);
 
   // Sync active tab with URL
   useEffect(() => {
@@ -151,6 +152,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     );
   }
 
+  const effectiveRole = receptionistProfile?.role || adminProfile?.role || user?.role || "";
+  const effectiveIsLabTechnician = isLabTechnician || effectiveRole.toLowerCase().replace(/[^a-z]/g, '') === 'labtechnician';
+  const effectiveIsNurse = isNurse || effectiveRole.toLowerCase() === 'nurse';
+  const effectiveIsDoctor = isDoctor || effectiveRole.toLowerCase() === 'doctor';
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -182,17 +188,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <Route
             index
             element={
-              isNurse ? (
+              effectiveIsNurse ? (
                 <NurseDashboardOverview
                   onMenuClick={() => setIsSidebarOpen(true)}
                   onProfileClick={handleProfileClick}
                   onAddUserClick={handleAddUser}
                 />
-              ) : isDoctor ? (
+              ) : effectiveIsDoctor ? (
                 <DoctorDashboardOverview
                   onMenuClick={() => setIsSidebarOpen(true)}
                   onProfileClick={handleProfileClick}
                   onAddUserClick={handleAddUser}
+                />
+              ) : effectiveIsLabTechnician ? (
+                <LabTechnicianDashboardOverview
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                  onProfileClick={handleProfileClick}
                 />
               ) : (
                 <div className="flex-1 flex flex-col min-h-0">
