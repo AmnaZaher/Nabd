@@ -11,6 +11,8 @@ import {
     LogOut,
     X,
     Activity,
+    ClipboardList,
+    ClipboardCheck,
     type LucideIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -49,10 +51,8 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boole
     if (isLabTechnician) {
         return [
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
-            { id: 'users', icon: Users, label: 'User Management', path: PATHS.USER_MANAGEMENT },
-            { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
-            { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
-            { id: 'radiology', icon: Microscope, label: 'Radiology', path: PATHS.RADIOLOGY },
+            { id: 'lab-orders', icon: ClipboardList, label: 'Lab orders', path: PATHS.LAB_TEST_REQUEST },
+            { id: 'lab-approval', icon: ClipboardCheck, label: 'Lab approval', path: PATHS.LAB_TEST },
             { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
@@ -138,8 +138,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         className={`
                             flex flex-col items-center justify-center w-full py-2.5 gap-1 transition-all shrink-0
                             ${activeTab === item.id
-                                ? 'opacity-100 bg-white/25 border-l-4 border-white'
-                                : 'opacity-90 hover:opacity-100 hover:bg-white/15 border-l-4 border-transparent'
+                                ? 'opacity-100 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.4)_0%,transparent_70%)]'
+                                : 'opacity-90 hover:opacity-100 hover:bg-white/15'
                             }
                         `}
                     >

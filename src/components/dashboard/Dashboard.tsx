@@ -35,6 +35,12 @@ import AdminProfilePage from "./profile/AdminProfile";
 import PatientVisitPage from "./nurse/PatientVisitPage";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
 import LabTechnicianDashboardOverview from "./lab/LabTechnicianDashboardOverview";
+import EditLabResultPage from "./lab/EditLabResultPage";
+import VisitLabTestsPage from "./lab/VisitLabTestsPage";
+import LabResultDetailsPage from "./lab/LabResultDetailsPage";
+import LabApprovalPage from "./lab/LabApprovalPage";
+import ApproveLabResultPage from "./lab/ApproveLabResultPage";
+import LabOrdersPage from "./lab/LabOrdersPage";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import NewAppointmentPage from "./appointments/NewAppointmentPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
@@ -50,6 +56,8 @@ import ActiveVisitPage from "./doctor/ActiveVisitPage";
 import DoctorProfileDetail from "./users/DoctorProfileDetail";
 import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import DoctorSchedulePage from "./users/Doctorschedulepage ";
+import LabTechnicianProfile from "./lab/LabTechnicianProfile";
+import EditLabTechnicianProfile from "./lab/EditLabTechnicianProfile";
 
 interface DashboardProps {
   onLogout?: () => void;
@@ -92,7 +100,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   useEffect(() => {
     const path = location.pathname;
     if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
-    else if (path.includes("/doctor-schedule")) setActiveTab("doctor-schedule"); // ← before /appointments
+    else if (path.includes("/doctor-schedule")) setActiveTab("doctor-schedule");
     else if (path.includes("/appointments")) setActiveTab("appointments");
     else if (path.includes("/radiology")) setActiveTab("radiology");
     else if (path.includes("/lab-catalog")) setActiveTab("lab-catalog");
@@ -102,19 +110,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     else if (path.includes("/dr-schedule")) setActiveTab("dr-schedule");
     else if (path.includes("/patient-visit")) setActiveTab("patient-visit");
     else if (path.includes("/doctor-visits")) setActiveTab("doctor-visits");
+    else if (path.includes("/lab-test-request")) setActiveTab("lab-orders");
+    else if (path.includes("/lab-test") || path.includes("/lab/approve")) setActiveTab("lab-approval");
     else setActiveTab("dashboard");
-    if (path.includes("/users") || path.includes("/patients"))    setActiveTab("users");
-    else if (path.includes("/doctor-schedule"))                    setActiveTab("doctor-schedule");
-    else if (path.includes("/appointments"))                       setActiveTab("appointments");
-    else if (path.includes("/radiology"))                          setActiveTab("radiology");
-    else if (path.includes("/lab-catalog"))                        setActiveTab("lab-catalog");
-    else if (path.includes("/clinics"))                            setActiveTab("clinics");
-    else if (path.includes("/settings"))                           setActiveTab("settings");
-    else if (path.includes("/profile"))                            setActiveTab("profile");
-    else if (path.includes("/dr-schedule"))                        setActiveTab("dr-schedule");
-    else if (path.includes("/patient-visit"))                      setActiveTab("patient-visit");
-    else if (path.includes("/doctor-visits"))                      setActiveTab("doctor-visits");
-    else                                                           setActiveTab("dashboard");
 
     setIsSidebarOpen(false);
   }, [location]);
@@ -276,7 +274,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             <Route path="add" element={<AddLabTest />} />
             <Route path="details/:id" element={<LabTestDetail />} />
             <Route path="edit/:id" element={<EditLabTest />} />
-            <Route path=":id" element={<LabTestDetail />} />
+          </Route>
+
+          {/* Lab Technician Flow */}
+          <Route path="lab-test-request" element={<LabOrdersPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="lab-test" element={<LabApprovalPage />} />
+          <Route path="lab">
+            <Route path="edit/:id" element={<EditLabResultPage />} />
+            <Route path="approve/:id" element={<ApproveLabResultPage />} />
+            <Route path="visit/:id" element={<VisitLabTestsPage />} />
+            <Route path="result/:id" element={<LabResultDetailsPage />} />
           </Route>
 
           {/* Appointments (admin / nurse / receptionist) */}
@@ -333,6 +340,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 <AdminProfilePage />
               ) : isDoctor ? (
                 <DoctorProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />
+              ) : effectiveIsLabTechnician ? (
+                <LabTechnicianProfile />
               ) : (
                 <ReceptionistProfile />
               )
@@ -345,6 +354,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 <AdminProfilePage />
               ) : isDoctor ? (
                 <EditDoctorProfilePage />
+              ) : effectiveIsLabTechnician ? (
+                <EditLabTechnicianProfile />
               ) : (
                 <EditReceptionistProfile />
               )
