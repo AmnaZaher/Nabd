@@ -129,7 +129,7 @@ const VisitLabTestsPage: React.FC = () => {
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
               <span 
                 className="text-slate-800 cursor-pointer hover:underline" 
-                onClick={() => navigate(location.state?.from || '/dashboard')}
+                onClick={() => navigate(-1)}
               >
                 {location.state?.label || 'DASHBOARD'}
               </span>
@@ -271,7 +271,7 @@ const VisitLabTestsPage: React.FC = () => {
                           <button 
                             className="text-blue-600 hover:text-blue-800 transition-colors p-1 cursor-pointer" 
                             title="View"
-                            onClick={() => navigate(`/dashboard/lab/result/${test.id.replace('#', '')}`)}
+                            onClick={() => navigate(`/dashboard/lab/result/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS' } })}
                           >
                             <Eye size={16} />
                           </button>
@@ -279,7 +279,7 @@ const VisitLabTestsPage: React.FC = () => {
                             <button 
                               className="text-slate-500 hover:text-slate-700 transition-colors p-1 cursor-pointer" 
                               title="Edit"
-                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`)}
+                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS' } })}
                             >
                               <FileEdit size={16} />
                             </button>

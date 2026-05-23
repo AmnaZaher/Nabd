@@ -99,6 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   // Sync active tab with URL
   useEffect(() => {
     const path = location.pathname;
+    const fromPath = (location.state as any)?.base || (location.state as any)?.from || "";
     if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
     else if (path.includes("/doctor-schedule")) setActiveTab("doctor-schedule");
     else if (path.includes("/appointments")) setActiveTab("appointments");
@@ -110,8 +111,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     else if (path.includes("/dr-schedule")) setActiveTab("dr-schedule");
     else if (path.includes("/patient-visit")) setActiveTab("patient-visit");
     else if (path.includes("/doctor-visits")) setActiveTab("doctor-visits");
-    else if (path.includes("/lab-test-request")) setActiveTab("lab-orders");
-    else if (path.includes("/lab-test") || path.includes("/lab/approve")) setActiveTab("lab-approval");
+    else if (path.includes("/lab-test-request") || (path.includes("/lab/") && fromPath.includes("/lab-test-request"))) setActiveTab("lab-orders");
+    else if (path.includes("/lab-test") || path.includes("/lab/approve") || (path.includes("/lab/") && fromPath.includes("/lab-test"))) setActiveTab("lab-approval");
     else setActiveTab("dashboard");
 
     setIsSidebarOpen(false);
