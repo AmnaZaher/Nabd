@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "../TopBar";
 import {
@@ -15,8 +15,6 @@ import {
   Loader2,
   CheckCheck,
   FileDown,
-  ClipboardEdit,
-  ClipboardCheck,
 } from "lucide-react";
 import { exportLabPDF } from "../../../api/labs";
 import { useGetLabOrdersQuery, useApproveLabResultMutation, useGetLabDashboardStatsQuery } from "../../../store/api/labApiSlice";
@@ -34,17 +32,6 @@ function normaliseStatus(raw: string | undefined): "Pending" | "In Progress" | "
   if (s === "approved") return "Approved";
   if (s === "scheduled") return "Scheduled";
   return "Pending";
-}
-
-/** Derive display initials from a name */
-function initials(name?: string) {
-  if (!name) return "??";
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 /** Compute stat counts from the raw results list */
@@ -87,7 +74,7 @@ const LabTechnicianDashboardOverview: React.FC<{
 
   // RTK Queries & Mutations
   const { data: apiData, error: apiError, isLoading: loading, refetch } = useGetLabOrdersQuery();
-  const { data: dashboardData, isLoading: dashboardLoading, refetch: refetchDashboard } = useGetLabDashboardStatsQuery();
+  const { data: dashboardData, refetch: refetchDashboard } = useGetLabDashboardStatsQuery();
   const [approveLabResult] = useApproveLabResultMutation();
 
   // ── Compute final results with Mock Fallback ───────────────────────────────

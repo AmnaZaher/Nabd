@@ -76,8 +76,6 @@ const VisitLabTestsPage: React.FC = () => {
   const [visitInfo, setVisitInfo] = useState(VISIT_INFO);
   const [tests, setTests] = useState(INITIAL_MOCK_TESTS);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [debugReqs, setDebugReqs] = useState<any>(null);
 
   useEffect(() => {
     const fetchVisitData = async () => {
@@ -89,7 +87,6 @@ const VisitLabTestsPage: React.FC = () => {
         setLoading(true);
         const infoRes = await getPatientVisitLabRequestsInfo(id);
         const actualInfo = infoRes?.data || infoRes;
-        setDebugInfo(actualInfo);
         
         let actualRequests: any = [];
         
