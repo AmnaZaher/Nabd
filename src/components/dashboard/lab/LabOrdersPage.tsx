@@ -5,7 +5,6 @@ import {
     Eye,
     Printer,
     Loader2,
-    Calendar,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -26,11 +25,6 @@ function normaliseStatus(raw: string | undefined): string {
     if (s === "completed" || s === "complete") return "Completed";
     if (s === "approved") return "Completed"; // Or 'Approved' depending on business logic
     return "Pending";
-}
-
-function initials(name?: string) {
-    if (!name) return "??";
-    return name.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
 }
 
 function formatDate(dateStr?: string) {
@@ -351,10 +345,6 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                             StatusBadge = <span className="inline-flex px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold">{status}</span>;
                                         }
 
-                                        // Patient Avatar Color
-                                        const colors = ['bg-red-100 text-red-600', 'bg-blue-100 text-blue-600', 'bg-green-100 text-green-600', 'bg-purple-100 text-purple-600'];
-                                        const avatarColorClass = colors[req.id % colors.length];
-                                        
                                         const dateStr = req.createDate || req.createdAt || (req as any).requestDate || (req as any).date || (req as any).orderDate || (req as any).created || (req as any).recordDate;
 
                                         return (
