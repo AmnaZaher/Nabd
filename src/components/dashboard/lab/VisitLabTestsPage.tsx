@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import TopBar from "../TopBar";
+import { getPatientVisitLabRequestsInfo, getVisitLabRequests } from "../../../api/labs";
 import {
   Search,
   Filter,
@@ -64,14 +65,90 @@ const INITIAL_MOCK_TESTS = [
 ];
 
 const VisitLabTestsPage: React.FC = () => {
-  useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter] = useState("All");
   const [categoryFilter] = useState("All");
 
+  const [patientInfo, setPatientInfo] = useState(PATIENT_INFO);
+  const [visitInfo, setVisitInfo] = useState(VISIT_INFO);
   const [tests, setTests] = useState(INITIAL_MOCK_TESTS);
+  const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugReqs, setDebugReqs] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchVisitData = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const infoRes = await getPatientVisitLabRequestsInfo(id);
+        const actualInfo = infoRes?.data || infoRes;
+        setDebugInfo(actualInfo);
+        
+        let actualRequests: any = [];
+        
+        if (actualInfo && Object.keys(actualInfo).length > 0) {
+          setPatientInfo({
+            name: actualInfo.patientName || actualInfo.patient?.name || actualInfo.name || actualInfo.patientNameEnglish || "Unknown Patient",
+            id: actualInfo.fileNumber || actualInfo.patient?.fileNumber || "Unknown ID",
+            gender: actualInfo.gender || actualInfo.patient?.gender || "Unknown",
+            age: actualInfo.age ? `${actualInfo.age} Years` : "Unknown Age",
+            image: actualInfo.image || "https://i.pravatar.cc/150?u=placeholder"
+          });
+          setVisitInfo({
+            visitNumber: actualInfo.visitNumber || "N/A",
+            date: actualInfo.visitDate || "N/A",
+            doctor: actualInfo.doctorName || "N/A",
+            clinic: actualInfo.clinicName || "N/A",
+            type: actualInfo.visitType || "N/A"
+          });
+          
+          // Use the route param 'id' if the response doesn't give a specific request ID
+          const requestsId = actualInfo.id || actualInfo.visitId || actualInfo.requestId || id;
+          const requestsRes = await getVisitLabRequests(requestsId);
+          actualRequests = requestsRes?.data || requestsRes;
+        } else {
+          const requestsRes = await getVisitLabRequests(id);
+          actualRequests = requestsRes?.data || requestsRes;
+        }
+        
+        if (Array.isArray(actualRequests)) {
+          setTests(actualRequests.map((req: any) => ({
+            id: `#${req.id || req.requestId || Math.floor(Math.random() * 10000)}`,
+            name: req.testNameEnglish || req.testName || req.labTest?.testNameEnglish || "Unknown Test",
+            category: req.category || req.labTest?.category || "General",
+            sample: req.sampleType || "Blood",
+            doctor: req.doctorName || req.doctor?.name || "Unknown",
+            date: req.requestDate || req.createdAt || "N/A",
+            status: req.status || "Pending",
+          })));
+        } else if (actualRequests && actualRequests.length !== undefined) {
+           // fallback if it's somehow not an array but has length
+           setTests(Array.from(actualRequests).map((req: any) => ({
+            id: `#${req.id || req.requestId || Math.floor(Math.random() * 10000)}`,
+            name: req.testNameEnglish || req.testName || req.labTest?.testNameEnglish || "Unknown Test",
+            category: req.category || req.labTest?.category || "General",
+            sample: req.sampleType || "Blood",
+            doctor: req.doctorName || req.doctor?.name || "Unknown",
+            date: req.requestDate || req.createdAt || "N/A",
+            status: req.status || "Pending",
+          })));
+        }
+      } catch (err) {
+        console.error("Failed to fetch visit data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchVisitData();
+  }, [id]);
 
   const filteredTests = tests.filter((test) => {
     const matchesSearch = test.name.toLowerCase().includes(searchTerm.toLowerCase()) || test.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -123,6 +200,11 @@ const VisitLabTestsPage: React.FC = () => {
       />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        {loading ? (
+          <div className="flex justify-center items-center h-full min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
         <div className="max-w-[1600px] mx-auto space-y-6">
           {/* Header & Breadcrumbs */}
           <div>
@@ -144,14 +226,13 @@ const VisitLabTestsPage: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between">
             {/* Patient Info */}
             <div className="flex items-center gap-5 min-w-[300px]">
-              <img src={PATIENT_INFO.image} alt={PATIENT_INFO.name} className="w-20 h-20 rounded-2xl object-cover bg-slate-100" />
               <div>
-                <h3 className="text-xl font-bold text-slate-800">{PATIENT_INFO.name}</h3>
+                <h3 className="text-xl font-bold text-slate-800">{patientInfo.name}</h3>
                 <div className="flex items-center gap-3 mt-1.5">
                   <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-xs font-bold">
-                    {PATIENT_INFO.id}
+                    {patientInfo.id}
                   </span>
-                  <span className="text-sm font-medium text-slate-500">{PATIENT_INFO.gender}, {PATIENT_INFO.age}</span>
+                  <span className="text-sm font-medium text-slate-500">{patientInfo.gender}, {patientInfo.age}</span>
                 </div>
               </div>
             </div>
@@ -160,23 +241,23 @@ const VisitLabTestsPage: React.FC = () => {
             <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-8">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">VISIT NUMBER</p>
-                <p className="text-sm font-bold text-slate-800">{VISIT_INFO.visitNumber}</p>
+                <p className="text-sm font-bold text-slate-800">{visitInfo.visitNumber}</p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">VISIT DATE</p>
-                <p className="text-sm font-bold text-slate-800">{VISIT_INFO.date}</p>
+                <p className="text-sm font-bold text-slate-800">{visitInfo.date}</p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">DOCTOR</p>
-                <p className="text-sm font-bold text-slate-800">{VISIT_INFO.doctor}</p>
+                <p className="text-sm font-bold text-slate-800">{visitInfo.doctor}</p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">CLINC</p>
-                <p className="text-sm font-bold text-slate-800">{VISIT_INFO.clinic}</p>
+                <p className="text-sm font-bold text-slate-800">{visitInfo.clinic}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">VISIT TYPE</p>
-                <p className="text-sm font-bold text-slate-800">{VISIT_INFO.type}</p>
+                <p className="text-sm font-bold text-slate-800">{visitInfo.type}</p>
               </div>
             </div>
 
@@ -279,7 +360,7 @@ const VisitLabTestsPage: React.FC = () => {
                             <button 
                               className="text-slate-500 hover:text-slate-700 transition-colors p-1 cursor-pointer" 
                               title="Edit"
-                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS' } })}
+                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS', orderData: test } })}
                             >
                               <FileEdit size={16} />
                             </button>
@@ -338,6 +419,7 @@ const VisitLabTestsPage: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
       </main>
     </div>
   );

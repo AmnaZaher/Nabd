@@ -1,5 +1,5 @@
-import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import TopBar from "../TopBar";
 import {
   Printer,
@@ -12,12 +12,117 @@ import {
   Calendar,
   BarChart2,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from "lucide-react";
+import { getLabResultDetails, getLabTestRequestDetails, exportLabPDF } from "../../../api/labs";
+import type { LabResultDetail } from "../../../types/labs.types";
 
 const LabResultDetailsPage: React.FC = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [detail, setDetail] = useState<LabResultDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+        const orderData = location.state?.orderData;
+        
+        let data: LabResultDetail = {
+            id: Number(id),
+            requestId: Number(id),
+            patientName: orderData?.patientName || orderData?.patient?.name || orderData?.name || "Unknown Patient",
+            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || "—",
+            testName: orderData?.testName || orderData?.labTest?.testNameEnglish || orderData?.name || "Unknown Test",
+            doctorName: orderData?.doctorName || orderData?.doctor?.name || orderData?.doctor || "Unknown Doctor",
+            status: orderData?.status || "Completed",
+            priority: orderData?.priority || "Normal",
+            createdAt: orderData?.createdAt || orderData?.date || new Date().toISOString(),
+            parameters: []
+        } as LabResultDetail;
+
+        // Fetch request details using the provided endpoint
+        let requestDetailsData: any = null;
+        try {
+            const reqRes = await getLabTestRequestDetails(id as string);
+            requestDetailsData = (reqRes as any)?.data ?? reqRes;
+            if (requestDetailsData) {
+                if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
+                if (requestDetailsData.doctorName) data.doctorName = requestDetailsData.doctorName;
+                if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
+                
+                if (requestDetailsData.parameters && Array.isArray(requestDetailsData.parameters)) {
+                    data.parameters = requestDetailsData.parameters.map((p: any) => ({
+                        ...p,
+                        parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
+                        referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
+                        referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+                        unit: p.unit || p.measurementUnit || '',
+                        value: p.value || p.resultValue
+                    }));
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to load request details via LabTestDetails.", err);
+        }
+
+        // Fetch result details directly
+        try {
+            const res = await getLabResultDetails(id as string);
+            const apiData = (res as any)?.data ?? res;
+            if (apiData) {
+                data = { ...data, ...apiData };
+            }
+        } catch (err) {
+            console.warn("Failed to load result details", err);
+        }
+
+        setDetail(data);
+        setLoading(false);
+    }
+    loadData();
+  }, [id, location.state]);
+
+  const getInterpretation = (valStr: number | undefined, min: number, max: number) => {
+    if (valStr === undefined || valStr === null) return null;
+    const val = Number(valStr);
+    if (isNaN(val)) return null;
+    
+    if (val > max * 1.5 || val < min * 0.5) return 'CRITICAL ALERT';
+    if (val < min) return 'LOW';
+    if (val > max) return 'HIGH';
+    return 'NORMAL';
+  };
+
+  const getInterpretationStyles = (status: string) => {
+    switch (status) {
+      case 'NORMAL': return 'bg-slate-100 text-slate-600';
+      case 'HIGH': return 'bg-red-100 text-red-700';
+      case 'LOW': return 'bg-yellow-100 text-yellow-700';
+      case 'CRITICAL ALERT': return 'bg-[#991b1b] text-white';
+      default: return 'bg-slate-100 text-slate-500';
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!detail?.id) return;
+    await exportLabPDF(detail.id);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
+        <TopBar title="DASHBOARD" onMenuClick={() => {}} showAddUser={false} />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 size={32} className="animate-spin text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!detail) return null;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
@@ -48,15 +153,24 @@ const LabResultDetailsPage: React.FC = () => {
             
             {/* Header Actions */}
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 shadow-sm transition-colors cursor-pointer">
+              <button 
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 shadow-sm transition-colors cursor-pointer"
+              >
                 <Printer size={16} />
                 Print Result
               </button>
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 shadow-sm transition-colors cursor-pointer">
+              <button 
+                onClick={handleDownload}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 shadow-sm transition-colors cursor-pointer"
+              >
                 <Download size={16} />
                 Download PDF
               </button>
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 border border-transparent text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-sm transition-colors cursor-pointer">
+              <button 
+                onClick={() => navigate(`/dashboard/lab/edit-result/${detail.requestId ?? detail.id}`, { state: { orderData: detail } })}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 border border-transparent text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-sm transition-colors cursor-pointer"
+              >
                 View Request Details
               </button>
             </div>
@@ -67,8 +181,8 @@ const LabResultDetailsPage: React.FC = () => {
             {/* Left Column (Patient & Info) */}
             <div className="xl:col-span-4 space-y-6">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative overflow-hidden">
-                <span className="absolute top-6 right-6 bg-blue-100 text-blue-700 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
-                  APPROVED
+                <span className={`absolute top-6 right-6 ${detail.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'} text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider`}>
+                  {detail.status || 'APPROVED'}
                 </span>
                 
                 <div className="flex items-center gap-4 mb-8">
@@ -76,35 +190,39 @@ const LabResultDetailsPage: React.FC = () => {
                     <User size={32} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-slate-800">Emma Lawson</h3>
-                    <p className="text-blue-600 text-sm font-bold mt-0.5">#PT-88291</p>
+                    <h3 className="text-xl font-bold text-slate-800">{detail.patientName}</h3>
+                    <p className="text-blue-600 text-sm font-bold mt-0.5">#{detail.fileNumber}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Request ID</p>
-                    <p className="text-sm font-bold text-slate-800">#REQ-9421</p>
+                    <p className="text-sm font-bold text-slate-800">#{detail.requestId ?? detail.id}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Visit ID</p>
-                    <p className="text-sm font-bold text-slate-800">#VS-2023-0442</p>
+                    <p className="text-sm font-bold text-slate-800">#{detail.id}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ordering Doctor</p>
-                    <p className="text-sm font-bold text-slate-800">Dr. Sarah Chen</p>
+                    <p className="text-sm font-bold text-slate-800">{detail.doctorName}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Collection Date</p>
-                    <p className="text-sm font-bold text-slate-800">Oct 24, 2023</p>
+                    <p className="text-sm font-bold text-slate-800">
+                      {detail.createdAt ? new Date(detail.createdAt).toLocaleDateString() : '—'}
+                    </p>
                   </div>
                   <div className="col-span-2 border-t border-slate-100 pt-6">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Test Name</p>
-                    <p className="text-base font-bold text-slate-800">Comprehensive Metabolic Panel</p>
+                    <p className="text-base font-bold text-slate-800">{detail.testName}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Category</p>
-                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">Biochemistry</span>
+                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">
+                      {detail.labTest?.category || 'Biochemistry'}
+                    </span>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sample Type</p>
@@ -123,22 +241,19 @@ const LabResultDetailsPage: React.FC = () => {
                   <div className="relative pl-6">
                     <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Analyzed By</p>
-                    <p className="text-sm font-bold text-slate-800">Alex Rivers (Technician)</p>
+                    <p className="text-sm font-bold text-slate-800">Lab Technician</p>
                   </div>
                   <div className="relative pl-6">
                     <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-blue-500"></div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approved By</p>
-                    <p className="text-sm font-bold text-slate-800">Dr. Robert Vance</p>
+                    <p className="text-sm font-bold text-slate-800">{detail.doctorName || "Pending"}</p>
                   </div>
                   <div className="relative pl-6">
                     <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Created At</p>
-                    <p className="text-sm font-bold text-slate-800">Oct 24, 2023 • 09:15 AM</p>
-                  </div>
-                  <div className="relative pl-6">
-                    <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Last Updated</p>
-                    <p className="text-sm font-bold text-slate-800">Oct 25, 2023 • 11:42 AM</p>
+                    <p className="text-sm font-bold text-slate-800">
+                      {detail.createdAt ? new Date(detail.createdAt).toLocaleString() : '—'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -163,60 +278,38 @@ const LabResultDetailsPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-6 py-5 text-sm font-medium text-slate-700">Glucose, Serum</td>
-                        <td className="px-6 py-5 text-sm font-black text-red-600">115</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">mg/dL</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">65 - 99</td>
-                        <td className="px-6 py-5">
-                          <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">High</span>
-                        </td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-6 py-5 text-sm font-medium text-slate-700">Creatinine, Serum</td>
-                        <td className="px-6 py-5 text-sm font-black text-slate-800">0.92</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">mg/dL</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">0.57 - 1.00</td>
-                        <td className="px-6 py-5">
-                          <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">Normal</span>
-                        </td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-6 py-5 text-sm font-medium text-slate-700">Sodium, Serum</td>
-                        <td className="px-6 py-5 text-sm font-black text-slate-800">140</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">mmol/L</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">134 - 144</td>
-                        <td className="px-6 py-5">
-                          <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">Normal</span>
-                        </td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-6 py-5 text-sm font-medium text-slate-700">Potassium, Serum</td>
-                        <td className="px-6 py-5 text-sm font-black text-red-700">6.2</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">mmol/L</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">3.5 - 5.2</td>
-                        <td className="px-6 py-5">
-                          <span className="bg-[#991b1b] text-white text-xs font-bold px-2.5 py-1 rounded-full">Critical</span>
-                        </td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-6 py-5 text-sm font-medium text-slate-700">Albumin, Serum</td>
-                        <td className="px-6 py-5 text-sm font-black text-slate-800">4.4</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">g/dL</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">3.5 - 5.5</td>
-                        <td className="px-6 py-5">
-                          <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">Normal</span>
-                        </td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-6 py-5 text-sm font-medium text-slate-700">Bilirubin, Total</td>
-                        <td className="px-6 py-5 text-sm font-black text-red-600">1.5</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">mg/dL</td>
-                        <td className="px-6 py-5 text-sm font-medium text-slate-500">0.0 - 1.2</td>
-                        <td className="px-6 py-5">
-                          <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">High</span>
-                        </td>
-                      </tr>
+                      {(!detail.parameters || detail.parameters.length === 0) && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-slate-500 font-medium">
+                            No result parameters recorded yet.
+                          </td>
+                        </tr>
+                      )}
+                      {detail.parameters?.map((p, idx) => {
+                        const interp = getInterpretation(p.value, p.referenceRangeMin, p.referenceRangeMax);
+                        const isCritical = interp === 'CRITICAL ALERT';
+                        const isHigh = interp === 'HIGH';
+                        
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/50">
+                            <td className="px-6 py-5 text-sm font-medium text-slate-700">{p.parameterNameEnglish}</td>
+                            <td className={`px-6 py-5 text-sm font-black ${isCritical ? 'text-red-700' : isHigh ? 'text-red-600' : 'text-slate-800'}`}>
+                              {p.value ?? '—'}
+                            </td>
+                            <td className="px-6 py-5 text-sm font-medium text-slate-500">{p.unit}</td>
+                            <td className="px-6 py-5 text-sm font-medium text-slate-500">{p.referenceRangeMin} - {p.referenceRangeMax}</td>
+                            <td className="px-6 py-5">
+                              {interp ? (
+                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${getInterpretationStyles(interp)}`}>
+                                  {interp === 'NORMAL' ? 'Normal' : interp === 'HIGH' ? 'High' : interp === 'LOW' ? 'Low' : 'Critical'}
+                                </span>
+                              ) : (
+                                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">Pending</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -229,11 +322,13 @@ const LabResultDetailsPage: React.FC = () => {
                 </div>
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
                   <p className="text-sm font-medium text-slate-700 leading-relaxed mb-4">
-                    Patient presents with elevated potassium and glucose levels. The potassium level of 6.2 mmol/L is within the critical range and has been flagged for immediate physician review. All internal controls and calibrations for the biochemistry analyzer were within acceptable limits at the time of testing.
+                    {detail.parameters?.some(p => getInterpretation(p.value, p.referenceRangeMin, p.referenceRangeMax) === 'CRITICAL ALERT')
+                      ? "Patient presents with critical parameter levels. Results have been flagged for immediate physician review. All internal controls and calibrations for the analyzer were within acceptable limits at the time of testing."
+                      : "Results have been analyzed. All parameters appear consistent."}
                   </p>
                   <div className="flex flex-wrap gap-4 text-xs font-bold text-slate-500">
-                    <span className="flex items-center gap-1.5"><Clock size={14} /> Analyzed on Oct 25, 2023 - 09:12 AM</span>
-                    <span className="flex items-center gap-1.5"><CheckCircle2 size={14} /> Verified by Automated System QC</span>
+                    <span className="flex items-center gap-1.5"><Clock size={14} /> Analyzed on {new Date().toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={14} /> Verified by QC System</span>
                   </div>
                 </div>
               </div>
@@ -243,7 +338,7 @@ const LabResultDetailsPage: React.FC = () => {
                 <div className="bg-[#0A58CA] text-white rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shadow-md min-h-[220px]">
                   <div className="relative z-10">
                     <p className="text-[10px] font-black uppercase tracking-wider text-blue-200 mb-2">VITALS TREND</p>
-                    <h3 className="text-2xl font-bold leading-tight mb-8 max-w-[200px]">Potassium Critical Spike</h3>
+                    <h3 className="text-2xl font-bold leading-tight mb-8 max-w-[200px]">Latest Analysis</h3>
                   </div>
                   
                   {/* Mock Chart */}
@@ -257,7 +352,7 @@ const LabResultDetailsPage: React.FC = () => {
                   </div>
 
                   <p className="text-xs font-medium text-blue-100 relative z-10">
-                    Significant increase compared to last visit (4.1 mmol/L on Sep 12)
+                    Comparison charts available in patient history.
                   </p>
                   
                   {/* Decorative */}
@@ -295,3 +390,4 @@ const LabResultDetailsPage: React.FC = () => {
 };
 
 export default LabResultDetailsPage;
+

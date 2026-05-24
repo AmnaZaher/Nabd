@@ -9,7 +9,8 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
-    ClipboardEdit
+    ClipboardEdit,
+    ClipboardCheck
 } from 'lucide-react';
 import { exportLabPDF } from '../../../api/labs';
 import { useGetLabOrdersQuery } from '../../../store/api/labApiSlice';
@@ -56,22 +57,59 @@ interface LabOrdersPageProps {
 
 const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileClick }) => {
     const navigate = useNavigate();
-    const { data: apiData, isLoading } = useGetLabOrdersQuery(undefined, { skip: true });
-
-    const results = useMemo(() => {
-        if (apiData && apiData.length > 0) return apiData;
-        return MOCK_LAB_RESULTS;
-    }, [apiData]);
-
-    const loading = isLoading;
-
-    // Filters
     const [searchQuery, setSearchQuery] = useState("");
-    const [testFilter, setTestFilter] = useState("Test Name");
-    const [doctorFilter, setDoctorFilter] = useState("Doctor");
-    const [dateFilter, setDateFilter] = useState("Date Range");
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("All");
 
+    const queryParams = useMemo(() => {
+        const params: Record<string, any> = {};
+        if (searchQuery) params.search = searchQuery;
+        if (fromDate) params.FromDate = fromDate;
+        if (toDate) params.ToDate = toDate;
+        
+        if (statusFilter === "Pending") params.Status = 1;
+        if (statusFilter === "Scheduled") params.Status = 2;
+        if (statusFilter === "In Progress") params.Status = 3;
+        if (statusFilter === "Completed") params.Status = 4;
+        
+        return params;
+    }, [searchQuery, fromDate, toDate, statusFilter]);
+
+    const { data: apiData, error: apiError, isLoading: loading, refetch } = useGetLabOrdersQuery(queryParams);
+
+    const { results, hasError } = useMemo(() => {
+        let finalData = apiData;
+
+        // Handle case where backend wraps response in a 'data' property
+        if (finalData && (finalData as any).data) {
+            finalData = (finalData as any).data;
+            if (finalData && (finalData as any).data) {
+                finalData = (finalData as any).data;
+            }
+        }
+
+        let isError = !!apiError;
+        let fallback = false;
+
+        if (!finalData || !Array.isArray(finalData) || isError) {
+            finalData = MOCK_LAB_RESULTS;
+            fallback = true;
+            if (apiError) {
+                console.warn("Failed to load lab results. Falling back to mock data.", apiError);
+            }
+        }
+
+        return {
+            results: finalData as LabResult[],
+            hasError: fallback,
+        };
+    }, [apiData, apiError]);
+
+    const error = hasError ? "API unavailable or returned empty data. Showing mock data." : null;
+
+    const [testFilter, setTestFilter] = useState("Test Name");
+    const [doctorFilter, setDoctorFilter] = useState("Doctor");
     const [page, setPage] = useState(1);
 
     // Stats
@@ -127,8 +165,33 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                 {/* Header Section */}
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800">Lab Orders</h1>
-                    <p className="text-slate-500 font-medium mt-1">View and manage pending and active laboratory requests</p>
+                    <div className="flex items-center justify-between mt-1">
+                        <p className="text-slate-500 font-medium">View and manage pending and active laboratory requests</p>
+                        <button
+                            onClick={() => refetch()}
+                            disabled={loading}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+                        >
+                            <Loader2 size={14} className={loading ? "animate-spin" : "hidden"} />
+                            {!loading && <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
+                            Refresh
+                        </button>
+                    </div>
                 </div>
+
+                {/* Global error banner */}
+                {error && (
+                    <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-5 py-4 text-red-700 text-sm font-medium">
+                        <span className="shrink-0 font-bold">!</span>
+                        <span>{error}</span>
+                        <button
+                            onClick={() => refetch()}
+                            className="ml-auto text-red-600 font-bold hover:underline text-xs"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                )}
 
                 {/* Status Cards / Filters */}
                 <div className="flex flex-wrap gap-4">
@@ -215,18 +278,26 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                             </div>
 
-                            <div className="relative min-w-[140px]">
-                                <select 
-                                    value={dateFilter}
-                                    onChange={(e) => setDateFilter(e.target.value)}
-                                    className="w-full pl-4 pr-10 py-2.5 appearance-none bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                                >
-                                    <option value="Date Range">Date Range</option>
-                                    <option value="Today">Today</option>
-                                    <option value="Yesterday">Yesterday</option>
-                                    <option value="This Week">This Week</option>
-                                </select>
-                                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                            <div className="flex items-center gap-2">
+                                <div className="relative min-w-[130px]">
+                                    <input 
+                                        type="date"
+                                        value={fromDate}
+                                        onChange={(e) => setFromDate(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        title="From Date"
+                                    />
+                                </div>
+                                <span className="text-slate-400 font-medium">-</span>
+                                <div className="relative min-w-[130px]">
+                                    <input 
+                                        type="date"
+                                        value={toDate}
+                                        onChange={(e) => setToDate(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        title="To Date"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -264,7 +335,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                         const pName = req.patientName ?? req.patient?.name ?? "Unknown";
                                         const pDetails = req.fileNumber ?? "—";
                                         const tName = req.testName ?? req.labTest?.testNameEnglish ?? "—";
-                                        const dName = req.doctorName ?? req.doctor?.name ?? "—";
+                                        const dName = (req.doctorName || req.doctor?.name) || "—";
 
                                         // Status rendering
                                         let StatusBadge = null;
@@ -283,6 +354,8 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                         // Patient Avatar Color
                                         const colors = ['bg-red-100 text-red-600', 'bg-blue-100 text-blue-600', 'bg-green-100 text-green-600', 'bg-purple-100 text-purple-600'];
                                         const avatarColorClass = colors[req.id % colors.length];
+                                        
+                                        const dateStr = req.createDate || req.createdAt || (req as any).requestDate || (req as any).date || (req as any).orderDate || (req as any).created || (req as any).recordDate;
 
                                         return (
                                             <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
@@ -290,15 +363,9 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                                     <span className="text-sm font-bold text-blue-600">#REQ-<br/>{req.id}</span>
                                                 </td>
                                                 <td className="px-4 py-5">
-                                                    <div 
-                                                        className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors group"
-                                                        onClick={() => navigate(`/dashboard/lab/visit/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS' } })}
-                                                    >
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${avatarColorClass} group-hover:shadow-sm transition-shadow`}>
-                                                            {initials(pName)}
-                                                        </div>
+                                                    <div className="flex items-center gap-3">
                                                         <div>
-                                                            <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{pName}</p>
+                                                            <p className="text-sm font-bold text-slate-800">{pName}</p>
                                                             <p className="text-[11px] font-medium text-slate-500 mt-0.5">{pDetails}</p>
                                                         </div>
                                                     </div>
@@ -318,7 +385,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                                 </td>
                                                 <td className="px-4 py-5">
                                                     <div className="text-sm text-slate-600 font-medium whitespace-pre-line leading-relaxed">
-                                                        {formatDate(req.createdAt)}
+                                                        {formatDate(dateStr)}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-5">
@@ -333,13 +400,23 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                                         >
                                                             <Eye size={18} />
                                                         </button>
-                                                        <button 
-                                                            onClick={() => navigate(`/dashboard/lab/edit/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS' } })}
-                                                            className="hover:text-slate-600 transition-colors"
-                                                            title="Edit"
-                                                        >
-                                                            <ClipboardEdit size={18} />
-                                                        </button>
+                                                        {status === "Completed" ? (
+                                                            <button 
+                                                                onClick={() => navigate(`/dashboard/lab/approve/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS', orderData: req } })}
+                                                                className="text-blue-500 hover:text-blue-700 transition-colors"
+                                                                title="Approve"
+                                                            >
+                                                                <ClipboardCheck size={18} />
+                                                            </button>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => navigate(`/dashboard/lab/edit/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS', orderData: req } })}
+                                                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                                                                title="Edit"
+                                                            >
+                                                                <ClipboardEdit size={18} />
+                                                            </button>
+                                                        )}
                                                         <button 
                                                             onClick={() => exportLabPDF(req.id)}
                                                             className="hover:text-slate-600 transition-colors"

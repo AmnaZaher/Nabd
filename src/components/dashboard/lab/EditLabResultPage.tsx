@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight, User, AlertTriangle, Loader2, Check } from "lucide-react";
-import { getLabResultDetails, createLabResult } from "../../../api/labs";
+import { getLabResultDetails, createLabResult, getLabTestDetails, getLabTestRequestDetails } from "../../../api/labs";
 import type { LabResultDetail } from "../../../types/labs.types";
 import TopBar from "../TopBar";
 
@@ -26,15 +26,118 @@ export default function EditLabResultPage() {
 
   useEffect(() => {
     async function loadData() {
-      try {
-        const res = await getLabResultDetails(id as string);
-        const data: LabResultDetail = (res as any)?.data ?? res;
+        const orderData = location.state?.orderData;
         
-        // Inject mock parameters if none are returned
-        if (!data.parameters || data.parameters.length === 0) {
-          data.parameters = mockParams;
+        // Initialize with fallback data based on orderData
+        let data: LabResultDetail = {
+            id: Number(id),
+            requestId: Number(id),
+            patientName: orderData?.patientName || orderData?.patient?.name || orderData?.name || "Unknown Patient",
+            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || "—",
+            testName: orderData?.testName || orderData?.labTest?.testNameEnglish || orderData?.name || "Unknown Test",
+            doctorName: orderData?.doctorName || orderData?.doctor?.name || orderData?.doctor || "Unknown Doctor",
+            status: orderData?.status || "In Progress",
+            priority: orderData?.priority || "Normal",
+            createdAt: orderData?.createdAt || orderData?.date || new Date().toISOString(),
+            parameters: []
+        } as LabResultDetail;
+
+        // 1. Try to fetch the full request details using the new endpoint
+        let requestDetailsData: any = null;
+        try {
+            const reqRes = await getLabTestRequestDetails(id as string);
+            requestDetailsData = (reqRes as any)?.data ?? reqRes;
+            if (requestDetailsData) {
+                // If it returns patient details, merge them
+                if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
+                if (requestDetailsData.doctorName) data.doctorName = requestDetailsData.doctorName;
+                if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
+                
+                // If it contains parameters directly
+                if (requestDetailsData.parameters && Array.isArray(requestDetailsData.parameters)) {
+                    data.parameters = requestDetailsData.parameters.map((p: any) => ({
+                        ...p,
+                        parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
+                        referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
+                        referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+                        unit: p.unit || p.measurementUnit || ''
+                    }));
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to load request details via LabTestDetails.", err);
         }
-        
+
+        // 2. If we still don't have parameters, try to get them from GetResultDetails (if it was already partially created)
+        if (!data.parameters || data.parameters.length === 0) {
+            try {
+                const res = await getLabResultDetails(id as string);
+                const apiData = (res as any)?.data ?? res;
+                if (apiData) {
+                    data = { ...data, ...apiData };
+                }
+            } catch (err) {
+                console.warn("Failed to load result details (might not exist yet).", err);
+            }
+        }
+
+        // 3. If we STILL don't have parameters, try fetching by TestId or Name
+        if (!data.parameters || data.parameters.length === 0) {
+            const testId = (data as any).testId || (data as any).labTestId || (data as any).labTest?.id || requestDetailsData?.testId || orderData?.testId || orderData?.labTestId || orderData?.labTest?.id;
+            let testParams = null;
+
+            if (testId) {
+                try {
+                    const testRes = await getLabTestDetails(testId);
+                    const testData = (testRes as any)?.data ?? testRes;
+                    if (testData?.parameters && testData.parameters.length > 0) {
+                        testParams = testData.parameters.map((p: any) => ({
+                            ...p,
+                            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
+                            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
+                            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+                            unit: p.unit || p.measurementUnit || ''
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Failed to load test parameters by testId:", testId, err);
+                }
+            }
+
+            // Fallback: match by name using the full catalog
+            if (!testParams) {
+                try {
+                    const { getLabCatalogFull } = await import('../../../api/labs');
+                    const catalogRes = await getLabCatalogFull();
+                    const catalogList = Array.isArray(catalogRes) ? catalogRes : ((catalogRes as any)?.data || []);
+                    
+                    const testName = data.testName || data.testNameEnglish || data.labTest?.testNameEnglish;
+                    const matchedTest = catalogList.find((t: any) => 
+                        (testName && (t.testNameEnglish === testName || t.testName === testName || t.testNameArabic === testName)) ||
+                        (testId && t.id === testId)
+                    );
+                    
+                    if (matchedTest?.parameters && matchedTest.parameters.length > 0) {
+                        testParams = matchedTest.parameters.map((p: any) => ({
+                            ...p,
+                            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
+                            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
+                            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+                            unit: p.unit || p.measurementUnit || ''
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Failed to load test parameters via catalog fallback:", err);
+                }
+            }
+
+            if (testParams) {
+                data.parameters = testParams;
+            } else {
+                data.parameters = mockParams;
+            }
+        }
+
         setDetail(data);
 
         // Pre-fill existing values if any
@@ -48,24 +151,7 @@ export default function EditLabResultPage() {
             setValues(initialValues);
         }
 
-      } catch (err) {
-        console.error("Failed to load result details:", err);
-        // Fallback to mock data if the API fails entirely so the page is still viewable
-        setDetail({
-            id: Number(id),
-            requestId: Number(id),
-            patientName: "Emma Lawson",
-            fileNumber: "PT-88291",
-            testName: "Comprehensive Metabolic Panel",
-            doctorName: "Dr. Sarah Chen",
-            status: "In Progress",
-            priority: "Normal",
-            createdAt: "2023-10-24T10:00:00Z",
-            parameters: mockParams,
-        } as LabResultDetail);
-      } finally {
         setLoading(false);
-      }
     }
     loadData();
   }, [id]);
