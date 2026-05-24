@@ -382,9 +382,6 @@ const LabTechnicianDashboardOverview: React.FC<{
                                 onClick={() => navigate(`/dashboard/lab/visit/${req.id}`)}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 border border-slate-200/30 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-colors">
-                                    {patientName.charAt(0).toUpperCase()}
-                                  </div>
                                   <div>
                                     <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{patientName}</span>
                                     {req.fileNumber && (
