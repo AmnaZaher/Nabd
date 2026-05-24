@@ -80,6 +80,7 @@ export interface LabResult {
   priority?: string; // "Urgent" | "Normal"
   isApproved?: boolean;
   createdAt?: string;
+  createDate?: string;
   approvedAt?: string;
   // Sometimes the backend wraps the nested test info
   labTest?: {

@@ -15,12 +15,11 @@ import {
   Loader2,
   CheckCheck,
   FileDown,
+  ClipboardEdit,
+  ClipboardCheck,
 } from "lucide-react";
-import {
-  getLabResults,
-  approveLabResult,
-  exportLabPDF,
-} from "../../../api/labs";
+import { exportLabPDF } from "../../../api/labs";
+import { useGetLabOrdersQuery, useApproveLabResultMutation, useGetLabDashboardStatsQuery } from "../../../store/api/labApiSlice";
 import type { LabResult, LabStats } from "../../../types/labs.types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -83,44 +82,60 @@ const LabTechnicianDashboardOverview: React.FC<{
 }> = ({ onMenuClick, onProfileClick }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabStatus>("Pending");
-  const [results, setResults] = useState<LabResult[]>([]);
-  const [stats, setStats] = useState<LabStats>({ total: 0, pending: 0, inProgress: 0, completed: 0, critical: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-
-  // Approve state
   const [approvingId, setApprovingId] = useState<number | null>(null);
 
-  // ── Fetch all results ──────────────────────────────────────────────────────
+  // RTK Queries & Mutations
+  const { data: apiData, error: apiError, isLoading: loading, refetch } = useGetLabOrdersQuery();
+  const { data: dashboardData, isLoading: dashboardLoading, refetch: refetchDashboard } = useGetLabDashboardStatsQuery();
+  const [approveLabResult] = useApproveLabResultMutation();
 
-  const fetchResults = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getLabResults();
-      const data: LabResult[] = Array.isArray(res) ? res : (res as any)?.data ?? [];
-      
-      if (!data || data.length === 0) {
-        throw new Error("No data returned from endpoints");
+  // ── Compute final results with Mock Fallback ───────────────────────────────
+  
+  const { results, stats, hasError } = React.useMemo(() => {
+    let finalData = apiData;
+    
+    // Handle case where backend wraps response in a 'data' property
+    // Sometimes it's paginated, e.g. { data: { data: [...] } }
+    if (finalData && (finalData as any).data) {
+      finalData = (finalData as any).data;
+      if (finalData && (finalData as any).data) {
+        finalData = (finalData as any).data;
       }
-      
-      setResults(data);
-      setStats(computeStats(data));
-    } catch (e: any) {
-      console.warn("Failed to load lab results. Falling back to mock data.", e);
-      setResults(MOCK_LAB_RESULTS);
-      setStats(computeStats(MOCK_LAB_RESULTS));
-      // Optionally notify user that we are using mock data:
-      // setError("API unavailable or returned empty data. Showing mock data.");
-    } finally {
-      setLoading(false);
     }
-  }, []);
 
-  useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+    let isError = !!apiError;
+    let fallback = false;
+
+    if (!finalData || !Array.isArray(finalData) || isError) {
+      finalData = MOCK_LAB_RESULTS;
+      fallback = true;
+      if (apiError) {
+        console.warn("Failed to load lab results. Falling back to mock data.", apiError);
+      }
+    }
+
+    const computedStats = computeStats(finalData as LabResult[]);
+    const finalStats = dashboardData?.isSuccess && dashboardData?.data ? {
+      total: dashboardData.data.totalRequest ?? computedStats.total,
+      pending: dashboardData.data.pendingRequest ?? computedStats.pending,
+      inProgress: dashboardData.data.testInprogress ?? computedStats.inProgress,
+      completed: dashboardData.data.completedToday ?? computedStats.completed,
+      critical: dashboardData.data.criticalResult ?? computedStats.critical,
+    } : computedStats;
+
+    return {
+      results: finalData as LabResult[],
+      stats: finalStats,
+      hasError: fallback,
+    };
+  }, [apiData, apiError, dashboardData]);
+
+  const error = hasError ? "API unavailable or returned empty data. Showing mock data." : null;
+  const fetchResults = () => {
+    refetch();
+    refetchDashboard();
+  };
 
   // ── Filtered & paginated list ──────────────────────────────────────────────
 
@@ -151,10 +166,10 @@ const LabTechnicianDashboardOverview: React.FC<{
   const handleApprove = async (resultId: number) => {
     setApprovingId(resultId);
     try {
-      await approveLabResult(resultId);
-      await fetchResults(); // refresh
+      await approveLabResult(resultId).unwrap();
+      refetch(); // refresh
     } catch (e: any) {
-      alert(`Approve failed: ${e.message}`);
+      alert(`Approve failed: ${e?.data?.message || e.message || 'Unknown error'}`);
     } finally {
       setApprovingId(null);
     }
@@ -375,16 +390,10 @@ const LabTechnicianDashboardOverview: React.FC<{
                               </td>
 
                               {/* Patient */}
-                              <td 
-                                className="px-6 py-4 cursor-pointer group"
-                                onClick={() => navigate(`/dashboard/lab/visit/${req.id}`)}
-                              >
+                              <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 border border-slate-200/30 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-colors">
-                                    {initials(patientName)}
-                                  </div>
                                   <div>
-                                    <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{patientName}</span>
+                                    <span className="text-sm font-semibold text-slate-700">{patientName}</span>
                                     {req.fileNumber && (
                                       <p className="text-[10px] text-slate-400">#{req.fileNumber}</p>
                                     )}

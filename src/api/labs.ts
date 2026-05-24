@@ -69,6 +69,16 @@ export const getLabResultDetails = async (id: number | string) => {
 };
 
 /**
+ * Get lab test details for a specific request (used before a result is created).
+ * @param requestId The request ID.
+ */
+export const getLabTestRequestDetails = async (requestId: number | string) => {
+  return await fetchApi<any>(`/Lab/LabTecnican/LabTestDetails/${requestId}`, {
+    method: 'GET',
+  });
+};
+
+/**
  * Get analysis data for a specific result.
  * @param id The result ID.
  */
@@ -91,18 +101,55 @@ export const createLabResult = async (payload: FinalResultDto) => {
 
 /**
  * Export a lab result as PDF.
- * Opens the PDF in a new browser tab.
- * @param finalLabResultId The final lab result ID.
+ * @param idOrRequestId The final lab result ID or the request ID.
  */
-export const exportLabPDF = (finalLabResultId: number | string) => {
+export const exportLabPDF = async (idOrRequestId: number | string) => {
   const token = localStorage.getItem('accessToken');
+  let finalLabResultId = idOrRequestId;
+
+  try {
+    // Try to lookup the FinalLabResultId using the request ID
+    const resultsResponse = await fetchApi<any[]>('/Lab/GetResults', { method: 'GET' });
+    const results = (resultsResponse as any)?.data || resultsResponse;
+    const list = Array.isArray(results) ? results : [];
+    
+    // Find the result where requestId matches the provided ID
+    const match = list.find((r: any) => r.requestId == idOrRequestId || r.request?.id == idOrRequestId);
+    
+    if (match && match.id) {
+        finalLabResultId = match.id;
+    }
+  } catch (err) {
+    console.warn("Could not fetch lab results to verify finalLabResultId. Proceeding with provided ID.", err);
+  }
+
   const url = `${BASE_URL}/Lab/${finalLabResultId}/exportLabPDF`;
-  // Open in new tab; the browser handles the PDF download
-  const link = document.createElement('a');
-  link.href = token ? `${url}?token=${token}` : url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.click();
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download PDF: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `LabResult_${finalLabResultId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error("Error exporting PDF:", error);
+    alert("Could not export PDF. Please ensure the result is completed.");
+  }
 };
 
 /**
@@ -110,6 +157,26 @@ export const exportLabPDF = (finalLabResultId: number | string) => {
  */
 export const getLabCatalogFull = async () => {
   return await fetchApi<LabTest[]>('/Lab/GetCataliog', {
+    method: 'GET',
+  });
+};
+
+/**
+ * Get patient and visit info for a specific visit.
+ * @param visitId The visit ID.
+ */
+export const getPatientVisitLabRequestsInfo = async (visitId: number | string) => {
+  return await fetchApi<any>(`/Lab/PatientVisitLabRequestsInfo/${visitId}`, {
+    method: 'GET',
+  });
+};
+
+/**
+ * Get lab requests/tests for a specific visit.
+ * @param visitId The visit ID.
+ */
+export const getVisitLabRequests = async (visitId: number | string) => {
+  return await fetchApi<any[]>(`/Lab/VisitLabRequests/${visitId}`, {
     method: 'GET',
   });
 };
