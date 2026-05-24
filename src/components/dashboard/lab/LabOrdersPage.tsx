@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Search,
@@ -56,7 +56,7 @@ interface LabOrdersPageProps {
 
 const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileClick }) => {
     const navigate = useNavigate();
-    const { data: apiData, isLoading, isError } = useGetLabOrdersQuery(undefined, { skip: true });
+    const { data: apiData, isLoading } = useGetLabOrdersQuery(undefined, { skip: true });
 
     const results = useMemo(() => {
         if (apiData && apiData.length > 0) return apiData;
