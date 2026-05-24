@@ -11,7 +11,8 @@ import {
     ChevronRight,
     ClipboardEdit
 } from 'lucide-react';
-import { getLabResults, exportLabPDF } from '../../../api/labs';
+import { exportLabPDF } from '../../../api/labs';
+import { useGetLabOrdersQuery } from '../../../store/api/labApiSlice';
 import type { LabResult } from '../../../types/labs.types';
 import TopBar from '../TopBar';
 
@@ -55,8 +56,14 @@ interface LabOrdersPageProps {
 
 const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileClick }) => {
     const navigate = useNavigate();
-    const [results, setResults] = useState<LabResult[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: apiData, isLoading, isError } = useGetLabOrdersQuery(undefined, { skip: true });
+
+    const results = useMemo(() => {
+        if (apiData && apiData.length > 0) return apiData;
+        return MOCK_LAB_RESULTS;
+    }, [apiData]);
+
+    const loading = isLoading;
 
     // Filters
     const [searchQuery, setSearchQuery] = useState("");
@@ -66,26 +73,6 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
     const [statusFilter, setStatusFilter] = useState<string>("All");
 
     const [page, setPage] = useState(1);
-
-    const fetchResults = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await getLabResults();
-            const data: LabResult[] = Array.isArray(res) ? res : (res as any)?.data ?? [];
-            if (!data || data.length === 0) throw new Error("No data returned");
-            // Fill missing mock-like info if needed or rely on data from api
-            setResults(data);
-        } catch (e: any) {
-            console.warn("Failed to load lab results. Falling back to mock data.", e);
-            setResults(MOCK_LAB_RESULTS);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchResults();
-    }, [fetchResults]);
 
     // Stats
     const stats = useMemo(() => {

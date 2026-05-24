@@ -143,7 +143,7 @@ export default function EditLabResultPage() {
         <div className="flex items-center gap-2 text-xs font-black tracking-wider uppercase">
           <span 
             className="text-slate-900 cursor-pointer hover:text-blue-600 transition-colors"
-            onClick={() => navigate(location.state?.from || '/dashboard')}
+            onClick={() => navigate(-1)}
           >
             {location.state?.label || 'DASHBOARD'}
           </span>

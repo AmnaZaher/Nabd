@@ -17,7 +17,8 @@ import {
     ChevronLeft,
     ChevronRight,
 } from 'lucide-react';
-import { getLabResults, approveLabResult, exportLabPDF } from '../../../api/labs';
+import { exportLabPDF } from '../../../api/labs';
+import { useGetLabResultsQuery, useApproveLabResultMutation } from '../../../store/api/labApiSlice';
 import type { LabResult } from '../../../types/labs.types';
 import TopBar from '../TopBar';
 
@@ -55,8 +56,7 @@ const MOCK_LAB_RESULTS: LabResult[] = [
 
 const LabApprovalPage: React.FC = () => {
     const navigate = useNavigate();
-    const [results, setResults] = useState<LabResult[]>([]);
-    const [loading, setLoading] = useState(true);
+
 
     // Filters
     const [searchQuery, setSearchQuery] = useState("");
@@ -67,24 +67,19 @@ const LabApprovalPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [approvingIds, setApprovingIds] = useState<Set<number>>(new Set());
 
-    const fetchResults = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await getLabResults();
-            const data: LabResult[] = Array.isArray(res) ? res : (res as any)?.data ?? [];
-            if (!data || data.length === 0) throw new Error("No data returned");
-            setResults(data);
-        } catch (e: any) {
-            console.warn("Failed to load lab results. Falling back to mock data.", e);
-            setResults(MOCK_LAB_RESULTS);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const { data: apiData, isLoading, isError } = useGetLabResultsQuery();
+    const [approveResultMutation] = useApproveLabResultMutation();
 
-    useEffect(() => {
-        fetchResults();
-    }, [fetchResults]);
+    const results = useMemo(() => {
+        if (apiData && apiData.length > 0) return apiData;
+        if (isError) {
+            console.warn("Failed to load lab results. Falling back to mock data.");
+            return MOCK_LAB_RESULTS;
+        }
+        return [];
+    }, [apiData, isError]);
+
+    const loading = isLoading;
 
     // Data Processing
     const approvalList = useMemo(() => {
@@ -148,10 +143,9 @@ const LabApprovalPage: React.FC = () => {
     const handleApprove = async (id: number) => {
         setApprovingIds(prev => new Set(prev).add(id));
         try {
-            await approveLabResult(id);
-            await fetchResults(); // refresh
+            await approveResultMutation(id).unwrap();
         } catch (e: any) {
-            alert(`Approve failed: ${e.message}`);
+            alert(`Approve failed: ${e.data?.title || e.error || 'Unknown error'}`);
         } finally {
             setApprovingIds(prev => {
                 const next = new Set(prev);
@@ -403,12 +397,15 @@ const LabApprovalPage: React.FC = () => {
                                                     <span className="text-sm font-bold text-blue-600">#LAB-{req.id}</span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0 border border-slate-200/50">
+                                                    <div 
+                                                        className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors group"
+                                                        onClick={() => navigate(`/dashboard/lab/visit/${req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS' } })}
+                                                    >
+                                                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0 border border-slate-200/50 group-hover:shadow-sm transition-shadow">
                                                             {initials(pName)}
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-bold text-slate-800">{pName}</p>
+                                                            <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{pName}</p>
                                                             <p className="text-[11px] font-medium text-slate-500 mt-0.5">{pDetails}</p>
                                                         </div>
                                                     </div>
@@ -437,7 +434,7 @@ const LabApprovalPage: React.FC = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-1">
                                                         <button 
-                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`)}
+                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS' } })}
                                                             className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                                                             title="View Details"
                                                         >

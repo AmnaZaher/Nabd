@@ -36,7 +36,7 @@ const LabResultDetailsPage: React.FC = () => {
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
                 <span className="text-slate-800 cursor-pointer hover:underline" onClick={() => navigate('/dashboard')}>DASHBOARD</span>
                 <ChevronRight size={14} />
-                <span className="text-slate-800 cursor-pointer hover:underline" onClick={() => navigate(location.state?.from || -1)}>
+                <span className="text-slate-800 cursor-pointer hover:underline" onClick={() => navigate(-1)}>
                   {location.state?.label || 'PATIENT VISITS'}
                 </span>
                 <ChevronRight size={14} />
