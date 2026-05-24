@@ -353,9 +353,15 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                                     <span className="text-sm font-bold text-blue-600">#REQ-<br/>{req.id}</span>
                                                 </td>
                                                 <td className="px-4 py-5">
-                                                    <div className="flex items-center gap-3">
+                                                    <div 
+                                                        className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors group"
+                                                        onClick={() => navigate(`/dashboard/lab/visit/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS' } })}
+                                                    >
+                                                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold bg-blue-100 text-blue-600 group-hover:shadow-sm transition-shadow">
+                                                            {pName.charAt(0).toUpperCase()}
+                                                        </div>
                                                         <div>
-                                                            <p className="text-sm font-bold text-slate-800">{pName}</p>
+                                                            <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{pName}</p>
                                                             <p className="text-[11px] font-medium text-slate-500 mt-0.5">{pDetails}</p>
                                                         </div>
                                                     </div>
