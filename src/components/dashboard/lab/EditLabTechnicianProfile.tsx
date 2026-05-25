@@ -64,7 +64,7 @@ const EditLabTechnicianProfile: React.FC = () => {
     if (!profile?.id) return;
     setSaving(true);
     try {
-      await staffApi.updateStaff(profile.id, formData);
+      await staffApi.updateLabTechnicianProfile(profile.id, formData);
       navigate(-1);
     } catch (err: any) {
       console.error('Save failed:', err);

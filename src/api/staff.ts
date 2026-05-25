@@ -264,8 +264,8 @@ export const staffApi = {
     // Nurses (and any other non-Admin, non-Doctor roles) don't have a dedicated
     // profile API endpoint yet. Skip all server calls and use JWT data directly
     // to avoid 403/404 error spam in the console.
-    const adminOnlyRoles = ['Admin'];
-    const hasProfileEndpoint = adminOnlyRoles.includes(jwtRole || '');
+    const rolesWithProfileEndpoint = ['Admin', 'Lab Technician', 'LabTechnician'];
+    const hasProfileEndpoint = rolesWithProfileEndpoint.includes(jwtRole || '');
 
     if (!hasProfileEndpoint) {
       return buildProfile({
@@ -288,6 +288,18 @@ export const staffApi = {
         if (name) return buildProfile(item, userId, jwtUsername);
       }
     } catch (err) { console.log("Strategy 0 failed:", err); }
+
+    // ── Strategy Lab Technician ──
+    if (jwtRole === 'Lab Technician' || jwtRole === 'LabTechnician') {
+      try {
+        const response = await fetchApi<any>(`/Users/LabTechnician/Profile/${userId}`);
+        const item = response?.data;
+        if (item) {
+          const name = resolveName(item);
+          if (name) return buildProfile(item, userId, jwtUsername);
+        }
+      } catch (err) { console.log("Strategy Lab Tech failed:", err); }
+    }
 
     // ── Strategy 1: /Staff/{userId} (direct lookup by internal ID) ──
     try {
@@ -369,6 +381,18 @@ export const staffApi = {
     } catch (upsertErr: any) {
       console.error("Upsert failed:", upsertErr);
       throw new Error(upsertErr.message || lastError?.message || 'Staff update failed. The backend might be missing the update endpoint.');
+    }
+  },
+
+  updateLabTechnicianProfile: async (id: string, payload: any): Promise<void> => {
+    try {
+      await fetchApi(`/Users/lab/EditLabTechnican/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+    } catch (err: any) {
+      console.error("Lab technician profile update failed:", err);
+      throw err;
     }
   },
 
