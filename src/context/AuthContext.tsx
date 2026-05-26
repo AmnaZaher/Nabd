@@ -16,6 +16,7 @@ interface AuthContextType {
     isNurse: boolean;
     isDoctor: boolean;
     isLabTechnician: boolean;
+    isRadiologist: boolean;
     isLoading: boolean;
     login: (accessToken: string, refreshToken: string) => void;
     logout: () => void;
@@ -165,9 +166,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isNurse = user?.role?.toLowerCase() === 'nurse';
     const isDoctor = user?.role?.toLowerCase() === 'doctor';
     const isLabTechnician = user?.role?.toLowerCase().replace(/[^a-z]/g, '') === 'labtechnician';
+    const isRadiologist = user?.role?.toLowerCase() === 'radiologist';
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isNurse, isDoctor, isLabTechnician, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, isNurse, isDoctor, isLabTechnician, isRadiologist, isLoading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
