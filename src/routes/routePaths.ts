@@ -28,4 +28,6 @@ export const PATHS = {
   RECEPTIONIST_PROFILE: "/dashboard/receptionist-profile",
   DOCTOR_VISITS: "/dashboard/doctor-visits",
   VISIT_DETAILS: "/dashboard/visit-details",
+  NURSE_BOOK_LAB: "/dashboard/nurse/book-lab-appointment",
+  NURSE_BOOK_RADIOLOGY: "/dashboard/nurse/book-radiology-appointment",
 } as const;

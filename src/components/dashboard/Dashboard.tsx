@@ -34,6 +34,22 @@ import DRSchedulePage from "./schedule/DrSchedulePage";
 import AdminProfilePage from "./profile/AdminProfile";
 import PatientVisitPage from "./nurse/PatientVisitPage";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
+import BookLabAppointment from "./nurse/BookLabAppointment";
+import BookRadiologyAppointment from "./nurse/BookRadiologyAppointment";
+import LabTechnicianDashboardOverview from "./lab/LabTechnicianDashboardOverview";
+import RadiologistDashboardOverview from "./radiologist/RadiologistDashboardOverview";
+import RadiologistPatientProfile from "./radiologist/RadiologistPatientProfile";
+import RadiologistRequests from "./radiologist/RadiologistRequests";
+import RadiologistExamRooms from "./radiologist/RadiologistExamRooms";
+import RadiologistReporting from "./radiologist/RadiologistReporting";
+import RadiologistResults from "./radiologist/RadiologistResults";
+import RadiologistReviewReport from "./radiologist/RadiologistReviewReport";
+import EditLabResultPage from "./lab/EditLabResultPage";
+import VisitLabTestsPage from "./lab/VisitLabTestsPage";
+import LabResultDetailsPage from "./lab/LabResultDetailsPage";
+import LabApprovalPage from "./lab/LabApprovalPage";
+import ApproveLabResultPage from "./lab/ApproveLabResultPage";
+import LabOrdersPage from "./lab/LabOrdersPage";
 import AppointmentManagementPage from "./appointments/AppointmentManagementPage";
 import NewAppointmentPage from "./appointments/NewAppointmentPage";
 import EditAppointmentPage from "./appointments/EditAppointmentPage";
@@ -355,6 +371,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               )
             }
           />
+          
+          {/* Nurse specific pages */}
+          <Route path="nurse/book-lab-appointment" element={<BookLabAppointment onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="nurse/book-radiology-appointment" element={<BookRadiologyAppointment onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
         </Routes>
       </div>
     </div>

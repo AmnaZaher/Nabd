@@ -43,6 +43,8 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean): NavItem[] => {
             { id: 'appointments', icon: CalendarCheck, label: 'Appointments', path: PATHS.APPOINTMENTS },
             { id: 'patient-visit', icon: Activity, label: 'Patient Visit', path: PATHS.PATIENT_VISIT },
             { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
+            { id: 'book-radiology', icon: Microscope, label: 'Radiology', path: PATHS.NURSE_BOOK_RADIOLOGY },
+            { id: 'lab-catalog', icon: FlaskConical, label: 'Lab Catalog', path: PATHS.NURSE_BOOK_LAB },
             { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
