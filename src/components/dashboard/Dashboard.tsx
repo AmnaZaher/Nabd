@@ -109,7 +109,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   useEffect(() => {
     const path = location.pathname;
     const fromPath = (location.state as any)?.base || (location.state as any)?.from || "";
-    if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
+    if (path.includes("/nurse/book-radiology-appointment")) setActiveTab("book-radiology");
+    else if (path.includes("/nurse/book-lab-appointment")) setActiveTab("lab-catalog");
+    else if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
     else if (path.includes("/doctor-schedule")) setActiveTab("doctor-schedule");
     else if (path.includes("/appointments")) setActiveTab("appointments");
     else if (path.includes("/radiology/requests")) setActiveTab("requests");
