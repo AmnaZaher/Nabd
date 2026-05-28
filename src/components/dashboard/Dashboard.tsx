@@ -34,6 +34,8 @@ import DRSchedulePage from "./schedule/DrSchedulePage";
 import AdminProfilePage from "./profile/AdminProfile";
 import PatientVisitPage from "./nurse/PatientVisitPage";
 import NurseDashboardOverview from "./nurse/NurseDashboardOverview";
+import BookLabAppointment from "./nurse/BookLabAppointment";
+import BookRadiologyAppointment from "./nurse/BookRadiologyAppointment";
 import LabTechnicianDashboardOverview from "./lab/LabTechnicianDashboardOverview";
 import RadiologistDashboardOverview from "./radiologist/RadiologistDashboardOverview";
 import RadiologistPatientProfile from "./radiologist/RadiologistPatientProfile";
@@ -400,6 +402,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               )
             }
           />
+          
+          {/* Nurse specific pages */}
+          <Route path="nurse/book-lab-appointment" element={<BookLabAppointment onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="nurse/book-radiology-appointment" element={<BookRadiologyAppointment onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
         </Routes>
       </div>
     </div>
