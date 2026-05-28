@@ -33,11 +33,6 @@ function normaliseStatus(raw: string | undefined): string {
     return "Pending";
 }
 
-function initials(name?: string) {
-    if (!name) return "??";
-    return name.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
-}
-
 function formatDate(dateStr?: string) {
     if (!dateStr) return "—";
     const date = new Date(dateStr);
@@ -184,7 +179,6 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-6">
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">APPROVE RESULTS</p>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Pending Result Approvals</h1>
                         <p className="text-slate-500 font-medium mt-1">Review and approve completed laboratory results for clinical release.</p>
                     </div>
@@ -407,9 +401,6 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                                         className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors group"
                                                         onClick={() => navigate(`/dashboard/lab/visit/${req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS' } })}
                                                     >
-                                                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0 border border-slate-200/50 group-hover:shadow-sm transition-shadow">
-                                                            {initials(pName)}
-                                                        </div>
                                                         <div>
                                                             <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{pName}</p>
                                                             <p className="text-[11px] font-medium text-slate-500 mt-0.5">{pDetails}</p>

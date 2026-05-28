@@ -130,7 +130,6 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
         
         {/* Header */}
         <div>
-          <p className="text-xs font-black tracking-widest text-slate-500 uppercase mb-1">APPROVE RESULTS</p>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Approve Test Result</h1>
           <p className="text-slate-500 font-medium mt-1">Review and approve laboratory test results for diagnostic confirmation.</p>
         </div>

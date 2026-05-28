@@ -377,10 +377,13 @@ const LabTechnicianDashboardOverview: React.FC<{
                               </td>
 
                               {/* Patient */}
-                              <td className="px-6 py-4">
+                              <td 
+                                className="px-6 py-4 cursor-pointer group"
+                                onClick={() => navigate(`/dashboard/lab/visit/${req.id}`)}
+                              >
                                 <div className="flex items-center gap-3">
                                   <div>
-                                    <span className="text-sm font-semibold text-slate-700">{patientName}</span>
+                                    <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{patientName}</span>
                                     {req.fileNumber && (
                                       <p className="text-[10px] text-slate-400">#{req.fileNumber}</p>
                                     )}
