@@ -163,7 +163,7 @@ const LabApprovalPage: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
             <TopBar
-                title="DASHBOARD"
+                title="APPROVE RESULTS"
                 onMenuClick={() => {}}
                 showAddUser={false}
             />
@@ -173,7 +173,6 @@ const LabApprovalPage: React.FC = () => {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-6">
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">APPROVE RESULTS</p>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Pending Result Approvals</h1>
                         <p className="text-slate-500 font-medium mt-1">Review and approve completed laboratory results for clinical release.</p>
                     </div>

@@ -13,6 +13,9 @@ import {
     Activity,
     ClipboardList,
     ClipboardCheck,
+    Contact,
+    DoorOpen,
+    FileEdit,
     type LucideIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -27,7 +30,7 @@ interface NavItem {
     path: string;
 }
 
-const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boolean): NavItem[] => {
+const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boolean, isRadiologist: boolean): NavItem[] => {
     if (isDoctor) {
         return [
             { id: 'dashboard', icon: LayoutDashboard, label: 'Overview', path: PATHS.DASHBOARD },
@@ -54,6 +57,15 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boole
             { id: 'lab-orders', icon: ClipboardList, label: 'Lab orders', path: PATHS.LAB_TEST_REQUEST },
             { id: 'lab-approval', icon: ClipboardCheck, label: 'Lab approval', path: PATHS.LAB_TEST },
             { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
+        ];
+    }
+    if (isRadiologist) {
+        return [
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+            { id: 'requests', icon: Contact, label: 'Requests', path: PATHS.RADIOLOGY_REQUESTS },
+            { id: 'exam-rooms', icon: DoorOpen, label: 'Exam Rooms', path: PATHS.RADIOLOGY_EXAM_ROOMS },
+            { id: 'reporting', icon: FileEdit, label: 'Reporting', path: PATHS.RADIOLOGY_REPORTING },
+            { id: 'results', icon: Microscope, label: 'Results', path: PATHS.RADIOLOGY_RESULTS },
         ];
     }
     return [
@@ -84,9 +96,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onTabChange,
 }) => {
     const navigate = useNavigate();
-    const { logout, isNurse, isDoctor, isLabTechnician } = useAuth();
+    const { logout, isNurse, isDoctor, isLabTechnician, isRadiologist } = useAuth();
 
-    const currentNavItems = getNavItems(isNurse, isDoctor, isLabTechnician);
+    const currentNavItems = getNavItems(isNurse, isDoctor, isLabTechnician, isRadiologist);
 
     const handleNavClick = (item: NavItem) => {
         onTabChange?.(item.id);
