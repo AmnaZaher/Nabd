@@ -22,7 +22,7 @@ export const PATHS = {
   RADIOLOGY_EXAM_ROOMS: "/dashboard/radiology/exam-rooms",
   RADIOLOGY_REPORTING: "/dashboard/radiology/reporting",
   RADIOLOGY_RESULTS: "/dashboard/radiology/results",
-  RADIOLOGY_REVIEW_REPORT: "/dashboard/radiology/results/review",
+  RADIOLOGY_REVIEW_REPORT: "/dashboard/radiology/results/review/:queueId",
   LAB_CATALOG: "/dashboard/lab-catalog",
   LAB_TEST: "/dashboard/lab-test",
   LAB_TEST_REQUEST: "/dashboard/lab-test-request",
