@@ -13,7 +13,12 @@ const mockParams = [
   { id: 105, parameterNameEnglish: "BUN", referenceRangeMin: 7, referenceRangeMax: 20, unit: "mg/dL" },
 ];
 
-export default function EditLabResultPage() {
+interface EditLabResultPageProps {
+  onMenuClick?: () => void;
+  onProfileClick?: () => void;
+}
+
+export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditLabResultPageProps) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -219,7 +224,8 @@ export default function EditLabResultPage() {
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
       <TopBar
         title="DASHBOARD"
-        onMenuClick={() => {}}
+        onMenuClick={onMenuClick || (() => {})}
+        onProfileClick={onProfileClick}
         showAddUser={false}
       />
       <main className="flex-1 overflow-y-auto p-4 md:p-8">

@@ -69,9 +69,12 @@ export interface FinalResultDto {
 /** A lab result item returned by GET /api/Lab/GetResults */
 export interface LabResult {
   id: number;
+  visitId?: number;
+  requestNumber?: number;
   requestId?: number;
   patientName?: string;
   patientId?: number;
+  patientFileNumber?: string;
   fileNumber?: string;
   testName?: string;
   testNameEnglish?: string;

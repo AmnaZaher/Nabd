@@ -13,6 +13,20 @@ export const mapToStaffProfile = (data: any, fallbackId?: string): StaffProfile 
     const lastName = rawData.lastName || rawData.LastName || '';
     const combinedName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : '';
 
+    const resolveImageUrl = (url: any) => {
+        if (!url) return '';
+        let strUrl = url;
+        if (Array.isArray(url) && url.length > 0) {
+          strUrl = url[0];
+        }
+        if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+        if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+        if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+        return `https://nabd.runasp.net/${strUrl}`;
+    };
+
+    const rawAvatar = rawData.avatar || rawData.Avatar || rawData.profileImage || rawData.ProfileImage || rawData.personalPhotos || rawData.PersonalPhotos || '';
+
     return {
         ...rawData,
         id: actualId,
@@ -38,7 +52,7 @@ export const mapToStaffProfile = (data: any, fallbackId?: string): StaffProfile 
         qualifications: rawData.qualifications || rawData.Qualifications || rawData.qualification || '',
         status: rawData.isActive === false ? 'Disabled' : (rawData.status || rawData.Status || 'Active'),
         lastLogin: rawData.lastLogin || rawData.LastLogin || '',
-        avatar: rawData.avatar || rawData.Avatar || rawData.profileImage || rawData.ProfileImage || rawData.personalPhotos || rawData.PersonalPhotos || '',
+        avatar: resolveImageUrl(rawAvatar),
         
         syndicateNumber: rawData.syndicateNumber || rawData.SyndicateNumber || '',
         graduationYear: rawData.graduationYear || rawData.GraduationYear || '',
