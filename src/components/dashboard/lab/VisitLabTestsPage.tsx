@@ -64,7 +64,12 @@ const INITIAL_MOCK_TESTS = [
   }
 ];
 
-const VisitLabTestsPage: React.FC = () => {
+interface VisitLabTestsPageProps {
+  onMenuClick?: () => void;
+  onProfileClick?: () => void;
+}
+
+const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onProfileClick }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,11 +96,13 @@ const VisitLabTestsPage: React.FC = () => {
         let actualRequests: any = [];
         
         if (actualInfo && Object.keys(actualInfo).length > 0) {
+          const demoParts = actualInfo.patientDemoGraphic ? actualInfo.patientDemoGraphic.split(',') : [];
+          
           setPatientInfo({
             name: actualInfo.patientName || actualInfo.patient?.name || actualInfo.name || actualInfo.patientNameEnglish || "Unknown Patient",
             id: actualInfo.fileNumber || actualInfo.patient?.fileNumber || "Unknown ID",
-            gender: actualInfo.gender || actualInfo.patient?.gender || "Unknown",
-            age: actualInfo.age ? `${actualInfo.age} Years` : "Unknown Age",
+            gender: demoParts[0]?.trim() || actualInfo.gender || actualInfo.patient?.gender || "Unknown",
+            age: demoParts[1]?.trim() || (actualInfo.age ? `${actualInfo.age} Years` : "Unknown Age"),
             image: actualInfo.image || "https://i.pravatar.cc/150?u=placeholder"
           });
           setVisitInfo({
@@ -192,7 +199,8 @@ const VisitLabTestsPage: React.FC = () => {
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
       <TopBar
         title="DASHBOARD"
-        onMenuClick={() => {}}
+        onMenuClick={onMenuClick || (() => {})}
+        onProfileClick={onProfileClick}
         showAddUser={false}
       />
 

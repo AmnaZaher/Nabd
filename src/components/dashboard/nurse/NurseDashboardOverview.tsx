@@ -25,7 +25,7 @@ const NurseDashboardOverview: React.FC<NurseDashboardOverviewProps> = ({ onMenuC
         const fetchProfile = async () => {
             if (user?.id) {
                 try {
-                    const data = await staffApi.getMyProfile(user.id, user.name);
+                    const data = await staffApi.getMyProfile(user.id, user.name, user.role);
                     if (data) setProfile(data);
                 } catch (error) {
                     console.error('Failed to fetch nurse profile:', error);

@@ -6,7 +6,12 @@ import { staffApi } from '../../../api/staff';
 import type { StaffProfile } from '../../../types/staff.types';
 import TopBar from '../TopBar';
 
-const EditLabTechnicianProfile: React.FC = () => {
+interface EditLabTechnicianProfileProps {
+  onMenuClick?: () => void;
+  onProfileClick?: () => void;
+}
+
+const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onMenuClick, onProfileClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -82,7 +87,7 @@ const EditLabTechnicianProfile: React.FC = () => {
   }
 
   // Fallback to static data if no profile returned to match the UI state perfectly
-  const displayAvatar = profile?.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop";
+  const displayAvatar = profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.FullNameEnglish || 'Lab')}&background=random`;
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
@@ -100,7 +105,8 @@ const EditLabTechnicianProfile: React.FC = () => {
           </div>
         } 
         showAddUser={false} 
-        onMenuClick={() => {}} 
+        onMenuClick={onMenuClick || (() => {})} 
+        onProfileClick={onProfileClick}
       />
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full">

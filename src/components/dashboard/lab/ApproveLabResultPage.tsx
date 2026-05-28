@@ -19,7 +19,12 @@ const mockParams = [
   { id: 104, parameterNameEnglish: "Creatinine", referenceRangeMin: 0.7, referenceRangeMax: 1.3, unit: "mg/dL", value: 4.2 },
 ];
 
-export default function ApproveLabResultPage() {
+interface ApproveLabResultPageProps {
+  onMenuClick?: () => void;
+  onProfileClick?: () => void;
+}
+
+export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: ApproveLabResultPageProps) {
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -88,7 +93,7 @@ export default function ApproveLabResultPage() {
     if (!detail) return;
     setSubmitting(true);
     try {
-      await approveLabResult(detail.requestId ?? detail.id);
+      await approveLabResult(detail.id);
       navigate("/dashboard/lab-test");
     } catch (e: any) {
       alert(e.message ?? "Failed to approve results.");
@@ -116,7 +121,8 @@ export default function ApproveLabResultPage() {
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
       <TopBar
         title="APPROVE RESULTS"
-        onMenuClick={() => {}}
+        onMenuClick={onMenuClick || (() => {})}
+        onProfileClick={onProfileClick}
         showAddUser={false}
       />
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
