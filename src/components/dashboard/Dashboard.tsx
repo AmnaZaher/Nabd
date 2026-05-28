@@ -279,12 +279,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
           {/* Lab Technician Flow */}
           <Route path="lab-test-request" element={<LabOrdersPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
-          <Route path="lab-test" element={<LabApprovalPage />} />
+          <Route path="lab-test" element={<LabApprovalPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
           <Route path="lab">
-            <Route path="edit/:id" element={<EditLabResultPage />} />
-            <Route path="approve/:id" element={<ApproveLabResultPage />} />
-            <Route path="visit/:id" element={<VisitLabTestsPage />} />
-            <Route path="result/:id" element={<LabResultDetailsPage />} />
+            <Route path="edit/:id" element={<EditLabResultPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+            <Route path="approve/:id" element={<ApproveLabResultPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+            <Route path="visit/:id" element={<VisitLabTestsPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+            <Route path="result/:id" element={<LabResultDetailsPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
           </Route>
 
           {/* Appointments (admin / nurse / receptionist) */}
@@ -342,7 +342,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               ) : isDoctor ? (
                 <DoctorProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />
               ) : effectiveIsLabTechnician ? (
-                <LabTechnicianProfile />
+                <LabTechnicianProfile onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />
               ) : (
                 <ReceptionistProfile />
               )
@@ -356,7 +356,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               ) : isDoctor ? (
                 <EditDoctorProfilePage />
               ) : effectiveIsLabTechnician ? (
-                <EditLabTechnicianProfile />
+                <EditLabTechnicianProfile onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />
               ) : (
                 <EditReceptionistProfile />
               )

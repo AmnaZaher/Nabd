@@ -151,6 +151,20 @@ export const staffApi = {
       const genderStr = rawGender === 1 || rawGender === '1' || String(rawGender).toLowerCase() === 'male' ? 'Male' : 
                        rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 'Not Specified';
 
+      const resolveImageUrl = (url: any) => {
+        if (!url) return '';
+        let strUrl = url;
+        if (Array.isArray(url) && url.length > 0) {
+          strUrl = url[0];
+        }
+        if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+        if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+        if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+        return `https://nabd.runasp.net/${strUrl}`;
+      };
+
+      const rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
+
       // Safe mapping to prevent UI crashes if backend fields are missing or PascalCase
       return {
         ...item, // Spread at top so our mappings can overwrite
@@ -173,7 +187,7 @@ export const staffApi = {
         qualifications: item.qualification || item.qualifications || item.Qualification || 'N/A',
         status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
         lastLogin: item.lastLogin || 'N/A',
-        avatar: item.avatar || item.PersonalPhotos || '',
+        avatar: resolveImageUrl(rawAvatar),
         
         // Doctor Specific Fields - map from backend if available (case-insensitive search)
         syndicateNumber: item.syndicateNumber || item.SyndicateNumber || '',
@@ -224,6 +238,18 @@ export const staffApi = {
       return '';
     };
 
+    const resolveImageUrl = (url: any) => {
+      if (!url) return '';
+      let strUrl = url;
+      if (Array.isArray(url) && url.length > 0) {
+        strUrl = url[0];
+      }
+      if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+      if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+      if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+      return `https://nabd.runasp.net/${strUrl}`;
+    };
+
     /** Helper: build a StaffProfile from a raw backend item */
     const buildProfile = (item: any, fallbackId: string, fallbackNationalId?: string): StaffProfile => {
       const rolesMap: Record<string, string> = {
@@ -237,6 +263,8 @@ export const staffApi = {
       }
       const roleStr = String(rawRole).trim();
       let finalRole = rolesMap[roleStr] || (roleStr && isNaN(parseInt(roleStr)) ? roleStr : '');
+
+      const rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
 
       return {
         ...item,
@@ -256,22 +284,59 @@ export const staffApi = {
         qualifications: item.qualifications || item.qualification || '',
         status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
         lastLogin: item.lastLogin || '',
-        avatar: item.avatar || item.PersonalPhotos || '',
+        avatar: resolveImageUrl(rawAvatar),
       } as StaffProfile;
     };
+
+    // Resolve role if not provided
+    let resolvedRole = jwtRole;
+    if (!resolvedRole) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            const payload = JSON.parse(jsonPayload);
+            const rawRole =
+                payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+                payload.role ||
+                payload.Role ||
+                payload.staffRole ||
+                payload.StaffRole ||
+                '';
+            const rolesMap: Record<string, string> = {
+                '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
+                'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
+            };
+            const roleStr = String(rawRole).trim();
+            resolvedRole = rolesMap[roleStr] || (isNaN(parseInt(roleStr)) ? roleStr : '');
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to extract role from token inside getMyProfile:", e);
+      }
+    }
 
     // ── Short-circuit for roles that have no profile endpoint yet ──
     // Nurses (and any other non-Admin, non-Doctor roles) don't have a dedicated
     // profile API endpoint yet. Skip all server calls and use JWT data directly
     // to avoid 403/404 error spam in the console.
     const rolesWithProfileEndpoint = ['Admin', 'Lab Technician', 'LabTechnician'];
-    const hasProfileEndpoint = rolesWithProfileEndpoint.includes(jwtRole || '');
+    const hasProfileEndpoint = rolesWithProfileEndpoint.includes(resolvedRole || '');
 
     if (!hasProfileEndpoint) {
       return buildProfile({
         id: userId,
         name: jwtUsername || 'Staff Member',
-        role: jwtRole || 'Staff',
+        role: resolvedRole || 'Staff',
         status: 'Active',
         email: '',
         phone: '',
@@ -280,17 +345,19 @@ export const staffApi = {
     }
 
     // ── Strategy 0: /Admin/Profile (Admin only) ──
-    try {
-      const response = await fetchApi<any>('/Admin/Profile');
-      const item = response?.data;
-      if (item) {
-        const name = resolveName(item);
-        if (name) return buildProfile(item, userId, jwtUsername);
-      }
-    } catch (err) { console.log("Strategy 0 failed:", err); }
+    if (resolvedRole === 'Admin') {
+      try {
+        const response = await fetchApi<any>('/Admin/Profile');
+        const item = response?.data;
+        if (item) {
+          const name = resolveName(item);
+          if (name) return buildProfile(item, userId, jwtUsername);
+        }
+      } catch (err) { console.log("Strategy 0 failed:", err); }
+    }
 
     // ── Strategy Lab Technician ──
-    if (jwtRole === 'Lab Technician' || jwtRole === 'LabTechnician') {
+    if (resolvedRole === 'Lab Technician' || resolvedRole === 'LabTechnician') {
       try {
         const response = await fetchApi<any>(`/Users/LabTechnician/Profile/${userId}`);
         const item = response?.data;

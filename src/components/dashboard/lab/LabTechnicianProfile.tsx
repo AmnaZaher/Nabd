@@ -23,9 +23,10 @@ import ChangePasswordModal from "../RECEPTIONIST/ChangePasswordModal";
 
 interface LabTechnicianProfileProps {
   onMenuClick?: () => void;
+  onProfileClick?: () => void;
 }
 
-const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick }) => {
+const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick, onProfileClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -79,7 +80,7 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
-      <TopBar title="LABORATORY PROFILE" showAddUser={false} onMenuClick={onMenuClick || (() => {})} />
+      <TopBar title="LABORATORY PROFILE" showAddUser={false} onMenuClick={onMenuClick || (() => {})} onProfileClick={onProfileClick} />
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6 pb-20">
         
@@ -89,7 +90,7 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
             <div className="relative">
               <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
                 <img
-                  src={displayProfile.avatar}
+                  src={displayProfile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayProfile.name || 'Lab')}&background=random`}
                   alt={displayProfile.name}
                   className="w-full h-full object-cover"
                 />

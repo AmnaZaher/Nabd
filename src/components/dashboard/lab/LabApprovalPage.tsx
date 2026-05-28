@@ -54,7 +54,12 @@ const MOCK_LAB_RESULTS: LabResult[] = [
   { id: 99275, patientName: "Robert King", fileNumber: "M, 65y", testName: "Glucose Tolerance", doctorName: "Dr. Aris Thorne", status: "Approved", priority: "Normal", createdAt: "2023-10-24T11:15:00" },
 ];
 
-const LabApprovalPage: React.FC = () => {
+interface LabApprovalPageProps {
+    onMenuClick?: () => void;
+    onProfileClick?: () => void;
+}
+
+const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfileClick }) => {
     const navigate = useNavigate();
 
 
@@ -168,8 +173,9 @@ const LabApprovalPage: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
             <TopBar
-                title="DASHBOARD"
-                onMenuClick={() => {}}
+                title="APPROVE RESULTS"
+                onMenuClick={onMenuClick || (() => {})}
+                onProfileClick={onProfileClick}
                 showAddUser={false}
             />
             <main className="flex-1 overflow-y-auto p-6 md:p-10">
