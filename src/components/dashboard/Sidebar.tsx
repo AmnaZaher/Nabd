@@ -11,6 +11,11 @@ import {
     LogOut,
     X,
     Activity,
+    ClipboardList,
+    ClipboardCheck,
+    Contact,
+    DoorOpen,
+    FileEdit,
     type LucideIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +30,7 @@ interface NavItem {
     path: string;
 }
 
-const getNavItems = (isNurse: boolean, isDoctor: boolean): NavItem[] => {
+const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boolean, isRadiologist: boolean): NavItem[] => {
     if (isDoctor) {
         return [
             { id: 'dashboard', icon: LayoutDashboard, label: 'Overview', path: PATHS.DASHBOARD },
@@ -46,6 +51,23 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean): NavItem[] => {
             { id: 'book-radiology', icon: Microscope, label: 'Radiology', path: PATHS.NURSE_BOOK_RADIOLOGY },
             { id: 'lab-catalog', icon: FlaskConical, label: 'Lab Catalog', path: PATHS.NURSE_BOOK_LAB },
             { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
+        ];
+    }
+    if (isLabTechnician) {
+        return [
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+            { id: 'lab-orders', icon: ClipboardList, label: 'Lab orders', path: PATHS.LAB_TEST_REQUEST },
+            { id: 'lab-approval', icon: ClipboardCheck, label: 'Lab approval', path: PATHS.LAB_TEST },
+            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
+        ];
+    }
+    if (isRadiologist) {
+        return [
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
+            { id: 'requests', icon: Contact, label: 'Requests', path: PATHS.RADIOLOGY_REQUESTS },
+            { id: 'exam-rooms', icon: DoorOpen, label: 'Exam Rooms', path: PATHS.RADIOLOGY_EXAM_ROOMS },
+            { id: 'reporting', icon: FileEdit, label: 'Reporting', path: PATHS.RADIOLOGY_REPORTING },
+            { id: 'results', icon: Microscope, label: 'Results', path: PATHS.RADIOLOGY_RESULTS },
         ];
     }
     return [
@@ -76,9 +98,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     onTabChange,
 }) => {
     const navigate = useNavigate();
-    const { logout, isNurse, isDoctor } = useAuth();
+    const { logout, isNurse, isDoctor, isLabTechnician, isRadiologist } = useAuth();
 
-    const currentNavItems = getNavItems(isNurse, isDoctor);
+    const currentNavItems = getNavItems(isNurse, isDoctor, isLabTechnician, isRadiologist);
 
     const handleNavClick = (item: NavItem) => {
         onTabChange?.(item.id);
@@ -130,8 +152,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         className={`
                             flex flex-col items-center justify-center w-full py-2.5 gap-1 transition-all shrink-0
                             ${activeTab === item.id
-                                ? 'opacity-100 bg-white/25 border-l-4 border-white'
-                                : 'opacity-90 hover:opacity-100 hover:bg-white/15 border-l-4 border-transparent'
+                                ? 'opacity-100 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.4)_0%,transparent_70%)]'
+                                : 'opacity-90 hover:opacity-100 hover:bg-white/15'
                             }
                         `}
                     >

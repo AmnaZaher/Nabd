@@ -570,7 +570,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                             currentPage={currentStaffPage}
                             onPageChange={setCurrentStaffPage}
                             onRowClick={(staff) => {
-                                const routeId = staff.username || staff.id;
+                                const routeId = staff.id;
                                 if (staff.role === 'Doctor') {
                                     navigate(`/dashboard/users/doctor/${routeId}`);
                                 } else {

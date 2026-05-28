@@ -69,8 +69,10 @@ const DoctorVisitsPage: React.FC<DoctorVisitsPageProps> = ({ onMenuClick, onProf
         } catch (error) {
             console.error("Failed to fetch visits:", error);
 
-            setLoading(false);
         }
+        finally{
+            setLoading(false);
+        };
     };
 
     useEffect(() => {

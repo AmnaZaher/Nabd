@@ -65,13 +65,15 @@ import ActiveVisitPage from "./doctor/ActiveVisitPage";
 import DoctorProfileDetail from "./users/DoctorProfileDetail";
 import EditDoctorProfilePage from "./users/EditDoctorProfilePage";
 import DoctorSchedulePage from "./users/Doctorschedulepage ";
+import LabTechnicianProfile from "./lab/LabTechnicianProfile";
+import EditLabTechnicianProfile from "./lab/EditLabTechnicianProfile";
 
 interface DashboardProps {
   onLogout?: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
-  const { user, logout, isNurse, isDoctor, isAdmin, isLoading } = useAuth();
+  const { user, logout, isNurse, isDoctor, isLabTechnician, isRadiologist, isAdmin, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -85,7 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const fetchProfile = async () => {
       if (user?.id && isAdmin) {
         try {
-          const data = await staffApi.getMyProfile(user.id, user.name);
+          const data = await staffApi.getMyProfile(user.id, user.name, user?.role);
           if (data) setAdminProfile(data);
         } catch (error) {
           console.error("Failed to fetch admin profile for greeting:", error);
@@ -93,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       }
       if (user?.id && !isAdmin) {
         try {
-          const data = await staffApi.getMyProfile(user.id, user.name);
+          const data = await staffApi.getMyProfile(user.id, user.name, user?.role);
           if (data) setReceptionistProfile(data);
         } catch (error) {
           console.error("Failed to fetch receptionist profile for greeting:", error);
@@ -101,14 +103,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       }
     };
     fetchProfile();
-  }, [user?.id, isAdmin]);
+  }, [user?.id, isAdmin, user?.name, user?.role]);
 
   // Sync active tab with URL
   useEffect(() => {
     const path = location.pathname;
+    const fromPath = (location.state as any)?.base || (location.state as any)?.from || "";
     if (path.includes("/users") || path.includes("/patients")) setActiveTab("users");
-    else if (path.includes("/doctor-schedule")) setActiveTab("doctor-schedule"); // ← before /appointments
+    else if (path.includes("/doctor-schedule")) setActiveTab("doctor-schedule");
     else if (path.includes("/appointments")) setActiveTab("appointments");
+    else if (path.includes("/radiology/requests")) setActiveTab("requests");
+    else if (path.includes("/radiology/exam-rooms")) setActiveTab("exam-rooms");
+    else if (path.includes("/radiology/reporting")) setActiveTab("reporting");
     else if (path.includes("/radiology")) setActiveTab("radiology");
     else if (path.includes("/lab-catalog")) setActiveTab("lab-catalog");
     else if (path.includes("/clinics")) setActiveTab("clinics");
@@ -117,19 +123,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     else if (path.includes("/dr-schedule")) setActiveTab("dr-schedule");
     else if (path.includes("/patient-visit")) setActiveTab("patient-visit");
     else if (path.includes("/doctor-visits")) setActiveTab("doctor-visits");
+    else if (path.includes("/lab-test-request") || (path.includes("/lab/") && fromPath.includes("/lab-test-request"))) setActiveTab("lab-orders");
+    else if (path.includes("/lab-test") || path.includes("/lab/approve") || (path.includes("/lab/") && fromPath.includes("/lab-test"))) setActiveTab("lab-approval");
     else setActiveTab("dashboard");
-    if (path.includes("/users") || path.includes("/patients"))    setActiveTab("users");
-    else if (path.includes("/doctor-schedule"))                    setActiveTab("doctor-schedule");
-    else if (path.includes("/appointments"))                       setActiveTab("appointments");
-    else if (path.includes("/radiology"))                          setActiveTab("radiology");
-    else if (path.includes("/lab-catalog"))                        setActiveTab("lab-catalog");
-    else if (path.includes("/clinics"))                            setActiveTab("clinics");
-    else if (path.includes("/settings"))                           setActiveTab("settings");
-    else if (path.includes("/profile"))                            setActiveTab("profile");
-    else if (path.includes("/dr-schedule"))                        setActiveTab("dr-schedule");
-    else if (path.includes("/patient-visit"))                      setActiveTab("patient-visit");
-    else if (path.includes("/doctor-visits"))                      setActiveTab("doctor-visits");
-    else                                                           setActiveTab("dashboard");
 
     setIsSidebarOpen(false);
   }, [location]);
@@ -167,6 +163,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     );
   }
 
+  const effectiveRole = receptionistProfile?.role || adminProfile?.role || user?.role || "";
+  const effectiveIsLabTechnician = isLabTechnician || effectiveRole.toLowerCase().replace(/[^a-z]/g, '') === 'labtechnician';
+  const effectiveIsNurse = isNurse || effectiveRole.toLowerCase() === 'nurse';
+  const effectiveIsDoctor = isDoctor || effectiveRole.toLowerCase() === 'doctor';
+  const effectiveIsRadiologist = isRadiologist || effectiveRole.toLowerCase() === 'radiologist';
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -198,17 +200,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <Route
             index
             element={
-              isNurse ? (
+              effectiveIsNurse ? (
                 <NurseDashboardOverview
                   onMenuClick={() => setIsSidebarOpen(true)}
                   onProfileClick={handleProfileClick}
                   onAddUserClick={handleAddUser}
                 />
-              ) : isDoctor ? (
+              ) : effectiveIsDoctor ? (
                 <DoctorDashboardOverview
                   onMenuClick={() => setIsSidebarOpen(true)}
                   onProfileClick={handleProfileClick}
                   onAddUserClick={handleAddUser}
+                />
+              ) : effectiveIsLabTechnician ? (
+                <LabTechnicianDashboardOverview
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                  onProfileClick={handleProfileClick}
+                />
+              ) : effectiveIsRadiologist ? (
+                <RadiologistDashboardOverview
+                  onMenuClick={() => setIsSidebarOpen(true)}
+                  onProfileClick={handleProfileClick}
                 />
               ) : (
                 <div className="flex-1 flex flex-col min-h-0">
@@ -281,7 +293,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             <Route path="add" element={<AddLabTest />} />
             <Route path="details/:id" element={<LabTestDetail />} />
             <Route path="edit/:id" element={<EditLabTest />} />
-            <Route path=":id" element={<LabTestDetail />} />
+          </Route>
+
+          {/* Lab Technician Flow */}
+          <Route path="lab-test-request" element={<LabOrdersPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="lab-test" element={<LabApprovalPage />} />
+          <Route path="lab">
+            <Route path="edit/:id" element={<EditLabResultPage />} />
+            <Route path="approve/:id" element={<ApproveLabResultPage />} />
+            <Route path="visit/:id" element={<VisitLabTestsPage />} />
+            <Route path="result/:id" element={<LabResultDetailsPage />} />
           </Route>
 
           {/* Appointments (admin / nurse / receptionist) */}
@@ -313,6 +334,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           {/* Radiology */}
           <Route path="radiology" element={<div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]"><RadiologyPage /></div>} />
           <Route path="radiology/add" element={<div className="flex-1 overflow-y-auto h-full bg-[#F8FAFC]"><AddRadiologyTest /></div>} />
+          <Route path="radiology/requests" element={<RadiologistRequests onMenuClick={() => setIsSidebarOpen(true)} />} />
+          <Route path="radiology/exam-rooms" element={<RadiologistExamRooms onMenuClick={() => setIsSidebarOpen(true)} />} />
+          <Route path="radiology/reporting" element={<RadiologistReporting onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="radiology/patient/:id" element={<RadiologistPatientProfile onMenuClick={() => setIsSidebarOpen(true)} />} />
+          <Route path="radiology/results" element={<RadiologistResults onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} /> 
+          <Route path="radiology/review-report" element={<RadiologistReviewReport onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />          
 
           {/* Nurse patients alias */}
           <Route path="patients" element={<UserManagementList onMenuClick={() => setIsSidebarOpen(true)} onAddUserClick={handleAddUser} onProfileClick={handleProfileClick} />} />
@@ -338,6 +365,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 <AdminProfilePage />
               ) : isDoctor ? (
                 <DoctorProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />
+              ) : effectiveIsLabTechnician ? (
+                <LabTechnicianProfile />
               ) : (
                 <ReceptionistProfile />
               )
@@ -350,6 +379,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 <AdminProfilePage />
               ) : isDoctor ? (
                 <EditDoctorProfilePage />
+              ) : effectiveIsLabTechnician ? (
+                <EditLabTechnicianProfile />
               ) : (
                 <EditReceptionistProfile />
               )

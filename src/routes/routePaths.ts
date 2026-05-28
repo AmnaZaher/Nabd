@@ -18,6 +18,11 @@ export const PATHS = {
   DR_SCHEDULE: "/dashboard/dr-schedule",
   DOCTOR_SCHEDULE: "/dashboard/doctor-schedule",   // ← doctor's own schedule
   RADIOLOGY: "/dashboard/radiology",
+  RADIOLOGY_REQUESTS: "/dashboard/radiology/requests",
+  RADIOLOGY_EXAM_ROOMS: "/dashboard/radiology/exam-rooms",
+  RADIOLOGY_REPORTING: "/dashboard/radiology/reporting",
+  RADIOLOGY_RESULTS: "/dashboard/radiology/results",
+  RADIOLOGY_REVIEW_REPORT: "/dashboard/radiology/results/review",
   LAB_CATALOG: "/dashboard/lab-catalog",
   LAB_TEST: "/dashboard/lab-test",
   LAB_TEST_REQUEST: "/dashboard/lab-test-request",

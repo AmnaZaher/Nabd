@@ -20,12 +20,28 @@ const LabCatalogPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchCatalog = async () => {
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalTests, setTotalTests] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
+
+  const fetchCatalog = async (page = currentPage) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getLabCatalog();
-      setTests(response.data || []);
+      const response = await getLabCatalog(page, pageSize);
+      const paginatedData = response.data;
+      if (paginatedData) {
+        setTests(paginatedData.data || []);
+        setCurrentPage(paginatedData.currentPage || page);
+        setTotalPages(paginatedData.totalPages || 1);
+        setTotalTests(paginatedData.total || 0);
+        setHasNextPage(paginatedData.hasNextPage || false);
+        setHasPreviousPage(paginatedData.hasPreviousPage || false);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load catalog");
     } finally {
@@ -34,15 +50,18 @@ const LabCatalogPage = () => {
   };
 
   useEffect(() => {
-    fetchCatalog();
-  }, []);
+    fetchCatalog(currentPage);
+  }, [currentPage]);
 
   const filteredTests = (tests || []).filter(test => {
     const term = searchTerm.toLowerCase();
+    const testNameEng = test.testNameEnglish || test.testName || "";
+    const testNameAr = test.testNameArabic || "";
+    const codeVal = test.testCode || test.code || "";
     return (
-      (test.testNameEnglish?.toLowerCase().includes(term)) ||
-      (test.testNameArabic?.toLowerCase().includes(term)) ||
-      (test.testCode?.toLowerCase().includes(term))
+      (testNameEng.toLowerCase().includes(term)) ||
+      (testNameAr.toLowerCase().includes(term)) ||
+      (codeVal.toLowerCase().includes(term))
     );
   });
 
@@ -88,7 +107,7 @@ const LabCatalogPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <button 
-            onClick={fetchCatalog}
+            onClick={() => fetchCatalog(currentPage)}
             className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
             title="Refresh Catalog"
           >
@@ -100,7 +119,7 @@ const LabCatalogPage = () => {
       {error && (
         <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchCatalog} className="underline hover:no-underline">Retry</button>
+          <button onClick={() => fetchCatalog(currentPage)} className="underline hover:no-underline">Retry</button>
         </div>
       )}
 
@@ -139,22 +158,24 @@ const LabCatalogPage = () => {
               ) : (
                 filteredTests.map((test, i) => (
                   <tr
-                    key={test.id || test.testCode || i}
+                    key={test.id || test.testCode || test.code || i}
                     onClick={() => navigate(`/dashboard/lab-catalog/details/${test.id}`)}
                     className="hover:bg-slate-50 cursor-pointer transition-colors group"
                   >
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold tracking-wider">
-                        {test.testCode}
+                        {test.testCode || test.code}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                        {test.testNameEnglish}
+                        {test.testNameEnglish || test.testName}
                       </div>
-                      <div className="text-xs text-slate-400 font-medium">
-                        {test.testNameArabic}
-                      </div>
+                      {test.testNameArabic && (
+                        <div className="text-xs text-slate-400 font-medium">
+                          {test.testNameArabic}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-slate-600">
                       <span className="flex items-center gap-2">
@@ -166,16 +187,16 @@ const LabCatalogPage = () => {
                       {test.sampleType}
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-slate-700 text-center">
-                      {test.fasting_required ? "Yes" : "No"}
+                      {(test.fasting_required ?? test.fasting) ? "Yes" : "No"}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${test.fasting_required ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
+                      <div className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${(test.fasting_required ?? test.fasting) ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
                         <Plus size={14} className="rotate-45" />
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest bg-blue-50 text-blue-600`}>
-                        ACTIVE
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest ${test.isActive !== false ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                        {test.isActive !== false ? 'ACTIVE' : 'INACTIVE'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -203,13 +224,25 @@ const LabCatalogPage = () => {
 
         {/* Pagination */}
         <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-sm text-slate-500 font-medium">Showing 5 of 124 tests</span>
+          <span className="text-sm text-slate-500 font-medium">
+            Showing {filteredTests.length} of {totalTests} tests
+          </span>
           <div className="flex items-center gap-2">
-            <button className="p-2 text-slate-400 hover:bg-white rounded-lg border border-transparent hover:border-slate-200">
+            <button 
+              disabled={!hasPreviousPage || isLoading}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              className="p-2 text-slate-400 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <ChevronLeft size={18} />
             </button>
-            <button className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg text-sm font-bold">1</button>
-            <button className="p-2 text-slate-400 hover:bg-white rounded-lg border border-transparent hover:border-slate-200">
+            <button className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg text-sm font-bold">
+              {currentPage}
+            </button>
+            <button 
+              disabled={!hasNextPage || isLoading}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              className="p-2 text-slate-400 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <ChevronRight size={18} />
             </button>
           </div>
