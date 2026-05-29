@@ -30,6 +30,25 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
     Address: '',
   });
 
+  const isDefaultDate = (dateStr?: string) => {
+    if (!dateStr) return true;
+    return dateStr.startsWith('0001') || dateStr.startsWith('1900');
+  };
+
+  const resolveImageUrl = (url: any) => {
+    if (!url) return '';
+    let strUrl = url;
+    if (Array.isArray(url) && url.length > 0) {
+      strUrl = url[0];
+    }
+    if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+    strUrl = strUrl.replace(/\\/g, '/');
+    strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
+    if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+    if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+    return `https://nabd.runasp.net/${strUrl}`;
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       if (user?.id) {
@@ -39,14 +58,14 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
           if (data) {
             setProfile(data);
             setFormData({
-              FullNameEnglish: data.name || '',
-              FullNameArabic: data.fullNameArabic || '',
-              NationalId: data.nationalId || '',
+              FullNameEnglish: data.name || data.fullNameEnglish || data.FullNameEnglish || '',
+              FullNameArabic: data.fullNameArabic || data.FullNameArabic || '',
+              NationalId: data.nationalId || data.NationalId || '',
               Gender: data.gender || 'Female',
-              DateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString().split('T')[0] : '',
-              PhoneNumber: data.phone || '',
-              Email: data.email || '',
-              Address: data.address || '',
+              DateOfBirth: data.dateOfBirth && !isDefaultDate(data.dateOfBirth) ? new Date(data.dateOfBirth).toISOString().split('T')[0] : '',
+              PhoneNumber: data.phone || data.phoneNumber || data.PhoneNumber || '',
+              Email: data.email || data.Email || '',
+              Address: data.address || data.Address || '',
             });
           }
         } catch (error) {
@@ -149,23 +168,53 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
               </div>
 
               <div className="space-y-3 mb-6">
-                {/* Document Item */}
-                <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-[#1A6FC4]">
-                  <FileText size={18} className="text-slate-400" />
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">Medical_Licen</p>
-                    <p className="text-[11px] text-slate-500">Modified 2 days ago</p>
-                  </div>
-                </div>
+                {profile?.documents && profile.documents.length > 0 ? (
+                  profile.documents.map((doc: any, index: number) => {
+                    const docType = doc.documentType || doc.type || 'Document';
+                    const fileUrl = resolveImageUrl(doc.fileUrl || doc.url);
+                    let fileName = docType;
+                    try {
+                      const urlParts = fileUrl.split(/[/\\]/);
+                      const lastPart = urlParts[urlParts.length - 1];
+                      if (lastPart && lastPart.includes('.')) {
+                        fileName = lastPart;
+                      }
+                    } catch (e) {}
 
-                {/* Document Item */}
-                <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-slate-300">
-                  <CheckCircle2 size={18} className="text-slate-400" />
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">ID_Card_Front.j</p>
-                    <p className="text-[11px] text-slate-500">Uploaded Jun 2023</p>
-                  </div>
-                </div>
+                    return (
+                      <a 
+                        key={index}
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-[#1A6FC4] hover:bg-slate-100 transition-colors min-w-0"
+                      >
+                        <FileText size={18} className="text-slate-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-800 truncate">{docType.replace(/([A-Z])/g, ' $1').trim()}</p>
+                          <p className="text-[11px] text-slate-500 truncate">{fileName}</p>
+                        </div>
+                      </a>
+                    );
+                  })
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-[#1A6FC4]">
+                      <FileText size={18} className="text-slate-400" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">Medical_License.pdf</p>
+                        <p className="text-[11px] text-slate-500">Modified 2 days ago</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-slate-300">
+                      <CheckCircle2 size={18} className="text-slate-400" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">ID_Card_Front.jpg</p>
+                        <p className="text-[11px] text-slate-500">Uploaded Jun 2023</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <button className="w-full py-3.5 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">
@@ -196,7 +245,7 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                     name="FullNameEnglish" 
                     value={formData.FullNameEnglish} 
                     onChange={handleChange} 
-                    placeholder="Sarah Al-Farsi"
+                    placeholder="Omar Mohamed"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -210,7 +259,7 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                     value={formData.FullNameArabic} 
                     onChange={handleChange} 
                     dir="rtl"
-                    placeholder="سارة الفارسي"
+                    placeholder="عمر أحمد"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors font-arabic" 
                   />
                 </div>
@@ -223,7 +272,7 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                     name="NationalId" 
                     value={formData.NationalId} 
                     onChange={handleChange} 
-                    placeholder="234-9876-1120"
+                    placeholder="30410052701945"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -238,8 +287,8 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                       onChange={handleChange} 
                       className="w-full px-4 py-3 bg-[#E2E8F0]/50 rounded-xl text-[15px] font-medium text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#1A6FC4]/20"
                     >
-                      <option value="Female">Female</option>
                       <option value="Male">Male</option>
+                      <option value="Female">Female</option>
                     </select>
                     <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                   </div>
@@ -249,11 +298,10 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                 <div className="relative">
                   <label className="text-[13px] font-semibold text-slate-600 block mb-2">Date of Birth</label>
                   <input 
-                    type="text" 
+                    type="date" 
                     name="DateOfBirth" 
-                    value={formData.DateOfBirth || '05/14/1992'} 
+                    value={formData.DateOfBirth} 
                     onChange={handleChange} 
-                    placeholder="MM/DD/YYYY"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -264,9 +312,9 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                   <input 
                     type="text" 
                     name="PhoneNumber" 
-                    value={formData.PhoneNumber || '+966 55 123 4567'} 
+                    value={formData.PhoneNumber} 
                     onChange={handleChange} 
-                    placeholder="+966 55 123 4567"
+                    placeholder="01000745863"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -277,9 +325,9 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                   <input 
                     type="email" 
                     name="Email" 
-                    value={formData.Email || 's.alfarsi@gm-center.org'} 
+                    value={formData.Email} 
                     onChange={handleChange} 
-                    placeholder="s.alfarsi@gm-center.org"
+                    placeholder="Omar@nabd.com"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -289,7 +337,7 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
                   <label className="text-[13px] font-semibold text-slate-600 block mb-2">Residential Address</label>
                   <textarea 
                     name="Address" 
-                    value={formData.Address || '742 King Abdullah Road, Olaya District, Riyadh 12211, Saudi Arabia'} 
+                    value={formData.Address} 
                     onChange={handleChange} 
                     rows={2}
                     className="w-full p-4 bg-[#E2E8F0]/50 rounded-xl text-[15px] font-medium text-slate-800 outline-none focus:ring-2 focus:ring-[#1A6FC4]/20 resize-none" 
