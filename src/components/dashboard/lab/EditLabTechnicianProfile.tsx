@@ -18,6 +18,8 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState<any>({
     FullNameEnglish: '',
@@ -29,6 +31,10 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
     Email: '',
     Address: '',
   });
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const isDefaultDate = (dateStr?: string) => {
     if (!dateStr) return true;
@@ -70,6 +76,7 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
           }
         } catch (error) {
           console.error("Failed to fetch profile:", error);
+          setError("Failed to load profile data.");
         } finally {
           setLoading(false);
         }
@@ -84,14 +91,33 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSave = async () => {
     if (!profile?.id) return;
     setSaving(true);
+    setError(null);
+    setSuccess(false);
     try {
-      await staffApi.updateLabTechnicianProfile(profile.id, formData);
-      navigate(-1);
+      const payload = {
+        ...formData,
+        PersonalPhotos: imageFile || undefined,
+        showImage: profile.avatar || undefined,
+      };
+      await staffApi.updateLabTechnicianProfile(profile.id, payload);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate(-1);
+      }, 1500);
     } catch (err: any) {
       console.error('Save failed:', err);
+      setError(err.message || 'Failed to save profile changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -106,7 +132,7 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
   }
 
   // Fallback to static data if no profile returned to match the UI state perfectly
-  const displayAvatar = profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.FullNameEnglish || 'Lab')}&background=random`;
+  const displayAvatar = imagePreview || profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.FullNameEnglish || 'Lab')}&background=random`;
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
@@ -131,6 +157,19 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
         <h1 className="text-[26px] font-bold text-slate-800 mb-8">Edit Technician Profile</h1>
 
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl font-bold text-sm border border-red-100 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 text-green-600 rounded-xl font-bold text-sm border border-green-100 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-ping"></span>
+            Profile updated successfully! Redirecting...
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-6">
           
           {/* Left Column */}
@@ -139,14 +178,25 @@ const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onM
             {/* Profile Card */}
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col items-center">
               <div className="relative mb-4">
-                <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-100">
+                <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-100 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                   <img
                     src={displayAvatar}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <button className="absolute -bottom-3 -right-3 w-8 h-8 bg-[#1A6FC4] rounded-lg flex items-center justify-center text-white shadow-sm border-2 border-white hover:bg-[#165DA5] transition-colors">
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button 
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-3 -right-3 w-8 h-8 bg-[#1A6FC4] rounded-lg flex items-center justify-center text-white shadow-sm border-2 border-white hover:bg-[#165DA5] transition-colors cursor-pointer"
+                >
                   <Camera size={16} />
                 </button>
               </div>

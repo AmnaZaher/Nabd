@@ -505,9 +505,58 @@ export const staffApi = {
 
   updateLabTechnicianProfile: async (id: string, payload: any): Promise<void> => {
     try {
+      const formData = new FormData();
+      
+      const append = (key: string, value: any) => {
+        if (value !== undefined && value !== null && value !== '') {
+          formData.append(key, String(value));
+        }
+      };
+
+      append('NameEngLish', payload.FullNameEnglish || payload.NameEngLish || payload.name || '');
+      append('NameArabic', payload.FullNameArabic || payload.NameArabic || payload.fullNameArabic || '');
+      append('Email', payload.Email || payload.email || '');
+      append('PhoneNumber', payload.PhoneNumber || payload.phone || payload.phoneNumber || '');
+      append('NationalId', payload.NationalId || payload.nationalId || '');
+      append('Gender', payload.Gender || payload.gender || '');
+      
+      const dateOfBirth = payload.DateOfBirth || payload.dateOfBirth;
+      if (dateOfBirth) {
+        try {
+          const d = new Date(dateOfBirth);
+          if (!isNaN(d.getTime())) {
+            append('DateOfBirth', d.toISOString());
+          } else {
+            append('DateOfBirth', dateOfBirth);
+          }
+        } catch (e) {
+          append('DateOfBirth', dateOfBirth);
+        }
+      }
+      
+      append('Address', payload.Address || payload.address || '');
+
+      if (payload.PersonalPhotos) {
+        if (payload.PersonalPhotos instanceof File) {
+          formData.append('PersonalPhotos', payload.PersonalPhotos);
+        } else {
+          let showImageVal = payload.PersonalPhotos;
+          if (typeof showImageVal === 'string') {
+            showImageVal = showImageVal.replace('https://nabd.runasp.net', '');
+          }
+          append('showImage', showImageVal);
+        }
+      } else {
+        let showImageVal = payload.showImage || payload.avatar || '';
+        if (showImageVal && typeof showImageVal === 'string') {
+          showImageVal = showImageVal.replace('https://nabd.runasp.net', '');
+          append('showImage', showImageVal);
+        }
+      }
+
       await fetchApi(`/Users/lab/EditLabTechnican/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
+        method: "POST",
+        body: formData,
       });
     } catch (err: any) {
       console.error("Lab technician profile update failed:", err);
