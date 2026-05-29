@@ -161,7 +161,7 @@ const RadiologistRequests: React.FC<{
     return matchesFilter && matchesSearch;
   });
 
-  const getStatsCount = (status: "Pending" | "Scheduled" | "In Progress" | "Completed") => {
+  const getStatsCount = (status: "Pending" | "In Progress" | "Completed") => {
     return MOCK_REQUESTS.filter((req) => req.status === status).length;
   };
 
@@ -188,7 +188,7 @@ const RadiologistRequests: React.FC<{
           </div>
 
           {/* Filtering Tab Blocks (Top row) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Pending */}
             <div
@@ -207,26 +207,6 @@ const RadiologistRequests: React.FC<{
                 activeFilter === "Pending" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
               }`}>
                 {String(getStatsCount("Pending")).padStart(2, "0")}
-              </span>
-            </div>
-
-            {/* Scheduled */}
-            <div
-              onClick={() => setActiveFilter("Scheduled")}
-              className={`p-6 rounded-3xl bg-white shadow-sm border transition-all cursor-pointer flex items-center justify-between group ${
-                activeFilter === "Scheduled"
-                  ? "border-blue-600 ring-4 ring-blue-500/5 scale-[1.02]"
-                  : "border-slate-100 hover:border-slate-200"
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <Calendar size={18} className="text-blue-500 shrink-0" />
-                <span className="text-sm font-extrabold text-slate-800">Scheduled</span>
-              </div>
-              <span className={`px-3 py-1 rounded-xl text-xs font-black transition-colors ${
-                activeFilter === "Scheduled" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
-              }`}>
-                {String(getStatsCount("Scheduled")).padStart(2, "0")}
               </span>
             </div>
 
@@ -393,13 +373,14 @@ const RadiologistRequests: React.FC<{
                         <td className="px-8 py-6">
                           <div className="flex items-center justify-center gap-2">
                             <button
+                              onClick={() => navigate(`/dashboard/radiology/view-exam/${req.id}`)}
                               title="View Details"
                               className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all border border-slate-200 cursor-pointer"
                             >
                               <Eye size={15} />
                             </button>
                             <button
-                              onClick={() => handleStartExam(req.id)}
+                              onClick={() => navigate(`/dashboard/radiology/start-exam/${req.id}`)}
                               className="px-4 py-2 text-xs font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shadow-blue-50 transition-all cursor-pointer whitespace-nowrap"
                             >
                               Start Exam
