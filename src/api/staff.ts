@@ -149,7 +149,8 @@ export const staffApi = {
       // Gender mapping: 1 for Male, 2 for Female ($int32)
       const rawGender = item.gender ?? item.Gender;
       const genderStr = rawGender === 1 || rawGender === '1' || String(rawGender).toLowerCase() === 'male' ? 'Male' : 
-                       rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 'Not Specified';
+                       rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 
+                       (rawGender || 'Not Specified');
 
       const resolveImageUrl = (url: any) => {
         if (!url) return '';
@@ -158,35 +159,57 @@ export const staffApi = {
           strUrl = url[0];
         }
         if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+        strUrl = strUrl.replace(/\\/g, '/');
+        strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
         if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
         if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
         return `https://nabd.runasp.net/${strUrl}`;
       };
 
-      const rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
+      let rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
+      if (!rawAvatar && Array.isArray(item.documents)) {
+        const photoDoc = item.documents.find((doc: any) => 
+          doc && 
+          (doc.documentType === 'PersonalPhotos' || 
+           String(doc.documentType).toLowerCase() === 'personalphotos' ||
+           doc.type === 'PersonalPhotos' ||
+           String(doc.type).toLowerCase() === 'personalphotos')
+        );
+        if (photoDoc) {
+          rawAvatar = photoDoc.fileUrl || photoDoc.url || photoDoc.FileUrl || '';
+        }
+      }
+
+      let cityVal = item.city || item.City || '';
+      let countryVal = item.country || item.Country || '';
+      if (!cityVal && !countryVal && (item.cityCountry || item.CityCountry)) {
+        const parts = (item.cityCountry || item.CityCountry).split(',');
+        cityVal = parts[0]?.trim() || '';
+        countryVal = parts[1]?.trim() || '';
+      }
 
       // Safe mapping to prevent UI crashes if backend fields are missing or PascalCase
       return {
         ...item, // Spread at top so our mappings can overwrite
-        id: item.id || item.Id || idOrNationalId,
+        id: item.id || item.Id || item.userId || item.UserId || idOrNationalId,
         name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
         fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
         role: roleVal,
         department: deptVal,
         licenseId: item.licenseNumber || item.licenseId || 'N/A',
-        location: item.location || item.city || item.City || 'Hospital',
+        location: item.location || cityVal || 'Hospital',
         email: item.email || item.Email || '',
         nationalId: item.nationalId || item.NationalId || idOrNationalId,
         phone: item.phoneNumber || item.phone || item.PhoneNumber || '',
         address: item.address || item.Address || '',
-        country: item.country || item.Country || '',
-        city: item.city || item.City || '',
+        country: countryVal || 'Egypt',
+        city: cityVal || '6 Of Oct',
         dateOfBirth: item.dateOfBirth || item.DateOfBirth || '',
         gender: genderStr,
         experience: item.experience || 'N/A',
         qualifications: item.qualification || item.qualifications || item.Qualification || 'N/A',
-        status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
-        lastLogin: item.lastLogin || 'N/A',
+        status: item.isActive === false || item.active === false ? 'Disabled' : (item.status || 'Active'),
+        lastLogin: item.lastLogin || item.LastLogin || 'N/A',
         avatar: resolveImageUrl(rawAvatar),
         
         // Doctor Specific Fields - map from backend if available (case-insensitive search)
@@ -245,6 +268,8 @@ export const staffApi = {
         strUrl = url[0];
       }
       if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+      strUrl = strUrl.replace(/\\/g, '/');
+      strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
       if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
       if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
       return `https://nabd.runasp.net/${strUrl}`;
@@ -264,26 +289,53 @@ export const staffApi = {
       const roleStr = String(rawRole).trim();
       let finalRole = rolesMap[roleStr] || (roleStr && isNaN(parseInt(roleStr)) ? roleStr : '');
 
-      const rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
+      let rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
+      if (!rawAvatar && Array.isArray(item.documents)) {
+        const photoDoc = item.documents.find((doc: any) => 
+          doc && 
+          (doc.documentType === 'PersonalPhotos' || 
+           String(doc.documentType).toLowerCase() === 'personalphotos' ||
+           doc.type === 'PersonalPhotos' ||
+           String(doc.type).toLowerCase() === 'personalphotos')
+        );
+        if (photoDoc) {
+          rawAvatar = photoDoc.fileUrl || photoDoc.url || photoDoc.FileUrl || '';
+        }
+      }
+
+      let cityVal = item.city || item.City || '';
+      let countryVal = item.country || item.Country || '';
+      if (!cityVal && !countryVal && (item.cityCountry || item.CityCountry)) {
+        const parts = (item.cityCountry || item.CityCountry).split(',');
+        cityVal = parts[0]?.trim() || '';
+        countryVal = parts[1]?.trim() || '';
+      }
+
+      const rawGender = item.gender ?? item.Gender;
+      const genderStr = rawGender === 1 || rawGender === '1' || String(rawGender).toLowerCase() === 'male' ? 'Male' : 
+                       rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 
+                       (rawGender || '');
 
       return {
         ...item,
-        id: item.id || item.Id || fallbackId,
+        id: item.id || item.Id || item.userId || item.UserId || fallbackId,
         name: resolveName(item),
         fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
         role: finalRole || jwtRole || 'Staff',
         department: item.department || item.Department || '',
-        licenseId: item.licenseId || item.licenseNumber || '',
-        location: item.location || item.city || '',
+        licenseId: item.licenseId || item.licenseNumber || item.LicenseNumber || '',
+        location: item.location || cityVal || '',
         email: item.email || item.Email || '',
         nationalId: item.nationalId || item.NationalId || fallbackNationalId || '',
         phone: item.phoneNumber || item.phone || '',
-        address: item.address || '',
-        gender: item.gender || '',
+        address: item.address || item.Address || '',
+        city: cityVal,
+        country: countryVal,
+        gender: genderStr,
         experience: item.experience || '',
         qualifications: item.qualifications || item.qualification || '',
-        status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
-        lastLogin: item.lastLogin || '',
+        status: item.isActive === false || item.active === false ? 'Disabled' : (item.status || 'Active'),
+        lastLogin: item.lastLogin || item.LastLogin || '',
         avatar: resolveImageUrl(rawAvatar),
       } as StaffProfile;
     };
