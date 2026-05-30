@@ -120,8 +120,8 @@ const RegisterStaff = ({
                 case 'Admin': roleInt = '1'; break;
                 case 'Doctor': roleInt = '2'; break;
                 case 'Nurse': roleInt = '3'; break;
-                case 'Radiologist': roleInt = '5'; break;
-                case 'Lab Technician': roleInt = '6'; break;
+                case 'Radiologist': roleInt = '4'; break;
+                case 'Lab Technician': roleInt = '5'; break;
             }
             formData.append('Role', roleInt);
             formData.append('IsActive', 'true');

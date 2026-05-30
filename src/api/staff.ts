@@ -100,7 +100,7 @@ export const staffApi = {
 
 
       const rolesMap: Record<string, string> = {
-        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Radiologist', '5': 'Lab Technician',
         'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
       };
       
@@ -278,7 +278,7 @@ export const staffApi = {
     /** Helper: build a StaffProfile from a raw backend item */
     const buildProfile = (item: any, fallbackId: string, fallbackNationalId?: string): StaffProfile => {
       const rolesMap: Record<string, string> = {
-        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Radiologist', '5': 'Lab Technician',
         'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
       };
       
@@ -365,7 +365,7 @@ export const staffApi = {
                 payload.StaffRole ||
                 '';
             const rolesMap: Record<string, string> = {
-                '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+                '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Radiologist', '5': 'Lab Technician',
                 'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
             };
             const roleStr = String(rawRole).trim();
