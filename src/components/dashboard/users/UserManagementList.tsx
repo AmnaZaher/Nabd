@@ -29,8 +29,8 @@ const staffFilterConfig: FilterConfig[] = [
             { value: '1', label: 'Admin' },
             { value: '2', label: 'Doctor' },
             { value: '3', label: 'Nurse' },
-            { value: '6', label: 'Lab Technician' },
-            { value: '5', label: 'Radiologist' },
+            { value: '5', label: 'Lab Technician' },
+            { value: '4', label: 'Radiologist' },
         ],
     },
     {
@@ -326,7 +326,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
             if (list && list.length > 0) {
                 const mappedStaff = list.map((item: any) => {
                     const rolesMap: Record<string, string> = {
-                        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+                        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Radiologist', '5': 'Lab Technician',
                         'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
                     };
                     
