@@ -100,8 +100,8 @@ export const staffApi = {
 
 
       const rolesMap: Record<string, string> = {
-        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
-        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
+        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
       };
       
       // Comprehensive search for role
@@ -227,8 +227,8 @@ export const staffApi = {
     /** Helper: build a StaffProfile from a raw backend item */
     const buildProfile = (item: any, fallbackId: string, fallbackNationalId?: string): StaffProfile => {
       const rolesMap: Record<string, string> = {
-        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
-        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
+        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
       };
       
       let rawRole = item.role ?? item.Role ?? item.roleId ?? item.RoleId ?? item.staffRole ?? item.StaffRole ?? item.roleName ?? item.RoleName ?? '';
@@ -260,6 +260,42 @@ export const staffApi = {
       } as StaffProfile;
     };
 
+    // Resolve role if not provided
+    let resolvedRole = jwtRole;
+    if (!resolvedRole) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            const payload = JSON.parse(jsonPayload);
+            const rawRole =
+                payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+                payload.role ||
+                payload.Role ||
+                payload.staffRole ||
+                payload.StaffRole ||
+                '';
+            const rolesMap: Record<string, string> = {
+                '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+                'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
+            };
+            const roleStr = String(rawRole).trim();
+            resolvedRole = rolesMap[roleStr] || (isNaN(parseInt(roleStr)) ? roleStr : '');
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to extract role from token inside getMyProfile:", e);
+      }
+    }
     // ── Short-circuit for roles that have no profile endpoint yet ──
     // Nurses (and any other non-Admin, non-Doctor roles) don't have a dedicated
     // profile API endpoint yet. Skip all server calls and use JWT data directly

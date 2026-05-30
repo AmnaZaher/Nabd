@@ -3,7 +3,7 @@ export interface StaffMember {
     name: string;
     subtitle: string;
     username: string;
-    role: 'Doctor' | 'Nurse' | 'Lab Technician' | 'Radiologist' | 'Pharmacist' | 'Admin';
+    role: 'Doctor' | 'Nurse' | 'Lab Technician' | 'Radiologist' | 'Admin';
     lastLogin: string;
     dept: string;
     status: 'Active' | 'Disabled';
