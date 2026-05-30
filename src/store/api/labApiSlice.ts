@@ -40,7 +40,7 @@ export const labApiSlice = apiSlice.injectEndpoints({
         }),
         approveLabResult: builder.mutation<void, number | string>({
             query: (id) => ({
-                url: `/Lab/Approve?finalResul=${id}`,
+                url: `/Lab/Approve?id=${id}`,
                 method: 'POST',
             }),
             invalidatesTags: ['LabResult', 'LabOrder'],
@@ -66,7 +66,7 @@ export const labApiSlice = apiSlice.injectEndpoints({
         }),
         rejectLabResult: builder.mutation<void, number | string>({
             query: (id) => ({
-                url: `/Lab/RejectResult?finalResul=${id}`,
+                url: `/Lab/RejectResult?id=${id}`,
                 method: 'POST',
             }),
             invalidatesTags: ['LabResult', 'LabOrder'],

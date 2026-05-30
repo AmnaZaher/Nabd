@@ -8,7 +8,7 @@ import {
     Info,
     Loader2
 } from "lucide-react";
-import { getLabResultApprovalDetails, approveLabResult, rejectLabResult } from "../../../api/labs";
+import { getLabResultApprovalDetails, approveLabResult, rejectLabResult, getLabTestRequestDetails, getLabResultDetails, getLabResults } from "../../../api/labs";
 import type { LabResultDetail } from "../../../types/labs.types";
 import TopBar from "../TopBar";
 
@@ -27,6 +27,7 @@ interface ApproveLabResultPageProps {
 function formatDate(dateStr?: string) {
   if (!dateStr) return "—";
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
   const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   return `${day} ${time}`;
@@ -43,57 +44,134 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
 
   useEffect(() => {
     async function loadData() {
-      try {
-        const res = await getLabResultApprovalDetails(id as string);
-        let data: LabResultDetail = (res as any)?.data ?? res;
-        
-        // Handle double wrapping if present
-        if (data && (data as any).data) {
-          data = (data as any).data;
-        }
-
-        // Map parameters robustly to handle backend field variations
-        if (data.parameters && Array.isArray(data.parameters)) {
-          data.parameters = data.parameters.map((p: any) => ({
-            ...p,
-            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
-            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
-            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
-            unit: p.unit || p.measurementUnit || ''
-          }));
-        }
-
-        // Inject mock parameters if none are returned
-        if (!data.parameters || data.parameters.length === 0) {
-          data.parameters = mockParams;
-        }
-        
-        setDetail(data);
-
-      } catch (err) {
-        console.error("Failed to load result details:", err);
         const getNumericId = (val: any): number => {
             if (val === undefined || val === null) return 0;
             const parsed = typeof val === 'number' ? val : parseInt(val.toString().replace(/\D/g, ''), 10);
             return isNaN(parsed) ? 0 : parsed;
         };
+
         const parsedId = getNumericId(id) || 9421;
-        // Fallback to mock data
-        setDetail({
+
+        let data: LabResultDetail = {
             id: parsedId,
             requestId: parsedId,
-            patientName: "Emma Lawson",
-            fileNumber: "PT-88291",
-            testName: "Comprehensive Metabolic Panel",
-            doctorName: "Dr. Sarah Chen",
+            patientName: "Unknown Patient",
+            fileNumber: "—",
+            testName: "Unknown Test",
+            doctorName: "Unknown Doctor",
             status: "Pending Review",
             priority: "Normal",
-            createdAt: "2023-10-24T10:00:00Z",
-            parameters: mockParams,
-        } as LabResultDetail);
-      } finally {
+            createdAt: new Date().toISOString(),
+            parameters: []
+        } as LabResultDetail;
+
+        // Fetch request details using the provided endpoint
+        try {
+            const reqRes = await getLabTestRequestDetails(id as string);
+            const reqData = (reqRes as any)?.data ?? reqRes;
+            if (reqData) {
+                if (reqData.test_Name) {
+                    data.testName = reqData.test_Name;
+                    data.requestId = reqData.requestnumber || data.requestId;
+                    (data as any).department = reqData.category || "Laboratory";
+                    data.doctorName = reqData.doctorname || data.doctorName;
+                    data.status = reqData.result_Status || data.status;
+                    data.createdAt = reqData.collectedDate || data.createdAt;
+                    data.patientName = reqData.patientFullName || data.patientName;
+                    data.fileNumber = reqData.fileNumber || data.fileNumber;
+                } else {
+                    if (reqData.patientName) data.patientName = reqData.patientName;
+                    if (reqData.doctorName) data.doctorName = reqData.doctorName;
+                    if (reqData.testName) data.testName = reqData.testName;
+                }
+                
+                const paramsArray = reqData.param || reqData.parameters || reqData.labTestDetails || reqData.results || reqData.labResults;
+                if (paramsArray && Array.isArray(paramsArray)) {
+                    data.parameters = paramsArray.map((p: any) => ({
+                        ...p,
+                        parameterNameEnglish: p.param_Name || p.parameterNameEnglish || p.parameterName || p.name || p.testName || 'Unknown Parameter',
+                        referenceRangeMin: p.min_Normal ?? p.referenceRangeMin ?? p.minRange ?? p.normalRangeMin ?? 0,
+                        referenceRangeMax: p.max_Normal ?? p.referenceRangeMax ?? p.maxRange ?? p.normalRangeMax ?? 0,
+                        unit: p.unit || p.measurementUnit || '',
+                        value: p.param_Value ?? p.value ?? p.resultValue ?? p.result,
+                        status: p.abnormalFlag || p.status || p.resultStatus || p.interpretation
+                    }));
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to load request details.", err);
+        }
+
+        // Fetch result details directly
+        try {
+            const res = await getLabResultDetails(id as string);
+            const apiData = (res as any)?.data ?? res;
+            if (apiData) {
+                if (apiData.id) data.id = apiData.id;
+                if (apiData.finalResultId) data.id = apiData.finalResultId;
+                
+                if (apiData.test_Name) {
+                    data.testName = apiData.test_Name;
+                    data.requestId = apiData.requestnumber || data.requestId;
+                    (data as any).department = apiData.category || "Laboratory";
+                    data.doctorName = apiData.doctorname || data.doctorName;
+                    data.status = apiData.result_Status || data.status;
+                    data.createdAt = apiData.collectedDate || data.createdAt;
+                    data.patientName = apiData.patientFullName || data.patientName;
+                    data.fileNumber = apiData.fileNumber || data.fileNumber;
+                }
+                
+                if (apiData.param && Array.isArray(apiData.param)) {
+                    data.parameters = apiData.param.map((p: any) => ({
+                        ...p,
+                        id: p.id || Math.random(),
+                        parameterNameEnglish: p.param_Name || 'Unknown Parameter',
+                        value: p.param_Value,
+                        referenceRangeMin: p.min_Normal,
+                        referenceRangeMax: p.max_Normal,
+                        unit: p.unit,
+                        status: p.abnormalFlag
+                    }));
+                } else if (!apiData.test_Name && apiData.parameters) {
+                   data.parameters = apiData.parameters;
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to load result details", err);
+        }
+
+        // Fetch using the original endpoint just in case it's implemented differently
+        try {
+            const resApproval = await getLabResultApprovalDetails(id as string);
+            const approvalData = (resApproval as any)?.data ?? resApproval;
+            if (approvalData) {
+               if (approvalData.id) data.id = approvalData.id;
+               if (approvalData.finalResultId) data.id = approvalData.finalResultId;
+               if (approvalData.patientName) data.patientName = approvalData.patientName;
+               if (approvalData.parameters && Array.isArray(approvalData.parameters) && approvalData.parameters.length > 0) {
+                   data.parameters = approvalData.parameters;
+               }
+            }
+        } catch (err) {
+            console.warn("Failed to load result approval details", err);
+        }
+
+        // Fallback: try to find the actual finalResultId from getLabResults if we still only have the parsedId (which is likely the requestId)
+        try {
+            const resultsRes = await getLabResults();
+            const list = (resultsRes as any)?.data || resultsRes || [];
+            if (Array.isArray(list)) {
+                const match = list.find((r: any) => r.requestId === parsedId || r.request?.id === parsedId || r.requestNumber === parsedId);
+                if (match && match.id) {
+                    data.id = match.id;
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to lookup finalResultId from getLabResults", err);
+        }
+
+        setDetail(data);
         setLoading(false);
-      }
     }
     loadData();
   }, [id]);
