@@ -94,7 +94,7 @@ const LabTechnicianDashboardOverview: React.FC<{
     let isError = !!apiError;
     let fallback = false;
 
-    if (!finalData || !Array.isArray(finalData) || isError) {
+    if (!finalData || !Array.isArray(finalData) || finalData.length === 0 || isError) {
       finalData = MOCK_LAB_RESULTS;
       fallback = true;
       if (apiError) {

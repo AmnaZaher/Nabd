@@ -69,6 +69,24 @@ export const getLabResultDetails = async (id: number | string) => {
 };
 
 /**
+ * Get detailed info for a result to approve.
+ */
+export const getLabResultApprovalDetails = async (id: number | string) => {
+  return await fetchApi<LabResultDetail>(`/Lab/LabResultApprovalDetails?id=${id}`, {
+    method: 'GET',
+  });
+};
+
+/**
+ * Reject a lab result.
+ */
+export const rejectLabResult = async (resultId: number | string) => {
+  return await fetchApi(`/Lab/RejectResult?finalResul=${resultId}`, {
+    method: 'POST',
+  });
+};
+
+/**
  * Get lab test details for a specific request (used before a result is created).
  * @param requestId The request ID.
  */

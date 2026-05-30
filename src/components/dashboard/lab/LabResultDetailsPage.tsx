@@ -37,11 +37,20 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
     async function loadData() {
         const orderData = location.state?.orderData;
         
+        // Robust numeric ID parsing to handle strings with letters (e.g. "LB-9021" -> 9021) and "NaN" -> fallback to orderData.id/requestId or 9421
+        const getNumericId = (val: any): number => {
+            if (val === undefined || val === null) return 0;
+            const parsed = typeof val === 'number' ? val : parseInt(val.toString().replace(/\D/g, ''), 10);
+            return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const parsedId = getNumericId(id) || getNumericId(orderData?.requestId) || getNumericId(orderData?.id) || 9421;
+
         let data: LabResultDetail = {
-            id: Number(id),
-            requestId: Number(id),
+            id: parsedId,
+            requestId: parsedId,
             patientName: orderData?.patientName || orderData?.patient?.name || orderData?.name || "Unknown Patient",
-            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || "—",
+            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || orderData?.patientFileNumber || "—",
             testName: orderData?.testName || orderData?.labTest?.testNameEnglish || orderData?.name || "Unknown Test",
             doctorName: orderData?.doctorName || orderData?.doctor?.name || orderData?.doctor || "Unknown Doctor",
             status: orderData?.status || "Completed",
@@ -51,25 +60,40 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
         } as LabResultDetail;
 
         // Fetch request details using the provided endpoint
-        let requestDetailsData: any = null;
         try {
             const reqRes = await getLabTestRequestDetails(id as string);
-            requestDetailsData = (reqRes as any)?.data ?? reqRes;
-            if (requestDetailsData) {
-                if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
-                if (requestDetailsData.doctorName) data.doctorName = requestDetailsData.doctorName;
-                if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
+            const reqData = (reqRes as any)?.data ?? reqRes;
+            if (reqData) {
+                if (reqData.test_Name) {
+                    data.testName = reqData.test_Name;
+                    data.requestId = reqData.requestnumber || data.requestId;
+                    (data as any).visitNumber = reqData.visitnumber;
+                    data.doctorName = reqData.doctorname || data.doctorName;
+                    data.status = reqData.result_Status || data.status;
+                    data.labTest = { ...(data.labTest || {} as any), category: reqData.category };
+                    (data as any).category = reqData.category;
+                    (data as any).sampleType = reqData.sample_name;
+                    data.createdAt = reqData.collectedDate || data.createdAt;
+                    data.patientName = reqData.patientFullName || data.patientName;
+                    data.fileNumber = reqData.fileNumber || data.fileNumber;
+                    (data as any).approvedBy = reqData.approvedBy;
+                    (data as any).phone = reqData.phone;
+                } else {
+                    if (reqData.patientName) data.patientName = reqData.patientName;
+                    if (reqData.doctorName) data.doctorName = reqData.doctorName;
+                    if (reqData.testName) data.testName = reqData.testName;
+                }
                 
-                const paramsArray = requestDetailsData.parameters || requestDetailsData.labTestDetails || requestDetailsData.results || requestDetailsData.labResults;
+                const paramsArray = reqData.param || reqData.parameters || reqData.labTestDetails || reqData.results || reqData.labResults;
                 if (paramsArray && Array.isArray(paramsArray)) {
                     data.parameters = paramsArray.map((p: any) => ({
                         ...p,
-                        parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || p.testName || 'Unknown Parameter',
-                        referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? p.normalRangeMin ?? 0,
-                        referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? p.normalRangeMax ?? 0,
+                        parameterNameEnglish: p.param_Name || p.parameterNameEnglish || p.parameterName || p.name || p.testName || 'Unknown Parameter',
+                        referenceRangeMin: p.min_Normal ?? p.referenceRangeMin ?? p.minRange ?? p.normalRangeMin ?? 0,
+                        referenceRangeMax: p.max_Normal ?? p.referenceRangeMax ?? p.maxRange ?? p.normalRangeMax ?? 0,
                         unit: p.unit || p.measurementUnit || '',
-                        value: p.value || p.resultValue || p.result,
-                        status: p.status || p.resultStatus || p.interpretation
+                        value: p.param_Value ?? p.value ?? p.resultValue ?? p.result,
+                        status: p.abnormalFlag || p.status || p.resultStatus || p.interpretation
                     }));
                 }
             }
@@ -82,7 +106,35 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
             const res = await getLabResultDetails(id as string);
             const apiData = (res as any)?.data ?? res;
             if (apiData) {
-                data = { ...data, ...apiData };
+                if (apiData.test_Name) {
+                    data.testName = apiData.test_Name;
+                    data.requestId = apiData.requestnumber || data.requestId;
+                    (data as any).visitNumber = apiData.visitnumber;
+                    data.doctorName = apiData.doctorname || data.doctorName;
+                    data.status = apiData.result_Status || data.status;
+                    data.labTest = { ...(data.labTest || {} as any), category: apiData.category };
+                    (data as any).category = apiData.category;
+                    (data as any).sampleType = apiData.sample_name;
+                    data.createdAt = apiData.collectedDate || data.createdAt;
+                    data.patientName = apiData.patientFullName || data.patientName;
+                    data.fileNumber = apiData.fileNumber || data.fileNumber;
+                    (data as any).approvedBy = apiData.approvedBy;
+                    (data as any).phone = apiData.phone;
+                }
+                
+                if (apiData.param && Array.isArray(apiData.param)) {
+                    data.parameters = apiData.param.map((p: any) => ({
+                        ...p,
+                        parameterNameEnglish: p.param_Name || 'Unknown Parameter',
+                        value: p.param_Value,
+                        referenceRangeMin: p.min_Normal,
+                        referenceRangeMax: p.max_Normal,
+                        unit: p.unit,
+                        status: p.abnormalFlag
+                    }));
+                } else if (!apiData.test_Name) {
+                    data = { ...data, ...apiData };
+                }
             }
         } catch (err) {
             console.warn("Failed to load result details", err);
@@ -178,8 +230,8 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
                 <Download size={16} />
                 Download PDF
               </button>
-              <button 
-                onClick={() => navigate(`/dashboard/lab/edit-result/${detail.requestId ?? detail.id}`, { state: { orderData: detail } })}
+               <button 
+                onClick={() => navigate(`/dashboard/lab/edit/${detail.requestId ?? detail.id}`, { state: { orderData: detail } })}
                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 border border-transparent text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-sm transition-colors cursor-pointer"
               >
                 View Request Details
@@ -208,12 +260,12 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
 
                 <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Request ID</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Request Number</p>
                     <p className="text-sm font-bold text-slate-800">#{detail.requestId ?? detail.id}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Visit ID</p>
-                    <p className="text-sm font-bold text-slate-800">#{detail.id}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Visit Number</p>
+                    <p className="text-sm font-bold text-slate-800">{(detail as any).visitNumber || `#${detail.id}`}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ordering Doctor</p>
@@ -232,12 +284,12 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Category</p>
                     <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">
-                      {detail.labTest?.category || 'Biochemistry'}
+                      {detail.labTest?.category || (detail as any).category || 'Biochemistry'}
                     </span>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sample Type</p>
-                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">Blood/Serum</span>
+                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">{(detail as any).sampleType || 'Blood/Serum'}</span>
                   </div>
                 </div>
               </div>
@@ -259,7 +311,7 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
                   <div className="relative pl-6">
                     <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-blue-500"></div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approved By</p>
-                    <p className="text-sm font-bold text-slate-800">{detail.doctorName || "Pending"}</p>
+                    <p className="text-sm font-bold text-slate-800">{(detail as any).approvedBy || detail.doctorName || "Pending"}</p>
                   </div>
                   {!isLabTechnician && (
                     <div className="relative pl-6">
