@@ -32,10 +32,6 @@ export interface StaffRoleDetails {
 
     // Radiologist
     radiologistLicenseNumber?: string;
-
-    // Pharmacist
-    pharmacyDegree?: string;
-    pharmacyLicenseNumber?: string;
 }
 
 interface RoleDetailsFormProps {
@@ -104,7 +100,6 @@ const RoleDetailsForm = ({ details, onChange }: RoleDetailsFormProps) => {
                         <option value="Nurse">Nurse</option>
                         <option value="Lab Technician">Lab Technician</option>
                         <option value="Radiologist">Radiologist</option>
-                        <option value="Pharmacist">Pharmacist</option>
                         <option value="Admin">Admin</option>
                     </select>
                 </div>
@@ -292,32 +287,7 @@ const RoleDetailsForm = ({ details, onChange }: RoleDetailsFormProps) => {
                         </div>
                     )}
 
-                    {details.role === 'Pharmacist' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="col-span-1">
-                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-1">Pharmacy Degree</label>
-                                <select name="pharmacyDegree" value={details.pharmacyDegree || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-white border-0 rounded-xl focus:outline-none appearance-none font-medium">
-                                    <option value="">Select Degree</option>
-                                    <option value="master">master</option>
-                                </select>
-                            </div>
-                            <div className="col-span-1">
-                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-1">Employment Date</label>
-                                <input type="date" name="employmentDate" value={details.employmentDate || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-white border-0 rounded-xl focus:outline-none font-medium text-slate-500" />
-                            </div>
-                            <div className="col-span-1">
-                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-1">Shift Type</label>
-                                <select name="shiftType" value={details.shiftType || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-white border-0 rounded-xl focus:outline-none appearance-none font-medium">
-                                    <option value="">Select Shift Type</option>
-                                    <option value="morning">morning</option>
-                                </select>
-                            </div>
-                            <div className="col-span-1">
-                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-1">Pharmacy License Number</label>
-                                <input type="text" name="pharmacyLicenseNumber" value={details.pharmacyLicenseNumber || ''} onChange={handleChange} placeholder="877654" className="w-full px-4 py-2.5 bg-white border-0 rounded-xl focus:outline-none font-medium text-slate-900" />
-                            </div>
-                        </div>
-                    )}
+
 
                     {details.role === 'Admin' && (
                         <div className="text-center py-6">

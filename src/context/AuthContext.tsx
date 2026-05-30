@@ -90,8 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Standardize integer roles to string roles
             const rolesMap: Record<string, string> = {
-                '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
-                'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
+                '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+                'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
             };
             const roleStr = String(rawRole).trim();
             let role = rolesMap[roleStr] || (isNaN(parseInt(roleStr)) ? roleStr : 'Staff');

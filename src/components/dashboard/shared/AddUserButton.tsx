@@ -19,7 +19,6 @@ const MEDICAL_STAFF = [
     { label: 'Nurse', desc: 'Onboard clinical nursing staff', icon: BriefcaseMedical, role: 'Nurse' },
     { label: 'Lab Technician', desc: 'Laboratory and diagnostic personnel', icon: FlaskConical, role: 'Lab Technician' },
     { label: 'Radiologist', desc: 'Imaging and radiology specialists', icon: ScanEye, role: 'Radiologist' },
-    { label: 'Pharmacist', desc: 'Pharmacy management and staff', icon: Pill, role: 'Pharmacist' },
 ];
 
 export const AddUserButton = ({ onClick }: AddUserButtonProps) => {

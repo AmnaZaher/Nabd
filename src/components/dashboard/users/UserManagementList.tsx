@@ -31,7 +31,6 @@ const staffFilterConfig: FilterConfig[] = [
             { value: '3', label: 'Nurse' },
             { value: '6', label: 'Lab Technician' },
             { value: '5', label: 'Radiologist' },
-            { value: '4', label: 'Pharmacist' },
         ],
     },
     {
@@ -327,8 +326,8 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
             if (list && list.length > 0) {
                 const mappedStaff = list.map((item: any) => {
                     const rolesMap: Record<string, string> = {
-                        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '4': 'Pharmacist', '5': 'Radiologist', '6': 'Lab Technician',
-                        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Pharmacist': 'Pharmacist', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
+                        '1': 'Admin', '2': 'Doctor', '3': 'Nurse', '5': 'Radiologist', '6': 'Lab Technician',
+                        'Admin': 'Admin', 'Doctor': 'Doctor', 'Nurse': 'Nurse', 'Radiologist': 'Radiologist', 'Lab Technician': 'Lab Technician', 'LabTechnician': 'Lab Technician'
                     };
                     
                     // Comprehensive search for role

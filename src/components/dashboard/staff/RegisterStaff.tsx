@@ -78,8 +78,6 @@ const RegisterStaff = ({
     canApproveResults: false,
     canManageEquipment: false,
     radiologistLicenseNumber: "",
-    pharmacyDegree: "",
-    pharmacyLicenseNumber: "",
     employmentDate: "",
     shiftType: "",
   });
@@ -122,7 +120,6 @@ const RegisterStaff = ({
                 case 'Admin': roleInt = '1'; break;
                 case 'Doctor': roleInt = '2'; break;
                 case 'Nurse': roleInt = '3'; break;
-                case 'Pharmacist': roleInt = '4'; break;
                 case 'Radiologist': roleInt = '5'; break;
                 case 'Lab Technician': roleInt = '6'; break;
             }
@@ -157,8 +154,6 @@ const RegisterStaff = ({
             formData.append('CanApproveResults', roleDetails.canApproveResults ? 'true' : 'false');
             formData.append('CanManageEquipment', roleDetails.canManageEquipment ? 'true' : 'false');
             if (roleDetails.radiologistLicenseNumber) formData.append('RadiologistLicenseNumber', roleDetails.radiologistLicenseNumber);
-            if (roleDetails.pharmacyDegree) formData.append('PharmacyDegree', roleDetails.pharmacyDegree);
-            if (roleDetails.pharmacyLicenseNumber) formData.append('PharmacyLicenseNumber', roleDetails.pharmacyLicenseNumber);
             if (roleDetails.employmentDate) formData.append('EmploymentDate', roleDetails.employmentDate);
             if (roleDetails.shiftType) formData.append('ShiftType', roleDetails.shiftType);
 
@@ -245,7 +240,7 @@ const RegisterStaff = ({
                         {step === 3 && (
                             <UploadDocumentsForm
                                 documents={
-                                    ['Lab Technician', 'Radiologist', 'Pharmacist'].includes(roleDetails.role)
+                                    ['Lab Technician', 'Radiologist'].includes(roleDetails.role)
                                         ? documents.filter(
                                               (doc) =>
                                                   doc.title !== 'Certificate of Registration in the Medical Syndicate'

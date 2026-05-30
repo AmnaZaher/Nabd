@@ -4,7 +4,6 @@ export const STAFF_ROLES = {
     NURSE: 'Nurse',
     LAB_TECHNICIAN: 'Lab Technician',
     RADIOLOGIST: 'Radiologist',
-    PHARMACIST: 'Pharmacist',
 } as const;
 
 // Status
