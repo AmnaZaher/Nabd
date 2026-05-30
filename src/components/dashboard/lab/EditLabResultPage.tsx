@@ -33,10 +33,19 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
     async function loadData() {
         const orderData = location.state?.orderData;
         
+        // Robust numeric ID parsing to handle strings with letters (e.g. "LB-9021" -> 9021) and "NaN" -> fallback to orderData.id/requestId or 9421
+        const getNumericId = (val: any): number => {
+            if (val === undefined || val === null) return 0;
+            const parsed = typeof val === 'number' ? val : parseInt(val.toString().replace(/\D/g, ''), 10);
+            return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const parsedId = getNumericId(id) || getNumericId(orderData?.requestId) || getNumericId(orderData?.id) || 9421;
+
         // Initialize with fallback data based on orderData
         let data: LabResultDetail = {
-            id: Number(id),
-            requestId: Number(id),
+            id: parsedId,
+            requestId: parsedId,
             patientName: orderData?.patientName || orderData?.patient?.name || orderData?.name || "Unknown Patient",
             fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || "—",
             testName: orderData?.testName || orderData?.labTest?.testNameEnglish || orderData?.name || "Unknown Test",

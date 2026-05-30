@@ -257,7 +257,7 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
                 <p className="text-sm font-bold text-slate-800">{visitInfo.doctor}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">CLINC</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">CLINIC</p>
                 <p className="text-sm font-bold text-slate-800">{visitInfo.clinic}</p>
               </div>
               <div className="col-span-2">
@@ -357,7 +357,18 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
                           <button 
                             className="text-blue-600 hover:text-blue-800 transition-colors p-1 cursor-pointer" 
                             title="View"
-                            onClick={() => navigate(`/dashboard/lab/result/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS' } })}
+                            onClick={() => navigate(`/dashboard/lab/result/${test.id.replace('#', '')}`, { 
+                              state: { 
+                                from: location.pathname, 
+                                base: location.state?.base || location.state?.from, 
+                                label: 'PATIENT VISITS',
+                                orderData: {
+                                  ...test,
+                                  patientName: patientInfo.name,
+                                  fileNumber: patientInfo.id
+                                }
+                              } 
+                            })}
                           >
                             <Eye size={16} />
                           </button>
@@ -365,7 +376,18 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
                             <button 
                               className="text-slate-500 hover:text-slate-700 transition-colors p-1 cursor-pointer" 
                               title="Edit"
-                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS', orderData: test } })}
+                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`, { 
+                                state: { 
+                                  from: location.pathname, 
+                                  base: location.state?.base || location.state?.from, 
+                                  label: 'PATIENT VISITS', 
+                                  orderData: {
+                                    ...test,
+                                    patientName: patientInfo.name,
+                                    fileNumber: patientInfo.id
+                                  } 
+                                } 
+                              })}
                             >
                               <FileEdit size={16} />
                             </button>

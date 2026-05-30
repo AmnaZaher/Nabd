@@ -86,7 +86,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
         let isError = !!apiError;
         let fallback = false;
 
-        if (!finalData || !Array.isArray(finalData) || isError) {
+        if (!finalData || !Array.isArray(finalData) || finalData.length === 0 || isError) {
             finalData = MOCK_LAB_RESULTS;
             fallback = true;
             if (apiError) {
@@ -387,7 +387,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                                 <td className="px-4 py-5">
                                                     <div className="flex items-center gap-3 text-slate-400">
                                                         <button 
-                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS' } })}
+                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS', orderData: req } })}
                                                             className="hover:text-blue-600 transition-colors"
                                                             title="View"
                                                         >

@@ -8,7 +8,7 @@ import {
     Info,
     Loader2
 } from "lucide-react";
-import { getLabResultDetails, approveLabResult } from "../../../api/labs";
+import { getLabResultApprovalDetails, approveLabResult, rejectLabResult } from "../../../api/labs";
 import type { LabResultDetail } from "../../../types/labs.types";
 import TopBar from "../TopBar";
 
@@ -24,6 +24,14 @@ interface ApproveLabResultPageProps {
   onProfileClick?: () => void;
 }
 
+function formatDate(dateStr?: string) {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return `${day} ${time}`;
+}
+
 export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: ApproveLabResultPageProps) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,9 +44,25 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await getLabResultDetails(id as string);
-        const data: LabResultDetail = (res as any)?.data ?? res;
+        const res = await getLabResultApprovalDetails(id as string);
+        let data: LabResultDetail = (res as any)?.data ?? res;
         
+        // Handle double wrapping if present
+        if (data && (data as any).data) {
+          data = (data as any).data;
+        }
+
+        // Map parameters robustly to handle backend field variations
+        if (data.parameters && Array.isArray(data.parameters)) {
+          data.parameters = data.parameters.map((p: any) => ({
+            ...p,
+            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
+            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
+            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+            unit: p.unit || p.measurementUnit || ''
+          }));
+        }
+
         // Inject mock parameters if none are returned
         if (!data.parameters || data.parameters.length === 0) {
           data.parameters = mockParams;
@@ -48,10 +72,16 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
 
       } catch (err) {
         console.error("Failed to load result details:", err);
+        const getNumericId = (val: any): number => {
+            if (val === undefined || val === null) return 0;
+            const parsed = typeof val === 'number' ? val : parseInt(val.toString().replace(/\D/g, ''), 10);
+            return isNaN(parsed) ? 0 : parsed;
+        };
+        const parsedId = getNumericId(id) || 9421;
         // Fallback to mock data
         setDetail({
-            id: Number(id),
-            requestId: Number(id),
+            id: parsedId,
+            requestId: parsedId,
             patientName: "Emma Lawson",
             fileNumber: "PT-88291",
             testName: "Comprehensive Metabolic Panel",
@@ -103,8 +133,16 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
   };
 
   const handleReject = async () => {
-    // Implement reject logic if API supports it, otherwise go back
-    navigate("/dashboard/lab-test");
+    if (!detail) return;
+    setSubmitting(true);
+    try {
+      await rejectLabResult(detail.id);
+      navigate("/dashboard/lab-test");
+    } catch (e: any) {
+      alert(e.message ?? "Failed to reject results.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -174,15 +212,15 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
               
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">LABORATORY ANALYST</p>
-                <p className="text-sm font-bold text-slate-800">Alex Rivers</p>
+                <p className="text-sm font-bold text-slate-800">{(detail as any).labTechnicianName || (detail as any).labTechnician?.name || "Alex Rivers"}</p>
               </div>
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">SAMPLE DATE</p>
-                <p className="text-sm font-bold text-slate-800">Oct 24, 2023</p>
+                <p className="text-sm font-bold text-slate-800">{formatDate(detail.createdAt || detail.createDate)}</p>
               </div>
               <div className="md:col-span-2">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">DEPARTMENT</p>
-                <p className="text-sm font-bold text-slate-800">Internal Medicine</p>
+                <p className="text-sm font-bold text-slate-800">{(detail as any).department || "Internal Medicine"}</p>
               </div>
             </div>
           </div>
