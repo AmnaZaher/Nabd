@@ -68,9 +68,11 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
                 if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
                 
                 // If it contains parameters directly
-                if (requestDetailsData.parameters && Array.isArray(requestDetailsData.parameters)) {
-                    data.parameters = requestDetailsData.parameters.map((p: any) => ({
+                const paramsList = requestDetailsData.parameters || requestDetailsData.labParameters || requestDetailsData.testParameters || requestDetailsData.labTest?.parameters;
+                if (paramsList && Array.isArray(paramsList)) {
+                    data.parameters = paramsList.map((p: any) => ({
                         ...p,
+                        id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
                         parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
                         referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
                         referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
@@ -97,16 +99,18 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
 
         // 3. If we STILL don't have parameters, try fetching by TestId or Name
         if (!data.parameters || data.parameters.length === 0) {
-            const testId = (data as any).testId || (data as any).labTestId || (data as any).labTest?.id || requestDetailsData?.testId || orderData?.testId || orderData?.labTestId || orderData?.labTest?.id;
+            const testId = (data as any).testId || (data as any).labTestId || (data as any).labTest?.id || requestDetailsData?.testId || requestDetailsData?.labTestId || requestDetailsData?.labTest?.id || orderData?.testId || orderData?.labTestId || orderData?.labTest?.id;
             let testParams = null;
 
             if (testId) {
                 try {
                     const testRes = await getLabTestDetails(testId);
                     const testData = (testRes as any)?.data ?? testRes;
-                    if (testData?.parameters && testData.parameters.length > 0) {
-                        testParams = testData.parameters.map((p: any) => ({
+                    const testDataParams = testData?.parameters || testData?.labParameters || testData?.testParameters || testData?.labTestParameters;
+                    if (testDataParams && testDataParams.length > 0) {
+                        testParams = testDataParams.map((p: any) => ({
                             ...p,
+                            id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
                             parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
                             referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
                             referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
@@ -134,6 +138,7 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
                     if (matchedTest?.parameters && matchedTest.parameters.length > 0) {
                         testParams = matchedTest.parameters.map((p: any) => ({
                             ...p,
+                            id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
                             parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
                             referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
                             referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
@@ -197,11 +202,14 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
     
     const results = (detail.parameters ?? [])
       .filter((p) => values[p.id] !== undefined && values[p.id] !== "")
-      .map((p) => ({
-        paramterId: p.id,
-        paramterValue: parseFloat(values[p.id] ?? "0"),
-        comment: notes,
-      }));
+      .map((p) => {
+        const pId = p.id || (p as any).parameterId || (p as any).paramterId || 0;
+        return {
+          paramterId: pId,
+          paramterValue: parseFloat(values[p.id] ?? "0"),
+          comment: notes,
+        };
+      });
 
     if (results.length === 0) {
       alert("Please enter at least one result value.");
@@ -210,7 +218,11 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
 
     setSubmitting(true);
     try {
-      await createLabResult({ requestId: detail.requestId ?? detail.id, results });
+      // Ensure requestId is strictly a number to satisfy C# backend validation
+      const rawId = detail.requestId ?? detail.id;
+      const parsedRequestId = typeof rawId === 'number' ? rawId : parseInt(String(rawId).replace(/\D/g, ''), 10);
+      
+      await createLabResult({ requestId: parsedRequestId || 0, results });
       navigate("/dashboard");
     } catch (e: any) {
       alert(e.message ?? "Failed to submit results.");
