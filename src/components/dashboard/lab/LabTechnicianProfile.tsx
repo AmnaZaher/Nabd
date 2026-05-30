@@ -23,9 +23,10 @@ import ChangePasswordModal from "../RECEPTIONIST/ChangePasswordModal";
 
 interface LabTechnicianProfileProps {
   onMenuClick?: () => void;
+  onProfileClick?: () => void;
 }
 
-const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick }) => {
+const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick, onProfileClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -74,12 +75,36 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
     city: "Chicago",
     country: "USA",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&h=200&auto=format&fit=crop",
-    department: "Biochemistry & Hematology"
+    department: "Biochemistry & Hematology",
+    licenseId: "LT-2023-8842",
+    employmentDate: "2021-01-15T00:00:00.000Z",
+    createdAt: "2021-01-10T00:00:00.000Z",
+    lastUpdated: "2023-10-24T00:00:00.000Z",
+    lastLogin: "2023-10-24T08:05:00.000Z"
+  };
+
+  const isDefaultDate = (dateStr?: string) => {
+    if (!dateStr) return true;
+    return dateStr.startsWith('0001') || dateStr.startsWith('1900');
+  };
+
+  const resolveImageUrl = (url: any) => {
+    if (!url) return '';
+    let strUrl = url;
+    if (Array.isArray(url) && url.length > 0) {
+      strUrl = url[0];
+    }
+    if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+    strUrl = strUrl.replace(/\\/g, '/');
+    strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
+    if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+    if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+    return `https://nabd.runasp.net/${strUrl}`;
   };
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
-      <TopBar title="LABORATORY PROFILE" showAddUser={false} onMenuClick={onMenuClick || (() => {})} />
+      <TopBar title="LABORATORY PROFILE" showAddUser={false} onMenuClick={onMenuClick || (() => {})} onProfileClick={onProfileClick} />
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6 pb-20">
         
@@ -89,7 +114,7 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
             <div className="relative">
               <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
                 <img
-                  src={displayProfile.avatar}
+                  src={displayProfile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayProfile.name || 'Lab')}&background=random`}
                   alt={displayProfile.name}
                   className="w-full h-full object-cover"
                 />
@@ -111,7 +136,7 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
               <div className="flex flex-col gap-1.5 text-sm font-medium text-slate-500">
                 <div className="flex items-center gap-2">
                   <Briefcase size={16} className="text-slate-400" />
-                  {displayProfile.department}
+                  {displayProfile.department || "Biochemistry & Hematology"}
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock size={16} className="text-slate-400" />
@@ -150,7 +175,7 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
               <InfoField label="FULL NAME (ARABIC)" value={displayProfile.fullNameArabic || "--"} isArabic />
               <InfoField label="NATIONAL ID" value={displayProfile.nationalId || "--"} />
               <InfoField label="GENDER" value={displayProfile.gender || "--"} />
-              <InfoField label="DATE OF BIRTH" value={displayProfile.dateOfBirth ? new Date(displayProfile.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "--"} />
+              <InfoField label="DATE OF BIRTH" value={displayProfile.dateOfBirth && !isDefaultDate(displayProfile.dateOfBirth) ? new Date(displayProfile.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "--"} />
               <InfoField label="PHONE" value={displayProfile.phone || "--"} />
               <div className="md:col-span-2">
                 <InfoField label="EMAIL" value={displayProfile.email || "--"} isLink />
@@ -170,11 +195,15 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
             <div className="space-y-6">
               <div className="flex justify-between items-center border-b border-slate-50 pb-4">
                 <span className="text-sm font-medium text-slate-500">License Number</span>
-                <span className="text-sm font-bold text-slate-800">LT-2023-8842</span>
+                <span className="text-sm font-bold text-slate-800">{displayProfile.licenseId || displayProfile.licenseNumber || "N/A"}</span>
               </div>
               <div className="flex justify-between items-center border-b border-slate-50 pb-4">
                 <span className="text-sm font-medium text-slate-500">Employment Date</span>
-                <span className="text-sm font-bold text-slate-800">Jan 15, 2021</span>
+                <span className="text-sm font-bold text-slate-800">
+                  {displayProfile.employmentDate && !isDefaultDate(displayProfile.employmentDate)
+                    ? new Date(displayProfile.employmentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : "Jan 15, 2021"}
+                </span>
               </div>
               
               <div>
@@ -211,13 +240,61 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <DocumentCard title="ID Card" size="1.2 MB" type="PDF" icon="id" />
-            <DocumentCard title="Qualification Certificate" size="4.5 MB" type="PDF" icon="cert" />
-            <DocumentCard title="Internship Certificate" size="2.1 MB" type="JPG" icon="img" />
-            <DocumentCard title="Practice License" size="3.8 MB" type="PDF" icon="license" />
-            <DocumentCard title="Health Certificate" size="1.1 MB" type="PDF" icon="health" />
-            <DocumentCard title="Personal Photos" size="12.4 MB" type="ZIP" icon="zip" />
-            <DocumentCard title="Professional CV" size="0.9 MB" type="PDF" icon="cv" />
+            {displayProfile.documents && displayProfile.documents.length > 0 ? (
+              displayProfile.documents.map((doc: any, index: number) => {
+                const docType = doc.documentType || doc.type || 'Document';
+                const fileUrl = resolveImageUrl(doc.fileUrl || doc.url);
+                let fileName = docType;
+                try {
+                  const urlParts = fileUrl.split(/[/\\]/);
+                  const lastPart = urlParts[urlParts.length - 1];
+                  if (lastPart && lastPart.includes('.')) {
+                    fileName = lastPart;
+                  }
+                } catch (e) {}
+
+                let iconType = 'file';
+                let fileExtension = 'PDF';
+                if (fileUrl.toLowerCase().endsWith('.jpg') || fileUrl.toLowerCase().endsWith('.jpeg') || fileUrl.toLowerCase().endsWith('.png')) {
+                  iconType = 'img';
+                  fileExtension = fileUrl.split('.').pop()?.toUpperCase() || 'JPG';
+                } else if (fileUrl.toLowerCase().endsWith('.zip') || fileUrl.toLowerCase().endsWith('.rar')) {
+                  iconType = 'zip';
+                  fileExtension = 'ZIP';
+                } else if (docType.toLowerCase().includes('license')) {
+                  iconType = 'license';
+                } else if (docType.toLowerCase().includes('photo')) {
+                  iconType = 'img';
+                }
+
+                return (
+                  <a 
+                    key={index}
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <DocumentCard 
+                      title={docType.replace(/([A-Z])/g, ' $1').trim()} 
+                      size="Available" 
+                      type={fileExtension} 
+                      icon={iconType} 
+                    />
+                  </a>
+                );
+              })
+            ) : (
+              <>
+                <DocumentCard title="ID Card" size="1.2 MB" type="PDF" icon="id" />
+                <DocumentCard title="Qualification Certificate" size="4.5 MB" type="PDF" icon="cert" />
+                <DocumentCard title="Internship Certificate" size="2.1 MB" type="JPG" icon="img" />
+                <DocumentCard title="Practice License" size="3.8 MB" type="PDF" icon="license" />
+                <DocumentCard title="Health Certificate" size="1.1 MB" type="PDF" icon="health" />
+                <DocumentCard title="Personal Photos" size="12.4 MB" type="ZIP" icon="zip" />
+                <DocumentCard title="Professional CV" size="0.9 MB" type="PDF" icon="cv" />
+              </>
+            )}
           </div>
         </div>
 
@@ -237,15 +314,27 @@ const LabTechnicianProfile: React.FC<LabTechnicianProfileProps> = ({ onMenuClick
             </div>
             <div className="flex justify-between items-center border-b border-slate-50 pb-4">
               <span className="text-sm font-medium text-slate-500">Created At</span>
-              <span className="text-sm font-medium text-slate-800">Jan 10, 2021</span>
+              <span className="text-sm font-medium text-slate-800">
+                {displayProfile.createdAt && !isDefaultDate(displayProfile.createdAt)
+                  ? new Date(displayProfile.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : "Jan 10, 2021"}
+              </span>
             </div>
             <div className="flex justify-between items-center border-b border-slate-50 pb-4">
               <span className="text-sm font-medium text-slate-500">Last Updated</span>
-              <span className="text-sm font-medium text-slate-800">Oct 24, 2023</span>
+              <span className="text-sm font-medium text-slate-800">
+                {displayProfile.lastUpdated && !isDefaultDate(displayProfile.lastUpdated)
+                  ? new Date(displayProfile.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : "Oct 24, 2023"}
+              </span>
             </div>
             <div className="flex justify-between items-center pb-2">
               <span className="text-sm font-medium text-slate-500">Last Login</span>
-              <span className="text-sm font-bold text-slate-800">Today, 08:05 AM</span>
+              <span className="text-sm font-bold text-slate-800">
+                {displayProfile.lastLogin && !isDefaultDate(displayProfile.lastLogin)
+                  ? new Date(displayProfile.lastLogin).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : "Today, 08:05 AM"}
+              </span>
             </div>
           </div>
         </div>

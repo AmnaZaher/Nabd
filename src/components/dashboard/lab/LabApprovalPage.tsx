@@ -18,19 +18,22 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { exportLabPDF } from '../../../api/labs';
-import { useGetLabResultsQuery, useApproveLabResultMutation } from '../../../store/api/labApiSlice';
+import {
+    useGetResultsToApproveQuery,
+    useGetApprovalDashboardStatsQuery,
+    useApproveLabResultMutation,
+} from '../../../store/api/labApiSlice';
 import type { LabResult } from '../../../types/labs.types';
 import TopBar from '../TopBar';
 
 // Normalisation of status to match our UI mapping
 function normaliseStatus(raw: string | undefined): string {
-    if (!raw) return "Pending";
+    if (!raw) return "Pending Approval";
     const s = raw.trim().toLowerCase();
-    if (s === "pending" || s === "scheduled") return "Pending";
-    if (s === "inprogress" || s === "in progress" || s === "in_progress") return "In Progress";
-    if (s === "completed" || s === "complete") return "Pending Approval";
-    if (s === "approved") return "Reviewed";
-    return "Pending";
+    if (s === "approved" || s === "reviewed") return "Reviewed";
+    if (s === "pending approval" || s === "pending review" || s === "completed" || s === "complete") return "Pending Approval";
+    // For results to approve list, default status to Pending Approval
+    return "Pending Approval";
 }
 
 function formatDate(dateStr?: string) {
@@ -49,7 +52,12 @@ const MOCK_LAB_RESULTS: LabResult[] = [
   { id: 99275, patientName: "Robert King", fileNumber: "M, 65y", testName: "Glucose Tolerance", doctorName: "Dr. Aris Thorne", status: "Approved", priority: "Normal", createdAt: "2023-10-24T11:15:00" },
 ];
 
-const LabApprovalPage: React.FC = () => {
+interface LabApprovalPageProps {
+    onMenuClick?: () => void;
+    onProfileClick?: () => void;
+}
+
+const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfileClick }) => {
     const navigate = useNavigate();
 
 
@@ -62,27 +70,42 @@ const LabApprovalPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [approvingIds, setApprovingIds] = useState<Set<number>>(new Set());
 
-    const { data: apiData, isLoading, isError } = useGetLabResultsQuery();
+    const { data: apiData, isLoading, isError, error: apiError } = useGetResultsToApproveQuery();
+    const { data: dashboardData } = useGetApprovalDashboardStatsQuery();
     const [approveResultMutation] = useApproveLabResultMutation();
 
     const results = useMemo(() => {
-        if (apiData && apiData.length > 0) return apiData;
-        if (isError) {
-            console.warn("Failed to load lab results. Falling back to mock data.");
-            return MOCK_LAB_RESULTS;
+        let finalData = apiData;
+        
+        // Handle case where backend wraps response in a 'data' property
+        if (finalData && (finalData as any).data) {
+            finalData = (finalData as any).data;
+            if (finalData && (finalData as any).data) {
+                finalData = (finalData as any).data;
+            }
         }
-        return [];
-    }, [apiData, isError]);
+
+        // Fallback to mock data if there is an error, if data is missing, or if the database is empty (no records yet)
+        if (finalData && Array.isArray(finalData) && finalData.length > 0) return finalData;
+        
+        console.info("No active results in database or API error. Showing mock data fallback.");
+        return MOCK_LAB_RESULTS;
+    }, [apiData, isError, apiError]);
 
     const loading = isLoading;
 
     // Data Processing
     const approvalList = useMemo(() => {
-        // We only want tests that are completed or approved for this screen
-        return results.filter(r => {
-            const s = normaliseStatus(r.status);
-            return s === "Pending Approval" || s === "Reviewed";
-        });
+        // If results are mock results, filter them
+        const isMock = results === MOCK_LAB_RESULTS;
+        if (isMock) {
+            return results.filter(r => {
+                const s = normaliseStatus(r.status);
+                return s === "Pending Approval" || s === "Reviewed";
+            });
+        }
+        // Otherwise, show all results returned by the backend endpoint GetResultsToApprove
+        return results;
     }, [results]);
 
     // Derived stats
@@ -104,8 +127,19 @@ const LabApprovalPage: React.FC = () => {
             }
         });
 
-        return { totalPending, approvedToday, criticalWaiting, avgTime: 18 };
-    }, [approvalList]);
+        // Use backend stats from ApprovalDashBoard if returned, fallback to calculated
+        const totalPendingStat = dashboardData?.totalPending ?? dashboardData?.pendingRequest ?? dashboardData?.total ?? totalPending;
+        const approvedTodayStat = dashboardData?.approvedToday ?? dashboardData?.completedToday ?? approvedToday;
+        const criticalWaitingStat = dashboardData?.criticalWaiting ?? dashboardData?.criticalResult ?? criticalWaiting;
+        const avgTimeStat = dashboardData?.avgTime ?? dashboardData?.averageApprovalTime ?? 18;
+
+        return { 
+            totalPending: totalPendingStat, 
+            approvedToday: approvedTodayStat, 
+            criticalWaiting: criticalWaitingStat, 
+            avgTime: avgTimeStat 
+        };
+    }, [approvalList, dashboardData]);
 
     // Filtering
     const uniqueTests = ["All Tests", ...Array.from(new Set(approvalList.map(r => r.testName ?? r.labTest?.testNameEnglish ?? "Unknown"))).filter(Boolean)];
@@ -164,7 +198,8 @@ const LabApprovalPage: React.FC = () => {
         <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
             <TopBar
                 title="APPROVE RESULTS"
-                onMenuClick={() => {}}
+                onMenuClick={onMenuClick || (() => {})}
+                onProfileClick={onProfileClick}
                 showAddUser={false}
             />
             <main className="flex-1 overflow-y-auto p-6 md:p-10">
@@ -425,7 +460,7 @@ const LabApprovalPage: React.FC = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-1">
                                                         <button 
-                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS' } })}
+                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS', orderData: req } })}
                                                             className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                                                             title="View Details"
                                                         >

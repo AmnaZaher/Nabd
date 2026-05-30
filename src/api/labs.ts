@@ -23,7 +23,7 @@ export const getLabCatalog = async (pageIndex = 1, pageSize = 5) => {
  * @param id The ID of the test.
  */
 export const getLabTestDetails = async (id: number | string) => {
-  return await fetchApi<LabTest>(`/Lab/LabCatologs?id=${id}`, {
+  return await fetchApi<LabTest>(`/Lab/LabCatalogDetails/${id}`, {
     method: 'GET',
   });
 };
@@ -43,7 +43,7 @@ export const createLabTest = async (payload: CreateLabTestDto) => {
  * Note: The backend expects finalResul as a QUERY PARAM, not a body.
  */
 export const approveLabResult = async (resultId: number | string) => {
-  return await fetchApi(`/Lab/Approve?finalResul=${resultId}`, {
+  return await fetchApi(`/Lab/Approve?id=${resultId}`, {
     method: 'POST',
   });
 };
@@ -65,6 +65,24 @@ export const getLabResults = async () => {
 export const getLabResultDetails = async (id: number | string) => {
   return await fetchApi<LabResultDetail>(`/Lab/GetResultDetails?id=${id}`, {
     method: 'GET',
+  });
+};
+
+/**
+ * Get detailed info for a result to approve.
+ */
+export const getLabResultApprovalDetails = async (id: number | string) => {
+  return await fetchApi<LabResultDetail>(`/Lab/LabResultApprovalDetails?id=${id}`, {
+    method: 'GET',
+  });
+};
+
+/**
+ * Reject a lab result.
+ */
+export const rejectLabResult = async (resultId: number | string) => {
+  return await fetchApi(`/Lab/RejectResult?id=${resultId}`, {
+    method: 'POST',
   });
 };
 

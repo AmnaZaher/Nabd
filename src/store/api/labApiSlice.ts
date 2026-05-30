@@ -30,11 +30,43 @@ export const labApiSlice = apiSlice.injectEndpoints({
         }),
         getLabResults: builder.query<LabResult[], void>({
             query: () => '/Lab/GetResults',
+            transformResponse: (response: any) => {
+                if (response && response.data) {
+                    return response.data;
+                }
+                return response;
+            },
             providesTags: ['LabResult'],
         }),
         approveLabResult: builder.mutation<void, number | string>({
             query: (id) => ({
-                url: `/Lab/Approve?finalResul=${id}`,
+                url: `/Lab/Approve?id=${id}`,
+                method: 'POST',
+            }),
+            invalidatesTags: ['LabResult', 'LabOrder'],
+        }),
+        getResultsToApprove: builder.query<LabResult[], void>({
+            query: () => '/Lab/GetResultsToApprove',
+            transformResponse: (response: any) => {
+                if (response && response.data) {
+                    return response.data;
+                }
+                return response;
+            },
+            providesTags: ['LabResult'],
+        }),
+        getApprovalDashboardStats: builder.query<any, void>({
+            query: () => '/Lab/ApprovalDashBoard',
+            transformResponse: (response: any) => {
+                if (response && response.data) {
+                    return response.data;
+                }
+                return response;
+            },
+        }),
+        rejectLabResult: builder.mutation<void, number | string>({
+            query: (id) => ({
+                url: `/Lab/RejectResult?id=${id}`,
                 method: 'POST',
             }),
             invalidatesTags: ['LabResult', 'LabOrder'],
@@ -47,4 +79,7 @@ export const {
     useGetLabDashboardStatsQuery,
     useGetLabResultsQuery,
     useApproveLabResultMutation,
+    useGetResultsToApproveQuery,
+    useGetApprovalDashboardStatsQuery,
+    useRejectLabResultMutation,
 } = labApiSlice;

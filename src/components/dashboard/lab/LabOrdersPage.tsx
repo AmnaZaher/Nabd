@@ -86,7 +86,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
         let isError = !!apiError;
         let fallback = false;
 
-        if (!finalData || !Array.isArray(finalData) || isError) {
+        if (!finalData || !Array.isArray(finalData) || finalData.length === 0 || isError) {
             finalData = MOCK_LAB_RESULTS;
             fallback = true;
             if (apiError) {
@@ -135,7 +135,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
         const s = normaliseStatus(r.status);
         
         if (statusFilter !== "All" && s !== statusFilter) return false;
-        if (searchQuery && !pName.includes(searchQuery.toLowerCase()) && !r.id.toString().includes(searchQuery)) return false;
+        if (searchQuery && !pName.includes(searchQuery.toLowerCase()) && !r.id.toString().includes(searchQuery) && !(r.requestNumber?.toString() || "").includes(searchQuery) && !(r.patientFileNumber || "").includes(searchQuery)) return false;
         if (testFilter !== "Test Name" && tName !== testFilter) return false;
         if (doctorFilter !== "Doctor" && dName !== doctorFilter) return false;
         return true;
@@ -327,7 +327,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                     paginatedList.map(req => {
                                         const status = normaliseStatus(req.status);
                                         const pName = req.patientName ?? req.patient?.name ?? "Unknown";
-                                        const pDetails = req.fileNumber ?? "—";
+                                        const pDetails = req.patientFileNumber ?? req.fileNumber ?? "—";
                                         const tName = req.testName ?? req.labTest?.testNameEnglish ?? "—";
                                         const dName = (req.doctorName || req.doctor?.name) || "—";
 
@@ -350,7 +350,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                         return (
                                             <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
                                                 <td className="px-4 py-5">
-                                                    <span className="text-sm font-bold text-blue-600">#REQ-<br/>{req.id}</span>
+                                                    <span className="text-sm font-bold text-blue-600">#REQ-<br/>{req.requestNumber ?? req.id}</span>
                                                 </td>
                                                 <td className="px-4 py-5">
                                                     <div 
@@ -387,7 +387,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                                 <td className="px-4 py-5">
                                                     <div className="flex items-center gap-3 text-slate-400">
                                                         <button 
-                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS' } })}
+                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS', orderData: req } })}
                                                             className="hover:text-blue-600 transition-colors"
                                                             title="View"
                                                         >

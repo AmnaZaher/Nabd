@@ -44,6 +44,11 @@ import RadiologistExamRooms from "./radiologist/RadiologistExamRooms";
 import RadiologistReporting from "./radiologist/RadiologistReporting";
 import RadiologistResults from "./radiologist/RadiologistResults";
 import RadiologistReviewReport from "./radiologist/RadiologistReviewReport";
+import RadiologyViewExam from "./radiologist/RadiologyViewExam";
+import RadiologyStartExam from "./radiologist/RadiologyStartExam";
+import RadiologyScanning from "./radiologist/RadiologyScanning";
+import RadiologyDraftReport from "./radiologist/RadiologyDraftReport";
+import RadiologyFinalReport from "./radiologist/RadiologyFinalReport";
 import EditLabResultPage from "./lab/EditLabResultPage";
 import VisitLabTestsPage from "./lab/VisitLabTestsPage";
 import LabResultDetailsPage from "./lab/LabResultDetailsPage";
@@ -299,12 +304,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
           {/* Lab Technician Flow */}
           <Route path="lab-test-request" element={<LabOrdersPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
-          <Route path="lab-test" element={<LabApprovalPage />} />
+          <Route path="lab-test" element={<LabApprovalPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
           <Route path="lab">
-            <Route path="edit/:id" element={<EditLabResultPage />} />
-            <Route path="approve/:id" element={<ApproveLabResultPage />} />
-            <Route path="visit/:id" element={<VisitLabTestsPage />} />
-            <Route path="result/:id" element={<LabResultDetailsPage />} />
+            <Route path="edit/:id" element={<EditLabResultPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+            <Route path="approve/:id" element={<ApproveLabResultPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+            <Route path="visit/:id" element={<VisitLabTestsPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+            <Route path="result/:id" element={<LabResultDetailsPage onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
           </Route>
 
           {/* Appointments (admin / nurse / receptionist) */}
@@ -342,6 +347,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <Route path="radiology/patient/:id" element={<RadiologistPatientProfile onMenuClick={() => setIsSidebarOpen(true)} />} />
           <Route path="radiology/results" element={<RadiologistResults onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} /> 
           <Route path="radiology/results/review/:queueId" element={<RadiologistReviewReport onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />          
+          <Route path="radiology/view-exam/:id" element={<RadiologyViewExam onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="radiology/start-exam/:id" element={<RadiologyStartExam onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="radiology/scan/:id" element={<RadiologyScanning onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="radiology/report-draft/:id" element={<RadiologyDraftReport onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
+          <Route path="radiology/final-report/:id" element={<RadiologyFinalReport onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
 
           {/* Nurse patients alias */}
           <Route path="patients" element={<UserManagementList onMenuClick={() => setIsSidebarOpen(true)} onAddUserClick={handleAddUser} onProfileClick={handleProfileClick} />} />
@@ -368,7 +378,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               ) : isDoctor ? (
                 <DoctorProfileDetail onMenuClick={() => setIsSidebarOpen(true)} />
               ) : effectiveIsLabTechnician ? (
-                <LabTechnicianProfile />
+                <LabTechnicianProfile onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />
               ) : (
                 <ReceptionistProfile />
               )
@@ -382,7 +392,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               ) : isDoctor ? (
                 <EditDoctorProfilePage />
               ) : effectiveIsLabTechnician ? (
-                <EditLabTechnicianProfile />
+                <EditLabTechnicianProfile onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />
               ) : (
                 <EditReceptionistProfile />
               )

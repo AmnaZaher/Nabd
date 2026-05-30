@@ -6,13 +6,20 @@ import { staffApi } from '../../../api/staff';
 import type { StaffProfile } from '../../../types/staff.types';
 import TopBar from '../TopBar';
 
-const EditLabTechnicianProfile: React.FC = () => {
+interface EditLabTechnicianProfileProps {
+  onMenuClick?: () => void;
+  onProfileClick?: () => void;
+}
+
+const EditLabTechnicianProfile: React.FC<EditLabTechnicianProfileProps> = ({ onMenuClick, onProfileClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState<any>({
     FullNameEnglish: '',
@@ -25,6 +32,29 @@ const EditLabTechnicianProfile: React.FC = () => {
     Address: '',
   });
 
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const isDefaultDate = (dateStr?: string) => {
+    if (!dateStr) return true;
+    return dateStr.startsWith('0001') || dateStr.startsWith('1900');
+  };
+
+  const resolveImageUrl = (url: any) => {
+    if (!url) return '';
+    let strUrl = url;
+    if (Array.isArray(url) && url.length > 0) {
+      strUrl = url[0];
+    }
+    if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+    strUrl = strUrl.replace(/\\/g, '/');
+    strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
+    if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+    if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+    return `https://nabd.runasp.net/${strUrl}`;
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       if (user?.id) {
@@ -34,18 +64,19 @@ const EditLabTechnicianProfile: React.FC = () => {
           if (data) {
             setProfile(data);
             setFormData({
-              FullNameEnglish: data.name || '',
-              FullNameArabic: data.fullNameArabic || '',
-              NationalId: data.nationalId || '',
+              FullNameEnglish: data.name || data.fullNameEnglish || data.FullNameEnglish || '',
+              FullNameArabic: data.fullNameArabic || data.FullNameArabic || '',
+              NationalId: data.nationalId || data.NationalId || '',
               Gender: data.gender || 'Female',
-              DateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString().split('T')[0] : '',
-              PhoneNumber: data.phone || '',
-              Email: data.email || '',
-              Address: data.address || '',
+              DateOfBirth: data.dateOfBirth && !isDefaultDate(data.dateOfBirth) ? new Date(data.dateOfBirth).toISOString().split('T')[0] : '',
+              PhoneNumber: data.phone || data.phoneNumber || data.PhoneNumber || '',
+              Email: data.email || data.Email || '',
+              Address: data.address || data.Address || '',
             });
           }
         } catch (error) {
           console.error("Failed to fetch profile:", error);
+          setError("Failed to load profile data.");
         } finally {
           setLoading(false);
         }
@@ -60,14 +91,33 @@ const EditLabTechnicianProfile: React.FC = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSave = async () => {
     if (!profile?.id) return;
     setSaving(true);
+    setError(null);
+    setSuccess(false);
     try {
-      await staffApi.updateLabTechnicianProfile(profile.id, formData);
-      navigate(-1);
+      const payload = {
+        ...formData,
+        PersonalPhotos: imageFile || undefined,
+        showImage: profile.avatar || undefined,
+      };
+      await staffApi.updateLabTechnicianProfile(profile.id, payload);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate(-1);
+      }, 1500);
     } catch (err: any) {
       console.error('Save failed:', err);
+      setError(err.message || 'Failed to save profile changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -82,7 +132,7 @@ const EditLabTechnicianProfile: React.FC = () => {
   }
 
   // Fallback to static data if no profile returned to match the UI state perfectly
-  const displayAvatar = profile?.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop";
+  const displayAvatar = imagePreview || profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.FullNameEnglish || 'Lab')}&background=random`;
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
@@ -100,11 +150,25 @@ const EditLabTechnicianProfile: React.FC = () => {
           </div>
         } 
         showAddUser={false} 
-        onMenuClick={() => {}} 
+        onMenuClick={onMenuClick || (() => {})} 
+        onProfileClick={onProfileClick}
       />
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
         <h1 className="text-[26px] font-bold text-slate-800 mb-8">Edit Technician Profile</h1>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl font-bold text-sm border border-red-100 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 text-green-600 rounded-xl font-bold text-sm border border-green-100 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-ping"></span>
+            Profile updated successfully! Redirecting...
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-6">
           
@@ -114,14 +178,25 @@ const EditLabTechnicianProfile: React.FC = () => {
             {/* Profile Card */}
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col items-center">
               <div className="relative mb-4">
-                <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-100">
+                <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-100 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                   <img
                     src={displayAvatar}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <button className="absolute -bottom-3 -right-3 w-8 h-8 bg-[#1A6FC4] rounded-lg flex items-center justify-center text-white shadow-sm border-2 border-white hover:bg-[#165DA5] transition-colors">
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button 
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-3 -right-3 w-8 h-8 bg-[#1A6FC4] rounded-lg flex items-center justify-center text-white shadow-sm border-2 border-white hover:bg-[#165DA5] transition-colors cursor-pointer"
+                >
                   <Camera size={16} />
                 </button>
               </div>
@@ -143,23 +218,53 @@ const EditLabTechnicianProfile: React.FC = () => {
               </div>
 
               <div className="space-y-3 mb-6">
-                {/* Document Item */}
-                <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-[#1A6FC4]">
-                  <FileText size={18} className="text-slate-400" />
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">Medical_Licen</p>
-                    <p className="text-[11px] text-slate-500">Modified 2 days ago</p>
-                  </div>
-                </div>
+                {profile?.documents && profile.documents.length > 0 ? (
+                  profile.documents.map((doc: any, index: number) => {
+                    const docType = doc.documentType || doc.type || 'Document';
+                    const fileUrl = resolveImageUrl(doc.fileUrl || doc.url);
+                    let fileName = docType;
+                    try {
+                      const urlParts = fileUrl.split(/[/\\]/);
+                      const lastPart = urlParts[urlParts.length - 1];
+                      if (lastPart && lastPart.includes('.')) {
+                        fileName = lastPart;
+                      }
+                    } catch (e) {}
 
-                {/* Document Item */}
-                <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-slate-300">
-                  <CheckCircle2 size={18} className="text-slate-400" />
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">ID_Card_Front.j</p>
-                    <p className="text-[11px] text-slate-500">Uploaded Jun 2023</p>
-                  </div>
-                </div>
+                    return (
+                      <a 
+                        key={index}
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-[#1A6FC4] hover:bg-slate-100 transition-colors min-w-0"
+                      >
+                        <FileText size={18} className="text-slate-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-800 truncate">{docType.replace(/([A-Z])/g, ' $1').trim()}</p>
+                          <p className="text-[11px] text-slate-500 truncate">{fileName}</p>
+                        </div>
+                      </a>
+                    );
+                  })
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-[#1A6FC4]">
+                      <FileText size={18} className="text-slate-400" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">Medical_License.pdf</p>
+                        <p className="text-[11px] text-slate-500">Modified 2 days ago</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl border-l-4 border-slate-300">
+                      <CheckCircle2 size={18} className="text-slate-400" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">ID_Card_Front.jpg</p>
+                        <p className="text-[11px] text-slate-500">Uploaded Jun 2023</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <button className="w-full py-3.5 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">
@@ -190,7 +295,7 @@ const EditLabTechnicianProfile: React.FC = () => {
                     name="FullNameEnglish" 
                     value={formData.FullNameEnglish} 
                     onChange={handleChange} 
-                    placeholder="Sarah Al-Farsi"
+                    placeholder="Omar Mohamed"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -204,7 +309,7 @@ const EditLabTechnicianProfile: React.FC = () => {
                     value={formData.FullNameArabic} 
                     onChange={handleChange} 
                     dir="rtl"
-                    placeholder="سارة الفارسي"
+                    placeholder="عمر أحمد"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors font-arabic" 
                   />
                 </div>
@@ -217,7 +322,7 @@ const EditLabTechnicianProfile: React.FC = () => {
                     name="NationalId" 
                     value={formData.NationalId} 
                     onChange={handleChange} 
-                    placeholder="234-9876-1120"
+                    placeholder="30410052701945"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -232,8 +337,8 @@ const EditLabTechnicianProfile: React.FC = () => {
                       onChange={handleChange} 
                       className="w-full px-4 py-3 bg-[#E2E8F0]/50 rounded-xl text-[15px] font-medium text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#1A6FC4]/20"
                     >
-                      <option value="Female">Female</option>
                       <option value="Male">Male</option>
+                      <option value="Female">Female</option>
                     </select>
                     <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                   </div>
@@ -243,11 +348,10 @@ const EditLabTechnicianProfile: React.FC = () => {
                 <div className="relative">
                   <label className="text-[13px] font-semibold text-slate-600 block mb-2">Date of Birth</label>
                   <input 
-                    type="text" 
+                    type="date" 
                     name="DateOfBirth" 
-                    value={formData.DateOfBirth || '05/14/1992'} 
+                    value={formData.DateOfBirth} 
                     onChange={handleChange} 
-                    placeholder="MM/DD/YYYY"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -258,9 +362,9 @@ const EditLabTechnicianProfile: React.FC = () => {
                   <input 
                     type="text" 
                     name="PhoneNumber" 
-                    value={formData.PhoneNumber || '+966 55 123 4567'} 
+                    value={formData.PhoneNumber} 
                     onChange={handleChange} 
-                    placeholder="+966 55 123 4567"
+                    placeholder="01000745863"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -271,9 +375,9 @@ const EditLabTechnicianProfile: React.FC = () => {
                   <input 
                     type="email" 
                     name="Email" 
-                    value={formData.Email || 's.alfarsi@gm-center.org'} 
+                    value={formData.Email} 
                     onChange={handleChange} 
-                    placeholder="s.alfarsi@gm-center.org"
+                    placeholder="Omar@nabd.com"
                     className="w-full pb-2 bg-transparent border-b border-slate-300 text-[15px] font-medium text-slate-800 focus:border-[#1A6FC4] outline-none transition-colors" 
                   />
                 </div>
@@ -283,7 +387,7 @@ const EditLabTechnicianProfile: React.FC = () => {
                   <label className="text-[13px] font-semibold text-slate-600 block mb-2">Residential Address</label>
                   <textarea 
                     name="Address" 
-                    value={formData.Address || '742 King Abdullah Road, Olaya District, Riyadh 12211, Saudi Arabia'} 
+                    value={formData.Address} 
                     onChange={handleChange} 
                     rows={2}
                     className="w-full p-4 bg-[#E2E8F0]/50 rounded-xl text-[15px] font-medium text-slate-800 outline-none focus:ring-2 focus:ring-[#1A6FC4]/20 resize-none" 

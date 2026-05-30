@@ -149,31 +149,68 @@ export const staffApi = {
       // Gender mapping: 1 for Male, 2 for Female ($int32)
       const rawGender = item.gender ?? item.Gender;
       const genderStr = rawGender === 1 || rawGender === '1' || String(rawGender).toLowerCase() === 'male' ? 'Male' : 
-                       rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 'Not Specified';
+                       rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 
+                       (rawGender || 'Not Specified');
+
+      const resolveImageUrl = (url: any) => {
+        if (!url) return '';
+        let strUrl = url;
+        if (Array.isArray(url) && url.length > 0) {
+          strUrl = url[0];
+        }
+        if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+        strUrl = strUrl.replace(/\\/g, '/');
+        strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
+        if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+        if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+        return `https://nabd.runasp.net/${strUrl}`;
+      };
+
+      let rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
+      if (!rawAvatar && Array.isArray(item.documents)) {
+        const photoDoc = item.documents.find((doc: any) => 
+          doc && 
+          (doc.documentType === 'PersonalPhotos' || 
+           String(doc.documentType).toLowerCase() === 'personalphotos' ||
+           doc.type === 'PersonalPhotos' ||
+           String(doc.type).toLowerCase() === 'personalphotos')
+        );
+        if (photoDoc) {
+          rawAvatar = photoDoc.fileUrl || photoDoc.url || photoDoc.FileUrl || '';
+        }
+      }
+
+      let cityVal = item.city || item.City || '';
+      let countryVal = item.country || item.Country || '';
+      if (!cityVal && !countryVal && (item.cityCountry || item.CityCountry)) {
+        const parts = (item.cityCountry || item.CityCountry).split(',');
+        cityVal = parts[0]?.trim() || '';
+        countryVal = parts[1]?.trim() || '';
+      }
 
       // Safe mapping to prevent UI crashes if backend fields are missing or PascalCase
       return {
         ...item, // Spread at top so our mappings can overwrite
-        id: item.id || item.Id || idOrNationalId,
+        id: item.id || item.Id || item.userId || item.UserId || idOrNationalId,
         name: item.name || item.fullNameEnglish || item.FullNameEnglish || 'Unknown',
         fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
         role: roleVal,
         department: deptVal,
         licenseId: item.licenseNumber || item.licenseId || 'N/A',
-        location: item.location || item.city || item.City || 'Hospital',
+        location: item.location || cityVal || 'Hospital',
         email: item.email || item.Email || '',
         nationalId: item.nationalId || item.NationalId || idOrNationalId,
         phone: item.phoneNumber || item.phone || item.PhoneNumber || '',
         address: item.address || item.Address || '',
-        country: item.country || item.Country || '',
-        city: item.city || item.City || '',
+        country: countryVal || 'Egypt',
+        city: cityVal || '6 Of Oct',
         dateOfBirth: item.dateOfBirth || item.DateOfBirth || '',
         gender: genderStr,
         experience: item.experience || 'N/A',
         qualifications: item.qualification || item.qualifications || item.Qualification || 'N/A',
-        status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
-        lastLogin: item.lastLogin || 'N/A',
-        avatar: item.avatar || item.PersonalPhotos || '',
+        status: item.isActive === false || item.active === false ? 'Disabled' : (item.status || 'Active'),
+        lastLogin: item.lastLogin || item.LastLogin || 'N/A',
+        avatar: resolveImageUrl(rawAvatar),
         
         // Doctor Specific Fields - map from backend if available (case-insensitive search)
         syndicateNumber: item.syndicateNumber || item.SyndicateNumber || '',
@@ -224,6 +261,20 @@ export const staffApi = {
       return '';
     };
 
+    const resolveImageUrl = (url: any) => {
+      if (!url) return '';
+      let strUrl = url;
+      if (Array.isArray(url) && url.length > 0) {
+        strUrl = url[0];
+      }
+      if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
+      strUrl = strUrl.replace(/\\/g, '/');
+      strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
+      if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
+      if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+      return `https://nabd.runasp.net/${strUrl}`;
+    };
+
     /** Helper: build a StaffProfile from a raw backend item */
     const buildProfile = (item: any, fallbackId: string, fallbackNationalId?: string): StaffProfile => {
       const rolesMap: Record<string, string> = {
@@ -238,25 +289,54 @@ export const staffApi = {
       const roleStr = String(rawRole).trim();
       let finalRole = rolesMap[roleStr] || (roleStr && isNaN(parseInt(roleStr)) ? roleStr : '');
 
+      let rawAvatar = item.avatar || item.Avatar || item.PersonalPhotos || item.personalPhotos || item.PersonalPhoto || item.personalPhoto || item.profileImage || item.ProfileImage || item.profilePicture || item.ProfilePicture || item.photo || item.Photo || item.image || item.Image || '';
+      if (!rawAvatar && Array.isArray(item.documents)) {
+        const photoDoc = item.documents.find((doc: any) => 
+          doc && 
+          (doc.documentType === 'PersonalPhotos' || 
+           String(doc.documentType).toLowerCase() === 'personalphotos' ||
+           doc.type === 'PersonalPhotos' ||
+           String(doc.type).toLowerCase() === 'personalphotos')
+        );
+        if (photoDoc) {
+          rawAvatar = photoDoc.fileUrl || photoDoc.url || photoDoc.FileUrl || '';
+        }
+      }
+
+      let cityVal = item.city || item.City || '';
+      let countryVal = item.country || item.Country || '';
+      if (!cityVal && !countryVal && (item.cityCountry || item.CityCountry)) {
+        const parts = (item.cityCountry || item.CityCountry).split(',');
+        cityVal = parts[0]?.trim() || '';
+        countryVal = parts[1]?.trim() || '';
+      }
+
+      const rawGender = item.gender ?? item.Gender;
+      const genderStr = rawGender === 1 || rawGender === '1' || String(rawGender).toLowerCase() === 'male' ? 'Male' : 
+                       rawGender === 2 || rawGender === '2' || String(rawGender).toLowerCase() === 'female' ? 'Female' : 
+                       (rawGender || '');
+
       return {
         ...item,
-        id: item.id || item.Id || fallbackId,
+        id: item.id || item.Id || item.userId || item.UserId || fallbackId,
         name: resolveName(item),
         fullNameArabic: item.fullNameArabic || item.FullNameArabic || '',
         role: finalRole || jwtRole || 'Staff',
         department: item.department || item.Department || '',
-        licenseId: item.licenseId || item.licenseNumber || '',
-        location: item.location || item.city || '',
+        licenseId: item.licenseId || item.licenseNumber || item.LicenseNumber || '',
+        location: item.location || cityVal || '',
         email: item.email || item.Email || '',
         nationalId: item.nationalId || item.NationalId || fallbackNationalId || '',
         phone: item.phoneNumber || item.phone || '',
-        address: item.address || '',
-        gender: item.gender || '',
+        address: item.address || item.Address || '',
+        city: cityVal,
+        country: countryVal,
+        gender: genderStr,
         experience: item.experience || '',
         qualifications: item.qualifications || item.qualification || '',
-        status: item.isActive === false ? 'Disabled' : (item.status || 'Active'),
-        lastLogin: item.lastLogin || '',
-        avatar: item.avatar || item.PersonalPhotos || '',
+        status: item.isActive === false || item.active === false ? 'Disabled' : (item.status || 'Active'),
+        lastLogin: item.lastLogin || item.LastLogin || '',
+        avatar: resolveImageUrl(rawAvatar),
       } as StaffProfile;
     };
 
@@ -301,13 +381,13 @@ export const staffApi = {
     // profile API endpoint yet. Skip all server calls and use JWT data directly
     // to avoid 403/404 error spam in the console.
     const rolesWithProfileEndpoint = ['Admin', 'Lab Technician', 'LabTechnician'];
-    const hasProfileEndpoint = rolesWithProfileEndpoint.includes(jwtRole || '');
+    const hasProfileEndpoint = rolesWithProfileEndpoint.includes(resolvedRole || '');
 
     if (!hasProfileEndpoint) {
       return buildProfile({
         id: userId,
         name: jwtUsername || 'Staff Member',
-        role: jwtRole || 'Staff',
+        role: resolvedRole || 'Staff',
         status: 'Active',
         email: '',
         phone: '',
@@ -316,17 +396,19 @@ export const staffApi = {
     }
 
     // ── Strategy 0: /Admin/Profile (Admin only) ──
-    try {
-      const response = await fetchApi<any>('/Admin/Profile');
-      const item = response?.data;
-      if (item) {
-        const name = resolveName(item);
-        if (name) return buildProfile(item, userId, jwtUsername);
-      }
-    } catch (err) { console.log("Strategy 0 failed:", err); }
+    if (resolvedRole === 'Admin') {
+      try {
+        const response = await fetchApi<any>('/Admin/Profile');
+        const item = response?.data;
+        if (item) {
+          const name = resolveName(item);
+          if (name) return buildProfile(item, userId, jwtUsername);
+        }
+      } catch (err) { console.log("Strategy 0 failed:", err); }
+    }
 
     // ── Strategy Lab Technician ──
-    if (jwtRole === 'Lab Technician' || jwtRole === 'LabTechnician') {
+    if (resolvedRole === 'Lab Technician' || resolvedRole === 'LabTechnician') {
       try {
         const response = await fetchApi<any>(`/Users/LabTechnician/Profile/${userId}`);
         const item = response?.data;
@@ -422,9 +504,58 @@ export const staffApi = {
 
   updateLabTechnicianProfile: async (id: string, payload: any): Promise<void> => {
     try {
+      const formData = new FormData();
+      
+      const append = (key: string, value: any) => {
+        if (value !== undefined && value !== null && value !== '') {
+          formData.append(key, String(value));
+        }
+      };
+
+      append('NameEngLish', payload.FullNameEnglish || payload.NameEngLish || payload.name || '');
+      append('NameArabic', payload.FullNameArabic || payload.NameArabic || payload.fullNameArabic || '');
+      append('Email', payload.Email || payload.email || '');
+      append('PhoneNumber', payload.PhoneNumber || payload.phone || payload.phoneNumber || '');
+      append('NationalId', payload.NationalId || payload.nationalId || '');
+      append('Gender', payload.Gender || payload.gender || '');
+      
+      const dateOfBirth = payload.DateOfBirth || payload.dateOfBirth;
+      if (dateOfBirth) {
+        try {
+          const d = new Date(dateOfBirth);
+          if (!isNaN(d.getTime())) {
+            append('DateOfBirth', d.toISOString());
+          } else {
+            append('DateOfBirth', dateOfBirth);
+          }
+        } catch (e) {
+          append('DateOfBirth', dateOfBirth);
+        }
+      }
+      
+      append('Address', payload.Address || payload.address || '');
+
+      if (payload.PersonalPhotos) {
+        if (payload.PersonalPhotos instanceof File) {
+          formData.append('PersonalPhotos', payload.PersonalPhotos);
+        } else {
+          let showImageVal = payload.PersonalPhotos;
+          if (typeof showImageVal === 'string') {
+            showImageVal = showImageVal.replace('https://nabd.runasp.net', '');
+          }
+          append('showImage', showImageVal);
+        }
+      } else {
+        let showImageVal = payload.showImage || payload.avatar || '';
+        if (showImageVal && typeof showImageVal === 'string') {
+          showImageVal = showImageVal.replace('https://nabd.runasp.net', '');
+          append('showImage', showImageVal);
+        }
+      }
+
       await fetchApi(`/Users/lab/EditLabTechnican/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
+        method: "POST",
+        body: formData,
       });
     } catch (err: any) {
       console.error("Lab technician profile update failed:", err);

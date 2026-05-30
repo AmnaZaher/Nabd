@@ -17,11 +17,18 @@ import {
 } from "lucide-react";
 import { getLabResultDetails, getLabTestRequestDetails, exportLabPDF } from "../../../api/labs";
 import type { LabResultDetail } from "../../../types/labs.types";
+import { useAuth } from "../../../context/AuthContext";
 
-const LabResultDetailsPage: React.FC = () => {
+interface LabResultDetailsPageProps {
+  onMenuClick?: () => void;
+  onProfileClick?: () => void;
+}
+
+const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick, onProfileClick }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isLabTechnician } = useAuth();
 
   const [detail, setDetail] = useState<LabResultDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,11 +37,20 @@ const LabResultDetailsPage: React.FC = () => {
     async function loadData() {
         const orderData = location.state?.orderData;
         
+        // Robust numeric ID parsing to handle strings with letters (e.g. "LB-9021" -> 9021) and "NaN" -> fallback to orderData.id/requestId or 9421
+        const getNumericId = (val: any): number => {
+            if (val === undefined || val === null) return 0;
+            const parsed = typeof val === 'number' ? val : parseInt(val.toString().replace(/\D/g, ''), 10);
+            return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const parsedId = getNumericId(id) || getNumericId(orderData?.requestId) || getNumericId(orderData?.id) || 9421;
+
         let data: LabResultDetail = {
-            id: Number(id),
-            requestId: Number(id),
+            id: parsedId,
+            requestId: parsedId,
             patientName: orderData?.patientName || orderData?.patient?.name || orderData?.name || "Unknown Patient",
-            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || "—",
+            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || orderData?.patientFileNumber || "—",
             testName: orderData?.testName || orderData?.labTest?.testNameEnglish || orderData?.name || "Unknown Test",
             doctorName: orderData?.doctorName || orderData?.doctor?.name || orderData?.doctor || "Unknown Doctor",
             status: orderData?.status || "Completed",
@@ -44,23 +60,40 @@ const LabResultDetailsPage: React.FC = () => {
         } as LabResultDetail;
 
         // Fetch request details using the provided endpoint
-        let requestDetailsData: any = null;
         try {
             const reqRes = await getLabTestRequestDetails(id as string);
-            requestDetailsData = (reqRes as any)?.data ?? reqRes;
-            if (requestDetailsData) {
-                if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
-                if (requestDetailsData.doctorName) data.doctorName = requestDetailsData.doctorName;
-                if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
+            const reqData = (reqRes as any)?.data ?? reqRes;
+            if (reqData) {
+                if (reqData.test_Name) {
+                    data.testName = reqData.test_Name;
+                    data.requestId = reqData.requestnumber || data.requestId;
+                    (data as any).visitNumber = reqData.visitnumber;
+                    data.doctorName = reqData.doctorname || data.doctorName;
+                    data.status = reqData.result_Status || data.status;
+                    data.labTest = { ...(data.labTest || {} as any), category: reqData.category };
+                    (data as any).category = reqData.category;
+                    (data as any).sampleType = reqData.sample_name;
+                    data.createdAt = reqData.collectedDate || data.createdAt;
+                    data.patientName = reqData.patientFullName || data.patientName;
+                    data.fileNumber = reqData.fileNumber || data.fileNumber;
+                    (data as any).approvedBy = reqData.approvedBy;
+                    (data as any).phone = reqData.phone;
+                } else {
+                    if (reqData.patientName) data.patientName = reqData.patientName;
+                    if (reqData.doctorName) data.doctorName = reqData.doctorName;
+                    if (reqData.testName) data.testName = reqData.testName;
+                }
                 
-                if (requestDetailsData.parameters && Array.isArray(requestDetailsData.parameters)) {
-                    data.parameters = requestDetailsData.parameters.map((p: any) => ({
+                const paramsArray = reqData.param || reqData.parameters || reqData.labTestDetails || reqData.results || reqData.labResults;
+                if (paramsArray && Array.isArray(paramsArray)) {
+                    data.parameters = paramsArray.map((p: any) => ({
                         ...p,
-                        parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
-                        referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
-                        referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+                        parameterNameEnglish: p.param_Name || p.parameterNameEnglish || p.parameterName || p.name || p.testName || 'Unknown Parameter',
+                        referenceRangeMin: p.min_Normal ?? p.referenceRangeMin ?? p.minRange ?? p.normalRangeMin ?? 0,
+                        referenceRangeMax: p.max_Normal ?? p.referenceRangeMax ?? p.maxRange ?? p.normalRangeMax ?? 0,
                         unit: p.unit || p.measurementUnit || '',
-                        value: p.value || p.resultValue
+                        value: p.param_Value ?? p.value ?? p.resultValue ?? p.result,
+                        status: p.abnormalFlag || p.status || p.resultStatus || p.interpretation
                     }));
                 }
             }
@@ -73,7 +106,35 @@ const LabResultDetailsPage: React.FC = () => {
             const res = await getLabResultDetails(id as string);
             const apiData = (res as any)?.data ?? res;
             if (apiData) {
-                data = { ...data, ...apiData };
+                if (apiData.test_Name) {
+                    data.testName = apiData.test_Name;
+                    data.requestId = apiData.requestnumber || data.requestId;
+                    (data as any).visitNumber = apiData.visitnumber;
+                    data.doctorName = apiData.doctorname || data.doctorName;
+                    data.status = apiData.result_Status || data.status;
+                    data.labTest = { ...(data.labTest || {} as any), category: apiData.category };
+                    (data as any).category = apiData.category;
+                    (data as any).sampleType = apiData.sample_name;
+                    data.createdAt = apiData.collectedDate || data.createdAt;
+                    data.patientName = apiData.patientFullName || data.patientName;
+                    data.fileNumber = apiData.fileNumber || data.fileNumber;
+                    (data as any).approvedBy = apiData.approvedBy;
+                    (data as any).phone = apiData.phone;
+                }
+                
+                if (apiData.param && Array.isArray(apiData.param)) {
+                    data.parameters = apiData.param.map((p: any) => ({
+                        ...p,
+                        parameterNameEnglish: p.param_Name || 'Unknown Parameter',
+                        value: p.param_Value,
+                        referenceRangeMin: p.min_Normal,
+                        referenceRangeMax: p.max_Normal,
+                        unit: p.unit,
+                        status: p.abnormalFlag
+                    }));
+                } else if (!apiData.test_Name) {
+                    data = { ...data, ...apiData };
+                }
             }
         } catch (err) {
             console.warn("Failed to load result details", err);
@@ -85,23 +146,24 @@ const LabResultDetailsPage: React.FC = () => {
     loadData();
   }, [id, location.state]);
 
-  const getInterpretation = (valStr: number | undefined, min: number, max: number) => {
-    if (valStr === undefined || valStr === null) return null;
+  const getInterpretation = (valStr: number | string | undefined, min: number, max: number) => {
+    if (valStr === undefined || valStr === null || valStr === '') return null;
     const val = Number(valStr);
     if (isNaN(val)) return null;
     
-    if (val > max * 1.5 || val < min * 0.5) return 'CRITICAL ALERT';
+    if (val > max * 1.5 || val < min * 0.5) return 'CRITICAL';
     if (val < min) return 'LOW';
     if (val > max) return 'HIGH';
     return 'NORMAL';
   };
 
   const getInterpretationStyles = (status: string) => {
-    switch (status) {
-      case 'NORMAL': return 'bg-slate-100 text-slate-600';
-      case 'HIGH': return 'bg-red-100 text-red-700';
-      case 'LOW': return 'bg-yellow-100 text-yellow-700';
-      case 'CRITICAL ALERT': return 'bg-[#991b1b] text-white';
+    switch (status?.toUpperCase()) {
+      case 'NORMAL': return 'bg-[#E2E8F0] text-slate-600';
+      case 'HIGH': return 'bg-[#fca5a5] text-[#7f1d1d]';
+      case 'LOW': return 'bg-yellow-200 text-yellow-800';
+      case 'CRITICAL ALERT':
+      case 'CRITICAL': return 'bg-[#991b1b] text-white';
       default: return 'bg-slate-100 text-slate-500';
     }
   };
@@ -114,7 +176,7 @@ const LabResultDetailsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
-        <TopBar title="DASHBOARD" onMenuClick={() => {}} showAddUser={false} />
+        <TopBar title="DASHBOARD" onMenuClick={onMenuClick || (() => {})} onProfileClick={onProfileClick} showAddUser={false} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 size={32} className="animate-spin text-blue-600" />
         </div>
@@ -128,7 +190,8 @@ const LabResultDetailsPage: React.FC = () => {
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
       <TopBar
         title="DASHBOARD"
-        onMenuClick={() => {}}
+        onMenuClick={onMenuClick || (() => {})}
+        onProfileClick={onProfileClick}
         showAddUser={false}
       />
 
@@ -167,8 +230,8 @@ const LabResultDetailsPage: React.FC = () => {
                 <Download size={16} />
                 Download PDF
               </button>
-              <button 
-                onClick={() => navigate(`/dashboard/lab/edit-result/${detail.requestId ?? detail.id}`, { state: { orderData: detail } })}
+               <button 
+                onClick={() => navigate(`/dashboard/lab/edit/${detail.requestId ?? detail.id}`, { state: { orderData: detail } })}
                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 border border-transparent text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-sm transition-colors cursor-pointer"
               >
                 View Request Details
@@ -197,12 +260,12 @@ const LabResultDetailsPage: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Request ID</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Request Number</p>
                     <p className="text-sm font-bold text-slate-800">#{detail.requestId ?? detail.id}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Visit ID</p>
-                    <p className="text-sm font-bold text-slate-800">#{detail.id}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Visit Number</p>
+                    <p className="text-sm font-bold text-slate-800">{(detail as any).visitNumber || `#${detail.id}`}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ordering Doctor</p>
@@ -221,12 +284,12 @@ const LabResultDetailsPage: React.FC = () => {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Category</p>
                     <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">
-                      {detail.labTest?.category || 'Biochemistry'}
+                      {detail.labTest?.category || (detail as any).category || 'Biochemistry'}
                     </span>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sample Type</p>
-                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">Blood/Serum</span>
+                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded">{(detail as any).sampleType || 'Blood/Serum'}</span>
                   </div>
                 </div>
               </div>
@@ -238,23 +301,27 @@ const LabResultDetailsPage: React.FC = () => {
                 </div>
                 
                 <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-[3px] before:w-0.5 before:bg-slate-200 ml-1">
-                  <div className="relative pl-6">
-                    <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Analyzed By</p>
-                    <p className="text-sm font-bold text-slate-800">Lab Technician</p>
-                  </div>
+                  {!isLabTechnician && (
+                    <div className="relative pl-6">
+                      <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Analyzed By</p>
+                      <p className="text-sm font-bold text-slate-800">Lab Technician</p>
+                    </div>
+                  )}
                   <div className="relative pl-6">
                     <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-blue-500"></div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approved By</p>
-                    <p className="text-sm font-bold text-slate-800">{detail.doctorName || "Pending"}</p>
+                    <p className="text-sm font-bold text-slate-800">{(detail as any).approvedBy || detail.doctorName || "Pending"}</p>
                   </div>
-                  <div className="relative pl-6">
-                    <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Created At</p>
-                    <p className="text-sm font-bold text-slate-800">
-                      {detail.createdAt ? new Date(detail.createdAt).toLocaleString() : '—'}
-                    </p>
-                  </div>
+                  {!isLabTechnician && (
+                    <div className="relative pl-6">
+                      <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Created At</p>
+                      <p className="text-sm font-bold text-slate-800">
+                        {detail.createdAt ? new Date(detail.createdAt).toLocaleString() : '—'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -285,26 +352,34 @@ const LabResultDetailsPage: React.FC = () => {
                           </td>
                         </tr>
                       )}
-                      {detail.parameters?.map((p, idx) => {
-                        const interp = getInterpretation(p.value, p.referenceRangeMin, p.referenceRangeMax);
-                        const isCritical = interp === 'CRITICAL ALERT';
+                      {detail.parameters?.map((p: any, idx) => {
+                        const apiStatus = p.status || p.resultStatus || p.interpretation;
+                        const interpRaw = apiStatus ? apiStatus.toUpperCase() : getInterpretation(p.value, p.referenceRangeMin, p.referenceRangeMax);
+                        
+                        let interp = interpRaw;
+                        if (interpRaw === 'CRITICAL ALERT' || interpRaw === 'CRITICAL') interp = 'CRITICAL';
+                        else if (interpRaw === 'HIGH') interp = 'HIGH';
+                        else if (interpRaw === 'LOW') interp = 'LOW';
+                        else if (interpRaw === 'NORMAL') interp = 'NORMAL';
+
+                        const isCritical = interp === 'CRITICAL';
                         const isHigh = interp === 'HIGH';
                         
                         return (
                           <tr key={idx} className="hover:bg-slate-50/50">
                             <td className="px-6 py-5 text-sm font-medium text-slate-700">{p.parameterNameEnglish}</td>
-                            <td className={`px-6 py-5 text-sm font-black ${isCritical ? 'text-red-700' : isHigh ? 'text-red-600' : 'text-slate-800'}`}>
+                            <td className={`px-6 py-5 text-sm font-black ${isCritical ? 'text-[#991b1b]' : isHigh ? 'text-[#ef4444]' : 'text-slate-800'}`}>
                               {p.value ?? '—'}
                             </td>
                             <td className="px-6 py-5 text-sm font-medium text-slate-500">{p.unit}</td>
                             <td className="px-6 py-5 text-sm font-medium text-slate-500">{p.referenceRangeMin} - {p.referenceRangeMax}</td>
                             <td className="px-6 py-5">
                               {interp ? (
-                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${getInterpretationStyles(interp)}`}>
+                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${getInterpretationStyles(interp)}`}>
                                   {interp === 'NORMAL' ? 'Normal' : interp === 'HIGH' ? 'High' : interp === 'LOW' ? 'Low' : 'Critical'}
                                 </span>
                               ) : (
-                                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">Pending</span>
+                                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">Pending</span>
                               )}
                             </td>
                           </tr>

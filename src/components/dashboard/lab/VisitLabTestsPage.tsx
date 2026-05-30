@@ -64,7 +64,12 @@ const INITIAL_MOCK_TESTS = [
   }
 ];
 
-const VisitLabTestsPage: React.FC = () => {
+interface VisitLabTestsPageProps {
+  onMenuClick?: () => void;
+  onProfileClick?: () => void;
+}
+
+const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onProfileClick }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,11 +96,13 @@ const VisitLabTestsPage: React.FC = () => {
         let actualRequests: any = [];
         
         if (actualInfo && Object.keys(actualInfo).length > 0) {
+          const demoParts = actualInfo.patientDemoGraphic ? actualInfo.patientDemoGraphic.split(',') : [];
+          
           setPatientInfo({
             name: actualInfo.patientName || actualInfo.patient?.name || actualInfo.name || actualInfo.patientNameEnglish || "Unknown Patient",
             id: actualInfo.fileNumber || actualInfo.patient?.fileNumber || "Unknown ID",
-            gender: actualInfo.gender || actualInfo.patient?.gender || "Unknown",
-            age: actualInfo.age ? `${actualInfo.age} Years` : "Unknown Age",
+            gender: demoParts[0]?.trim() || actualInfo.gender || actualInfo.patient?.gender || "Unknown",
+            age: demoParts[1]?.trim() || (actualInfo.age ? `${actualInfo.age} Years` : "Unknown Age"),
             image: actualInfo.image || "https://i.pravatar.cc/150?u=placeholder"
           });
           setVisitInfo({
@@ -192,7 +199,8 @@ const VisitLabTestsPage: React.FC = () => {
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
       <TopBar
         title="DASHBOARD"
-        onMenuClick={() => {}}
+        onMenuClick={onMenuClick || (() => {})}
+        onProfileClick={onProfileClick}
         showAddUser={false}
       />
 
@@ -249,7 +257,7 @@ const VisitLabTestsPage: React.FC = () => {
                 <p className="text-sm font-bold text-slate-800">{visitInfo.doctor}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">CLINC</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">CLINIC</p>
                 <p className="text-sm font-bold text-slate-800">{visitInfo.clinic}</p>
               </div>
               <div className="col-span-2">
@@ -349,7 +357,18 @@ const VisitLabTestsPage: React.FC = () => {
                           <button 
                             className="text-blue-600 hover:text-blue-800 transition-colors p-1 cursor-pointer" 
                             title="View"
-                            onClick={() => navigate(`/dashboard/lab/result/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS' } })}
+                            onClick={() => navigate(`/dashboard/lab/result/${test.id.replace('#', '')}`, { 
+                              state: { 
+                                from: location.pathname, 
+                                base: location.state?.base || location.state?.from, 
+                                label: 'PATIENT VISITS',
+                                orderData: {
+                                  ...test,
+                                  patientName: patientInfo.name,
+                                  fileNumber: patientInfo.id
+                                }
+                              } 
+                            })}
                           >
                             <Eye size={16} />
                           </button>
@@ -357,7 +376,18 @@ const VisitLabTestsPage: React.FC = () => {
                             <button 
                               className="text-slate-500 hover:text-slate-700 transition-colors p-1 cursor-pointer" 
                               title="Edit"
-                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`, { state: { from: location.pathname, base: location.state?.base || location.state?.from, label: 'PATIENT VISITS', orderData: test } })}
+                              onClick={() => navigate(`/dashboard/lab/edit/${test.id.replace('#', '')}`, { 
+                                state: { 
+                                  from: location.pathname, 
+                                  base: location.state?.base || location.state?.from, 
+                                  label: 'PATIENT VISITS', 
+                                  orderData: {
+                                    ...test,
+                                    patientName: patientInfo.name,
+                                    fileNumber: patientInfo.id
+                                  } 
+                                } 
+                              })}
                             >
                               <FileEdit size={16} />
                             </button>

@@ -49,7 +49,11 @@ export interface StaffProfile {
     assignedDept?: string;
     assignedClinic?: string;
     workingSchedule?: WorkingSchedule[];
-    documents?: { id: string; name: string; url: string; type: string }[];
+    documents?: any[];
+    employmentDate?: string;
+    createdAt?: string;
+    lastUpdated?: string;
+    active?: boolean;
 }
 
 export interface StaffFilters {
