@@ -17,10 +17,12 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
-import { staffApi } from "../../../api/staff";
-import type { StaffProfile } from "../../../types/staff.types";
 import TopBar from "../TopBar";
 import ChangePasswordModal from "./ChangePasswordModal";
+import {
+  getRadiologistProfile,
+  type RadiologistProfileDto,
+} from "../../../api/radiologistProfile";
 
 interface RadiologistProfileProps {
   onMenuClick?: () => void;
@@ -31,7 +33,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [profile, setProfile] = useState<RadiologistProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,10 +41,10 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
       if (user?.id) {
         setLoading(true);
         try {
-          const data = await staffApi.getMyProfile(user.id, user.name, user.role);
-          if (data) setProfile(data);
+          const data = await getRadiologistProfile(user.id);
+          setProfile(data);
         } catch (error) {
-          console.error("Failed to fetch profile:", error);
+          console.error("Failed to fetch radiologist profile:", error);
         } finally {
           setLoading(false);
         }
@@ -50,8 +52,9 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
         setLoading(false);
       }
     };
+
     fetchProfile();
-  }, [user?.id, user?.name, user?.role]);
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -61,13 +64,12 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
     );
   }
 
-  // Fallback to static data if no profile returned
-  const displayProfile = profile || {
+  const displayProfile: RadiologistProfileDto = profile || {
     id: "RAD-99293",
     name: "Dr. Julian Vance",
     fullNameArabic: "سارة جنكينز",
     role: "Senior Radiologist",
-    status: "Active" as const,
+    status: "Active",
     email: "julian.vance@clinic.com",
     phone: "+1 234 567 890",
     gender: "Male",
@@ -89,24 +91,35 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
 
   const isDefaultDate = (dateStr?: string) => {
     if (!dateStr) return true;
-    return dateStr.startsWith('0001') || dateStr.startsWith('1900');
+    return dateStr.startsWith("0001") || dateStr.startsWith("1900");
   };
 
   const resolveImageUrl = (url: any) => {
-    if (!url) return '';
+    if (!url) return "";
     let strUrl = url;
     if (Array.isArray(url) && url.length > 0) {
       strUrl = url[0];
     }
-    if (typeof strUrl !== 'string' || strUrl.trim() === '') return '';
-    strUrl = strUrl.replace(/\\/g, '/');
-    strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, '$1');
-    if (strUrl.startsWith('http://') || strUrl.startsWith('https://') || strUrl.startsWith('data:')) return strUrl;
-    if (strUrl.startsWith('/')) return `https://nabd.runasp.net${strUrl}`;
+    if (typeof strUrl !== "string" || strUrl.trim() === "") return "";
+    strUrl = strUrl.replace(/\\/g, "/");
+    strUrl = strUrl.replace(/(https?:\/\/)[/]+/g, "\$1");
+    if (strUrl.startsWith("http://") || strUrl.startsWith("https://") || strUrl.startsWith("data:")) return strUrl;
+    if (strUrl.startsWith("/")) return `https://nabd.runasp.net${strUrl}`;
     return `https://nabd.runasp.net/${strUrl}`;
   };
 
-  const staffId = displayProfile.id || user?.id || "RAD-99293";
+  const avatarUrl =
+    resolveImageUrl(displayProfile.avatar || displayProfile.profileImage) ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayProfile.name || "Radiologist")}&background=random`;
+
+  const staffId = displayProfile.id || displayProfile.userId || user?.id || "RAD-99293";
+  const phoneValue = displayProfile.phone || displayProfile.phoneNumber || "--";
+  const licenseValue = displayProfile.licenseId || displayProfile.licenseNumber || "N/A";
+  const experienceValue =
+    displayProfile.experience ||
+    (displayProfile.yearsOfExperience !== undefined
+      ? `${displayProfile.yearsOfExperience} Years`
+      : "12 Years");
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
@@ -118,26 +131,22 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
       />
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6 pb-20">
-
-        {/* ── Top Header Card ── */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            {/* Avatar */}
             <div className="relative">
               <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 border-2 border-[#1A6FC4]/20">
                 <img
-                  src={displayProfile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayProfile.name || 'Radiologist')}&background=random`}
-                  alt={displayProfile.name}
+                  src={avatarUrl}
+                  alt={displayProfile.name || "Radiologist"}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 border-[3px] border-white rounded-full bg-green-500"></div>
             </div>
 
-            {/* Name & Details */}
             <div className="flex flex-col items-center md:items-start text-center md:text-left">
               <div className="flex items-center gap-3 mb-1 flex-wrap justify-center md:justify-start">
-                <h2 className="text-2xl font-bold text-slate-900">{displayProfile.name}</h2>
+                <h2 className="text-2xl font-bold text-slate-900">{displayProfile.name || "Radiologist"}</h2>
                 <span className="px-2.5 py-1 bg-[#1A6FC4] text-white text-[10px] font-bold uppercase tracking-wider rounded-md">
                   ID: {staffId}
                 </span>
@@ -153,13 +162,12 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin size={16} className="text-slate-400" />
-                  {displayProfile.location || "Main Wing, 4th Floor"}
+                  {displayProfile.location || "Qena"}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
             <button
               onClick={() => setIsPasswordModalOpen(true)}
@@ -176,9 +184,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
           </div>
         </div>
 
-        {/* ── Two-Column: Personal + Professional Info ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Personal Information */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             <div className="flex items-center gap-2 mb-6">
               <User size={20} className="text-[#1A6FC4]" />
@@ -186,7 +192,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
-              <InfoField label="FULL NAME (ENGLISH)" value={displayProfile.name} />
+              <InfoField label="FULL NAME (ENGLISH)" value={displayProfile.name || "--"} />
               <InfoField label="FULL NAME (ARABIC)" value={displayProfile.fullNameArabic || "--"} isArabic />
               <InfoField label="NATIONAL ID" value={displayProfile.nationalId || "--"} />
               <InfoField label="GENDER" value={displayProfile.gender || "--"} />
@@ -194,20 +200,19 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
                 label="DATE OF BIRTH"
                 value={
                   displayProfile.dateOfBirth && !isDefaultDate(displayProfile.dateOfBirth)
-                    ? new Date(displayProfile.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    ? new Date(displayProfile.dateOfBirth).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                     : "--"
                 }
               />
-              <InfoField label="PHONE" value={displayProfile.phone || "--"} />
+              <InfoField label="PHONE" value={phoneValue} />
               <div className="md:col-span-2">
                 <InfoField label="EMAIL" value={displayProfile.email || "--"} isLink />
               </div>
               <InfoField label="ADDRESS" value={displayProfile.address || "--"} />
-              <InfoField label="CITY/COUNTRY" value={`${displayProfile.city || '--'}, ${displayProfile.country || '--'}`} />
+              <InfoField label="CITY/COUNTRY" value={`${displayProfile.city || "--"}, ${displayProfile.country || "--"}`} />
             </div>
           </div>
 
-          {/* Professional Information */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             <div className="flex items-center gap-2 mb-6">
               <Briefcase size={20} className="text-[#1A6FC4]" />
@@ -217,7 +222,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
             <div className="space-y-6">
               <div className="flex justify-between items-center border-b border-slate-50 pb-4">
                 <span className="text-sm font-medium text-slate-500">LICENSE NUMBER</span>
-                <span className="text-sm font-bold text-slate-800">{(displayProfile as any).licenseId || (displayProfile as any).licenseNumber || "N/A"}</span>
+                <span className="text-sm font-bold text-slate-800">{licenseValue}</span>
               </div>
               <div className="flex justify-between items-center border-b border-slate-50 pb-4">
                 <span className="text-sm font-medium text-slate-500">SPECIALTY</span>
@@ -225,7 +230,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
               </div>
               <div className="flex justify-between items-center border-b border-slate-50 pb-4">
                 <span className="text-sm font-medium text-slate-500">YEARS OF EXPERIENCE</span>
-                <span className="text-sm font-bold text-slate-800">{displayProfile.experience || "12 Years"}</span>
+                <span className="text-sm font-bold text-slate-800">{experienceValue}</span>
               </div>
 
               <div>
@@ -240,7 +245,6 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
           </div>
         </div>
 
-        {/* ── Document Portal ── */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
@@ -255,20 +259,21 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {displayProfile.documents && displayProfile.documents.length > 0 ? (
               displayProfile.documents.map((doc: any, index: number) => {
-                const docType = doc.documentType || doc.type || 'Document';
+                const docType = doc.documentType || doc.type || "Document";
                 const fileUrl = resolveImageUrl(doc.fileUrl || doc.url);
-                let fileExtension = 'PDF';
-                if (fileUrl.toLowerCase().endsWith('.jpg') || fileUrl.toLowerCase().endsWith('.jpeg') || fileUrl.toLowerCase().endsWith('.png')) {
-                  fileExtension = fileUrl.split('.').pop()?.toUpperCase() || 'JPG';
-                } else if (fileUrl.toLowerCase().endsWith('.zip') || fileUrl.toLowerCase().endsWith('.rar')) {
-                  fileExtension = 'ZIP';
+                let fileExtension = "PDF";
+
+                if (fileUrl.toLowerCase().endsWith(".jpg") || fileUrl.toLowerCase().endsWith(".jpeg") || fileUrl.toLowerCase().endsWith(".png")) {
+                  fileExtension = fileUrl.split(".").pop()?.toUpperCase() || "JPG";
+                } else if (fileUrl.toLowerCase().endsWith(".zip") || fileUrl.toLowerCase().endsWith(".rar")) {
+                  fileExtension = "ZIP";
                 }
 
-                let iconType = 'file';
-                if (fileUrl.match(/\.(jpg|jpeg|png)$/i)) iconType = 'img';
-                else if (fileUrl.match(/\.(zip|rar)$/i)) iconType = 'zip';
-                else if (docType.toLowerCase().includes('license')) iconType = 'license';
-                else if (docType.toLowerCase().includes('photo')) iconType = 'img';
+                let iconType = "file";
+                if (fileUrl.match(/\.(jpg|jpeg|png)$/i)) iconType = "img";
+                else if (fileUrl.match(/\.(zip|rar)$/i)) iconType = "zip";
+                else if (docType.toLowerCase().includes("license")) iconType = "license";
+                else if (docType.toLowerCase().includes("photo")) iconType = "img";
 
                 return (
                   <a
@@ -279,7 +284,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
                     className="block"
                   >
                     <DocumentCard
-                      title={docType.replace(/([A-Z])/g, ' $1').trim()}
+                      title={docType.replace(/([A-Z])/g, " \$1").trim()}
                       size="Available"
                       type={fileExtension}
                       icon={iconType}
@@ -301,7 +306,6 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
           </div>
         </div>
 
-        {/* ── Account Information ── */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
           <div className="flex items-center gap-2 mb-6">
             <User size={20} className="text-[#1A6FC4]" />
@@ -319,7 +323,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
               <span className="text-sm font-medium text-slate-500">Created At</span>
               <span className="text-sm font-medium text-slate-800">
                 {displayProfile.createdAt && !isDefaultDate(displayProfile.createdAt)
-                  ? new Date(displayProfile.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  ? new Date(displayProfile.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                   : "Jan 10, 2021"}
               </span>
             </div>
@@ -327,7 +331,7 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
               <span className="text-sm font-medium text-slate-500">Last Updated</span>
               <span className="text-sm font-medium text-slate-800">
                 {displayProfile.lastUpdated && !isDefaultDate(displayProfile.lastUpdated)
-                  ? new Date(displayProfile.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  ? new Date(displayProfile.lastUpdated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                   : "Oct 24, 2023"}
               </span>
             </div>
@@ -335,13 +339,18 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
               <span className="text-sm font-medium text-slate-500">Last Login</span>
               <span className="text-sm font-bold text-slate-800">
                 {displayProfile.lastLogin && !isDefaultDate(displayProfile.lastLogin)
-                  ? new Date(displayProfile.lastLogin).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  ? new Date(displayProfile.lastLogin).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
                   : "Today, 08:05 AM"}
               </span>
             </div>
           </div>
         </div>
-
       </main>
 
       <ChangePasswordModal
@@ -351,8 +360,6 @@ const RadiologistProfile: React.FC<RadiologistProfileProps> = ({ onMenuClick, on
     </div>
   );
 };
-
-/* ── Helper Components ── */
 
 const InfoField = ({ label, value, isArabic, isLink }: { label: string; value: string; isArabic?: boolean; isLink?: boolean }) => (
   <div className="flex flex-col gap-1">
@@ -364,7 +371,7 @@ const InfoField = ({ label, value, isArabic, isLink }: { label: string; value: s
         {value}
       </a>
     ) : (
-      <span className={`text-[14px] font-bold text-slate-800 ${isArabic ? 'text-right font-arabic' : ''}`}>
+      <span className={`text-[14px] font-bold text-slate-800 ${isArabic ? "text-right font-arabic" : ""}`}>
         {value}
       </span>
     )}
@@ -383,14 +390,22 @@ const PermissionRow = ({ label }: { label: string }) => (
 const DocumentCard = ({ title, size, type, icon }: { title: string; size: string; type: string; icon: string }) => {
   const getIcon = () => {
     switch (icon) {
-      case 'id':      return <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 mb-3"><User size={20} /></div>;
-      case 'cert':    return <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 mb-3"><FileText size={20} /></div>;
-      case 'img':     return <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 mb-3"><ImageIcon size={20} /></div>;
-      case 'license': return <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500 mb-3"><FileText size={20} /></div>;
-      case 'health':  return <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-500 mb-3"><FileText size={20} /></div>;
-      case 'zip':     return <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 mb-3"><FileArchive size={20} /></div>;
-      case 'cv':      return <div className="w-10 h-10 rounded-lg bg-[#1A6FC4] flex items-center justify-center text-white mb-3"><FileText size={20} /></div>;
-      default:        return <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 mb-3"><FileIcon size={20} /></div>;
+      case "id":
+        return <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 mb-3"><User size={20} /></div>;
+      case "cert":
+        return <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 mb-3"><FileText size={20} /></div>;
+      case "img":
+        return <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 mb-3"><ImageIcon size={20} /></div>;
+      case "license":
+        return <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500 mb-3"><FileText size={20} /></div>;
+      case "health":
+        return <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-500 mb-3"><FileText size={20} /></div>;
+      case "zip":
+        return <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 mb-3"><FileArchive size={20} /></div>;
+      case "cv":
+        return <div className="w-10 h-10 rounded-lg bg-[#1A6FC4] flex items-center justify-center text-white mb-3"><FileText size={20} /></div>;
+      default:
+        return <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 mb-3"><FileIcon size={20} /></div>;
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Shield, Save, X, Eye, EyeOff } from "lucide-react";
+import { changePassword } from "../../../api/radiologistProfile";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -11,35 +12,61 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const [currentPassword, setCurrentPassword] = useState("********");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [success, setSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   if (!isOpen) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      onClose();
-    }, 1500);
+    setError("");
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError("Please fill in all password fields.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirm password do not match.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await changePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setSaving(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setSaving(false);
+      setError(err?.message || "Failed to change password.");
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Background Overlay with light backdrop blur */}
       <div
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal Card */}
       <div className="relative bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
         <form onSubmit={handleSave} className="p-8">
-          
-          {/* Header */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-[#1A6FC4]">
               <Shield size={24} />
@@ -59,7 +86,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
             </button>
           </div>
 
-          {/* Form Fields */}
           {success ? (
             <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-500 animate-bounce">
@@ -76,8 +102,12 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
             </div>
           ) : (
             <div className="space-y-6">
-              
-              {/* Current Password */}
+              {error && (
+                <div className="text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                  {error}
+                </div>
+              )}
+
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
                   Current Password
@@ -99,7 +129,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                 </div>
               </div>
 
-              {/* New Password */}
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
                   New Password
@@ -122,7 +151,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                 </div>
               </div>
 
-              {/* Confirm Password */}
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
                   Confirm Password
@@ -145,20 +173,18 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                 </div>
               </div>
 
-              {/* Action Button */}
               <div className="mt-10 flex justify-end">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 bg-[#1A6FC4] hover:bg-[#165DA5] text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 transition-all cursor-pointer transform hover:translate-y-[-1px] active:translate-y-[1px]"
+                  disabled={saving}
+                  className="flex items-center gap-2 bg-[#1A6FC4] hover:bg-[#165DA5] text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 transition-all cursor-pointer transform hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-60"
                 >
                   <Save size={18} />
-                  Save Changes
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
-
             </div>
           )}
-
         </form>
       </div>
     </div>

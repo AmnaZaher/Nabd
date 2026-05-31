@@ -4,7 +4,6 @@ import {
   Calendar,
   ClipboardList,
   CheckCircle2,
-  AlertTriangle,
   Search,
   ChevronDown,
   SlidersHorizontal,
@@ -18,7 +17,6 @@ import {
 interface ExamRoomItem {
   id: string;
   isStat?: boolean;
-  image: string;
   patientName: string;
   patientId: string;
   modality: string;
@@ -35,7 +33,6 @@ const MOCK_EXAM_ROOMS: ExamRoomItem[] = [
   {
     id: "#RAD-9021",
     isStat: true,
-    image: "https://images.unsplash.com/photo-1579154204601-01588f351e67?q=80&w=100&auto=format&fit=crop",
     patientName: "Eleanor Vance",
     patientId: "8829-XP",
     modality: "MRI",
@@ -49,7 +46,6 @@ const MOCK_EXAM_ROOMS: ExamRoomItem[] = [
   },
   {
     id: "#RAD-9022",
-    image: "https://images.unsplash.com/photo-1559757175-5700dde675bc?q=80&w=100&auto=format&fit=crop",
     patientName: "Arthur Morgan",
     patientId: "1102-AM",
     modality: "CT SCAN",
@@ -62,7 +58,6 @@ const MOCK_EXAM_ROOMS: ExamRoomItem[] = [
   },
   {
     id: "#RAD-9023",
-    image: "https://images.unsplash.com/photo-1582719471384-894fbb16e074?q=80&w=100&auto=format&fit=crop",
     patientName: "Sarah Connor",
     patientId: "5543-SC",
     modality: "X-RAY",
@@ -75,7 +70,6 @@ const MOCK_EXAM_ROOMS: ExamRoomItem[] = [
   },
   {
     id: "#RAD-9024",
-    image: "https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?q=80&w=100&auto=format&fit=crop",
     patientName: "John Doe",
     patientId: "0023-JD",
     modality: "ULTRASOUND",
@@ -226,12 +220,8 @@ const RadiologistExamRooms: React.FC<{
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                       Body Part
                     </th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Time
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-[100px]">
-                      Priority
-                    </th>
+                    
+                    
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                       Status
                     </th>
@@ -251,13 +241,6 @@ const RadiologistExamRooms: React.FC<{
                         {/* Exam ID */}
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-sm bg-slate-900 border border-slate-200">
-                              <img
-                                src={exam.image}
-                                alt="Exam scan thumbnail"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
                             <div className="space-y-0.5">
                               <span className="text-sm font-extrabold text-slate-800 block">
                                 {exam.id}
@@ -295,20 +278,6 @@ const RadiologistExamRooms: React.FC<{
                           {exam.bodyPart}
                         </td>
 
-                        {/* Time */}
-                        <td className="px-6 py-6 text-sm font-bold text-slate-650">
-                          {exam.time}
-                        </td>
-
-                        {/* Priority */}
-                        <td className="px-6 py-6 text-center">
-                          {exam.priorityDot ? (
-                            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-650 ring-4 ring-red-100 animate-pulse" />
-                          ) : (
-                            <span className="text-slate-300 font-bold">—</span>
-                          )}
-                        </td>
-
                         {/* Status */}
                         <td className="px-6 py-6">
                           <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black tracking-wide uppercase ${exam.statusColor}`}>
@@ -324,16 +293,10 @@ const RadiologistExamRooms: React.FC<{
                         {/* Actions */}
                         <td className="px-8 py-6">
                           <div className="flex items-center justify-center gap-2">
-                            <button
-                              title="View Details"
-                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all border border-slate-200 cursor-pointer"
-                            >
+                            <button title="View Details" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all border border-slate-200 cursor-pointer">
                               <Eye size={15} />
                             </button>
-                            <button
-                              title="Report Document"
-                              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all border border-slate-200 cursor-pointer"
-                            >
+                            <button title="Report Document" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all border border-slate-200 cursor-pointer">
                               <FileText size={15} />
                             </button>
                           </div>

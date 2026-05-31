@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect,  useMemo} from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "../TopBar";
 import {
@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import {getRadiologyRequests,type RadiologyRequestListItemDto } from "../../../api/radilogist";
 
 interface RequestItem {
   id: string;
@@ -25,69 +26,6 @@ interface RequestItem {
   radiologist: string | null;
 }
 
-const MOCK_REQUESTS: RequestItem[] = [
- 
-  {
-    id: "1",
-    examId: "#RAD-9022",
-    patientName: "Arthur Morgan",
-    patientId: "1102-AM",
-    modality: "CT SCAN",
-    bodyPart: "Lumbar Spine",
-    status: "In Progress",
-    radiologist: "Dr. J. Vane",
-  },
-  {
-    id: "2",
-    examId: "#RAD-9023",
-    patientName: "Sarah Connor",
-    patientId: "5543-SC",
-    modality: "X-RAY",
-    bodyPart: "Left Ankle",
-    status: "Completed",
-    radiologist: "Dr. L. Myers",
-  },
-  {
-    id: "3",
-    examId: "#RAD-9024",
-    patientName: "John Doe",
-    patientId: "0023-JD",
-    modality: "ULTRASOUND",
-    bodyPart: "Abdomen",
-    status: "Pending",
-    radiologist: null,
-  },
-  {
-    id: "4",
-    examId: "#RAD-9026",
-    patientName: "Elena Martinez",
-    patientId: "RAD-88210",
-    modality: "X-RAY",
-    bodyPart: "Chest - PA/Lat",
-    status: "Pending",
-    radiologist: null,
-  },
-  {
-    id: "5",
-    examId: "#RAD-9027",
-    patientName: "Bruce Wayne",
-    patientId: "RAD-11223",
-    modality: "MRI",
-    bodyPart: "Brain",
-    status: "In Progress",
-    radiologist: "Dr. J. Vane",
-  },
-  {
-    id: "6",
-    examId: "#RAD-9028",
-    patientName: "Clark Kent",
-    patientId: "RAD-55667",
-    modality: "X-RAY",
-    bodyPart: "Spine",
-    status: "Completed",
-    radiologist: "Dr. L. Myers",
-  },
-];
 
 const STATUS_TABS = ["Pending", "In Progress", "Completed"] as const;
 type StatusTab = typeof STATUS_TABS[number];
@@ -101,14 +39,56 @@ const modalityColors: Record<string, string> = {
   CT: "bg-violet-50 text-violet-600 border-violet-100",
 };
 
-const statusConfig: Record<
-  string,
-  { dot: string; text: string; pill: string }
-> = {
+const statusConfig: Record<string, { dot: string; text: string; pill: string }> = {
   "In Progress":{ dot: "bg-blue-400",  text: "text-blue-600",   pill: "bg-blue-50 border-blue-100" },
   Completed:   { dot: "bg-green-400",  text: "text-green-600",  pill: "bg-green-50 border-green-100" },
   Pending:     { dot: "bg-amber-400",  text: "text-amber-600",  pill: "bg-amber-50 border-amber-100" },
 };
+
+const normalizeModality = (
+  value?: string
+): RequestItem["modality"] => {
+  const v = (value || "").toUpperCase();
+
+  if (v.includes("MRI")) return "MRI";
+  if (v.includes("ULTRA")) return "ULTRASOUND";
+  if (v === "US") return "US";
+  if (v.includes("X-RAY") || v.includes("XRAY") || v.includes("XR")) return "X-RAY";
+  if (v.includes("CT")) return "CT SCAN";
+
+  return "CT";
+};
+
+const normalizeStatus = (
+  value?: string
+): RequestItem["status"] => {
+  const v = (value || "").toLowerCase();
+
+  if (v.includes("complete") || v.includes("done") || v.includes("finished")) {
+    return "Completed";
+  }
+
+  if (v.includes("progress") || v.includes("started") || v.includes("checked")) {
+    return "In Progress";
+  }
+
+  return "Pending";
+};
+
+const mapRequest = (item: RadiologyRequestListItemDto): RequestItem => ({
+  id: String(item.id ?? item.requestId ?? Math.random()),
+  examId: item.requestNumber || `#RAD-${item.id ?? item.requestId ?? "—"}`,
+  isStat:
+    !!item.isStat ||
+    (item.priority || "").toLowerCase().includes("stat") ||
+    (item.priority || "").toLowerCase().includes("urgent"),
+  patientName: item.patientName || "Unknown Patient",
+  patientId: item.patientFileNumber || item.fileNumber || String(item.patientId ?? "—"),
+  modality: normalizeModality(item.modality || item.examName || item.testName || item.category),
+  bodyPart: item.bodyPart || item.studyDescription || "—",
+  status: normalizeStatus(item.status),
+  radiologist: item.radiologistName || null,
+});
 
 const RadiologistRequests: React.FC<{
   onMenuClick?: () => void;
@@ -118,31 +98,54 @@ const RadiologistRequests: React.FC<{
   const [activeTab, setActiveTab] = useState<StatusTab>("Pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [requests, setRequests] = useState<RadiologyRequestListItemDto[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const ITEMS_PER_PAGE = 4;
 
-  const getCount = (status: StatusTab) =>
-    MOCK_REQUESTS.filter((r) => r.status === status).length;
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const filtered = MOCK_REQUESTS.filter((req) => {
-    const tabMatch =
-      activeTab === "Pending"
-        ? req.status === "Pending"
-        : req.status === activeTab;
+        const data = await getRadiologyRequests();
+        setRequests(data);
+      } catch (err: any) {
+        setError(err?.message || "Failed to load requests.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRequests();
+  }, []);
+
+  const mappedRequests = useMemo(() => requests.map(mapRequest), [requests]);
+
+  const getCount = (status: StatusTab) =>
+    mappedRequests.filter((r) => r.status === status).length;
+
+  const filtered = mappedRequests.filter((req) => {
+    const tabMatch = req.status === activeTab;
+    const q = searchQuery.toLowerCase();
+
     const searchMatch =
-      req.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.examId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.patientId.toLowerCase().includes(searchQuery.toLowerCase());
+      req.patientName.toLowerCase().includes(q) ||
+      req.examId.toLowerCase().includes(q) ||
+      req.patientId.toLowerCase().includes(q);
+
     return tabMatch && searchMatch;
   });
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  const tabCountLabel = (count: number) =>
-    String(count).padStart(2, "0");
+  const tabCountLabel = (count: number) => String(count).padStart(2, "0");
+  
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F4F6FA]">
@@ -249,6 +252,16 @@ const RadiologistRequests: React.FC<{
 
           {/* ── Table ── */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            {loading ? (
+              <div className="py-16 text-center text-slate-400 text-sm">
+                Loading requests...
+              </div>
+            ) : error ? (
+              <div className="py-16 text-center text-red-500 text-sm">
+                {error}
+              </div>
+            ) : (
+              <>
             <div className="overflow-x-auto">
               <table className="w-full text-left min-w-[780px]">
                 <thead>
@@ -437,8 +450,9 @@ const RadiologistRequests: React.FC<{
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
-
         </div>
       </main>
     </div>
