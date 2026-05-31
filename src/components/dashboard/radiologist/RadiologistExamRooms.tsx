@@ -124,7 +124,7 @@ const RadiologistExamRooms: React.FC<{
           </div>
 
           {/* 4 Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Total Exams Today */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -161,19 +161,6 @@ const RadiologistExamRooms: React.FC<{
               <div className="mt-6">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed Exams</p>
                 <h3 className="text-3xl font-black text-slate-900 mt-1 tracking-tight">28</h3>
-              </div>
-            </div>
-
-            {/* Urgent Cases */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
-              <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 shrink-0">
-                <AlertTriangle size={22} strokeWidth={1.8} />
-              </div>
-              <div className="mt-4 flex items-baseline gap-2">
-                <h3 className="text-3xl font-black text-red-650 tracking-tight">2</h3>
-                <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-wider block">
-                  Requires Immediate Attention
-                </span>
               </div>
             </div>
 

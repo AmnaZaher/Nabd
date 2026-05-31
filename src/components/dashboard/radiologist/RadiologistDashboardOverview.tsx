@@ -78,6 +78,8 @@ const RadiologistDashboardOverview: React.FC<{
   const navigate = useNavigate();
   const [exams] = useState<Exam[]>(MOCK_EXAMS);
 
+
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -113,66 +115,6 @@ const RadiologistDashboardOverview: React.FC<{
             </div>
             {/* Abstract Background Design Element */}
             <div className="absolute right-0 top-0 bottom-0 w-[40%] bg-gradient-to-l from-blue-50/40 via-transparent to-transparent pointer-events-none hidden md:block" />
-          </div>
-
-          {/* Stats Cards Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            {/* Total Exams Today */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500 shrink-0">
-                  <Calendar size={22} strokeWidth={1.8} />
-                </div>
-                <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 flex items-center gap-1">
-                  <TrendingUp size={10} />
-                  +12%
-                </span>
-              </div>
-              <div className="mt-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Exams Today</p>
-                <h3 className="text-3xl font-black text-slate-900 mt-1 tracking-tight">42</h3>
-              </div>
-            </div>
-
-            {/* Pending Reports */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500 shrink-0">
-                <ClipboardList size={22} strokeWidth={1.8} />
-              </div>
-              <div className="mt-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending Reports</p>
-                <h3 className="text-3xl font-black text-slate-900 mt-1 tracking-tight">08</h3>
-              </div>
-            </div>
-
-            {/* Completed Reports */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start">
-                <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-500 shrink-0">
-                  <CheckCircle2 size={22} strokeWidth={1.8} />
-                </div>
-                <span className="text-[11px] font-bold text-slate-400 mt-1">
-                  Target: 40
-                </span>
-              </div>
-              <div className="mt-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed Reports</p>
-                <h3 className="text-3xl font-black text-slate-900 mt-1 tracking-tight">34</h3>
-              </div>
-            </div>
-
-            {/* Urgent Cases */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/80 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
-              <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 shrink-0">
-                <AlertTriangle size={22} strokeWidth={1.8} />
-              </div>
-              <div className="mt-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Urgent Cases</p>
-                <h3 className="text-3xl font-black text-red-650 mt-1 tracking-tight">03</h3>
-              </div>
-            </div>
-
           </div>
 
           {/* Main Layout Grid: Schedule (Left) + Quick Actions (Right) */}

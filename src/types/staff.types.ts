@@ -24,21 +24,21 @@ export interface StaffProfile {
     fullNameArabic?: string;
     role: string;
     department: string;
-    licenseId: string;
-    location: string;
-    email: string;
-    nationalId: string;
-    phone: string;
-    address: string;
-    gender: string;
+    licenseId?: string;
+    location?: string;
+    email?: string;
+    nationalId?: string;
+    phone?: string;
+    address?: string;
+    gender?: string;
     dateOfBirth?: string;
     city?: string;
     country?: string;
-    experience: string;
-    qualifications: string;
-    status: 'Active' | 'Disabled';
-    lastLogin: string;
-    avatar: string;
+    experience?: string;
+    qualifications?: string;
+    status?: 'Active' | 'Disabled';
+    lastLogin?: string;
+    avatar?: string;
     
     // Doctor Specific Fields
     syndicateNumber?: string;

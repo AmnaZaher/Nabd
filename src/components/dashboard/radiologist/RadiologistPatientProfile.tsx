@@ -139,25 +139,11 @@ const TIMELINE_EXAMS: TimelineItem[] = [
   },
 ];
 
-const SCAN_IMAGES = [
-  "https://images.unsplash.com/photo-1559757175-5700dde675bc?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1579154204601-01588f351e67?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1582719471384-894fbb16e074?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1559757175-5700dde675bc?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1579154204601-01588f351e67?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1582719471384-894fbb16e074?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?q=80&w=200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?q=80&w=200&auto=format&fit=crop",
-];
-
 const RadiologistPatientProfile: React.FC<{
   onMenuClick?: () => void;
 }> = ({ onMenuClick }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [selectedScanIndex, setSelectedScanIndex] = useState(5); // Default active skull scan in the center
 
   const patient = PATIENTS_MOCK[id || ""] || PATIENTS_MOCK.default;
 
@@ -505,43 +491,6 @@ const RadiologistPatientProfile: React.FC<{
 
               </div>
 
-            </div>
-
-          </div>
-
-          {/* Bottom Scan Preview Gallery */}
-          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100/80 space-y-6">
-            
-            {/* Header */}
-            <div className="flex items-center gap-2.5 text-blue-600">
-              <Scan size={18} className="shrink-0" />
-              <h3 className="text-sm font-extrabold tracking-wide uppercase">
-                Scan Preview Gallery
-              </h3>
-            </div>
-
-            {/* Gallery Track */}
-            <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-thin">
-              {SCAN_IMAGES.map((src, index) => {
-                const isActive = index === selectedScanIndex;
-                return (
-                  <div
-                    key={index}
-                    onClick={() => setSelectedScanIndex(index)}
-                    className={`w-24 h-24 rounded-2xl overflow-hidden shrink-0 cursor-pointer shadow-sm transition-all border-2 ${
-                      isActive
-                        ? "border-blue-600 ring-4 ring-blue-500/10 scale-105"
-                        : "border-transparent hover:border-slate-300"
-                    }`}
-                  >
-                    <img
-                      src={src}
-                      alt={`Scan ${index + 1}`}
-                      className="w-full h-full object-cover bg-slate-950"
-                    />
-                  </div>
-                );
-              })}
             </div>
 
           </div>

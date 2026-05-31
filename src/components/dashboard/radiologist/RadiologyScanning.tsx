@@ -103,9 +103,9 @@ const RadiologyScanning: React.FC<{
 
   const breadcrumb = (
     <div className="flex items-center gap-2 text-xs md:text-sm font-extrabold text-slate-400">
-      <span>REQUESTS</span>
+      <button className="hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate("/dashboard/radiology/requests")}>REQUESTS</button>
       <ChevronRight size={14} className="text-slate-300 shrink-0" />
-      <span className="text-slate-400 font-bold uppercase">START EXAM</span>
+      <button className="text-slate-400 font-bold uppercase hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(-1)}>START EXAM</button>
       <ChevronRight size={14} className="text-slate-300 shrink-0" />
       <span className="text-blue-600 font-black">SCANNING</span>
     </div>
@@ -169,24 +169,12 @@ const RadiologyScanning: React.FC<{
                     <span className="font-extrabold text-slate-700">62.5 kg</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
-                    <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Room</span>
-                    <span className="font-extrabold text-slate-700">Scan Suite 4</span>
-                  </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
                     <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Visit Number</span>
                     <span className="font-extrabold text-slate-700">#VS-2023-0442</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
-                    <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Clinic</span>
-                    <span className="font-extrabold text-slate-700">Internal Medicine</span>
-                  </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
                     <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Visit Date</span>
                     <span className="font-extrabold text-slate-700">Oct 24, 2023</span>
-                  </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
-                    <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Visit Type</span>
-                    <span className="font-extrabold text-slate-700">Specialist</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5">
                     <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Doctor</span>

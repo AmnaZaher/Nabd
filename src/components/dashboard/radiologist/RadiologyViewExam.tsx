@@ -81,7 +81,7 @@ const RadiologyViewExam: React.FC<{
 
   const breadcrumb = (
     <div className="flex items-center gap-2 text-xs md:text-sm font-extrabold text-slate-400">
-      <span>REQUESTS</span>
+      <button className="cursor-pointer hover:text-blue-600" onClick={() => navigate("/dashboard/radiology/requests")}>REQUESTS</button>
       <ChevronRight size={14} className="text-slate-300 shrink-0" />
       <span className="text-blue-600 font-black">VIEW EXAM</span>
     </div>
