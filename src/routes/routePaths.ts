@@ -20,6 +20,7 @@ export const PATHS = {
   RADIOLOGY: "/dashboard/radiology",
   RADIOLOGY_PROFILE: "/dashboard/radiology/profile",   // ← RADIOLOGIST'S PROFILE
   RADIOLOGY_REQUESTS: "/dashboard/radiology/requests",
+  RADIOLOGY_PATIENT_PROFILE: "/dashboard/radiology/patient/:patientId",
   RADIOLOGY_EXAM_ROOMS: "/dashboard/radiology/exam-rooms",
   RADIOLOGY_REPORTING: "/dashboard/radiology/reporting",
   RADIOLOGY_RESULTS: "/dashboard/radiology/results",

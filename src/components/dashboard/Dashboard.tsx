@@ -346,7 +346,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <Route path="radiology/requests" element={<RadiologistRequests onMenuClick={() => setIsSidebarOpen(true)} />} />
           <Route path="radiology/exam-rooms" element={<RadiologistExamRooms onMenuClick={() => setIsSidebarOpen(true)} />} />
           <Route path="radiology/reporting" element={<RadiologistReporting onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
-          <Route path="radiology/patient/:id" element={<RadiologistPatientProfile onMenuClick={() => setIsSidebarOpen(true)} />} />
+          <Route path="radiology/patient/:patientId" element={<RadiologistPatientProfile onMenuClick={() => setIsSidebarOpen(true)} />} />
           <Route path="radiology/results" element={<RadiologistResults onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} /> 
           <Route path="radiology/results/review/:queueId" element={<RadiologistReviewReport onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />          
           <Route path="radiology/view-exam/:id" element={<RadiologyViewExam onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={handleProfileClick} />} />
