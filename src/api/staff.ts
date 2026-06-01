@@ -209,7 +209,7 @@ export const staffApi = {
         experience: item.experience || 'N/A',
         qualifications: item.qualification || item.qualifications || item.Qualification || 'N/A',
         status: item.isActive === false || item.active === false ? 'Disabled' : (item.status || 'Active'),
-        lastLogin: item.lastLogin || item.LastLogin || 'N/A',
+        lastLogin: item.lastLogIn || item.LastLogIn || item.lastLogin || item.LastLogin || item.lastLoginDate || item.LastLoginDate || item.lastSeen || 'N/A',
         avatar: resolveImageUrl(rawAvatar),
         
         // Doctor Specific Fields - map from backend if available (case-insensitive search)
@@ -335,7 +335,7 @@ export const staffApi = {
         experience: item.experience || '',
         qualifications: item.qualifications || item.qualification || '',
         status: item.isActive === false || item.active === false ? 'Disabled' : (item.status || 'Active'),
-        lastLogin: item.lastLogin || item.LastLogin || '',
+        lastLogin: item.lastLogIn || item.LastLogIn || item.lastLogin || item.LastLogin || item.lastLoginDate || item.LastLoginDate || item.lastSeen || '',
         avatar: resolveImageUrl(rawAvatar),
       } as StaffProfile;
     };
@@ -453,6 +453,7 @@ export const staffApi = {
   toggleStatus: async (id: string, activate: boolean): Promise<void> => {
     await fetchApi(`/Admin/ActiveOrDeActive/${id}`, {
       method: "PATCH",
+      body: JSON.stringify({ status: activate ? "Active" : "Disabled" }),
     });
   },
 

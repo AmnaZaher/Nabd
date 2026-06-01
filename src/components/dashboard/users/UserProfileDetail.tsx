@@ -19,6 +19,17 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 import DoctorProfileDetail from './DoctorProfileDetail';
 
 // ==================== Helper Components ====================
+const formatDateTime = (raw: string | null | undefined): string => {
+    if (!raw || raw === 'N/A' || raw.startsWith('0001-01-01')) return 'N/A';
+    try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return raw;
+    }
+};
+
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
     <div>
         <p className="text-xs font-bold text-[#b0bec5] mb-1">{label}</p>
@@ -284,7 +295,7 @@ const UserProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                 <AccountInfoItem
                                     icon={<History className="w-5 h-5 text-slate-400" />}
                                     label="LAST LOGIN"
-                                    value={user.lastLogin}
+                                    value={formatDateTime(user.lastLogin)}
                                 />
 
                                 {/* Deactivate / Activate Button */}

@@ -142,7 +142,7 @@ const EditDoctorProfilePage = () => {
                 Country:                  form.Country                  || undefined,
             };
             await profileApi.editDoctorProfile(id, payload);
-            navigate(isOwnProfile ? '/dashboard/profile' : `/dashboard/users/staff/${id}`);
+            navigate(isOwnProfile ? '/dashboard/profile' : `/dashboard/users/doctor/${id}`);
         } catch (error) {
             console.error('Failed to update doctor profile:', error);
             alert('Failed to save changes. Please try again.');

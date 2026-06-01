@@ -18,6 +18,7 @@ import {
   type CreateDoctorScheduleDto,
 } from "../../../api/schedules";
 import { staffApi } from "../../../api/staff";
+import { patientApi } from "../../../api/patient";
 import { getClinics } from "../../../api/clinics";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -167,6 +168,17 @@ const EditModal = ({
   const [to, setTo] = useState(schedule.endTime?.slice(0, 5) ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [modalDoctors, setModalDoctors] = useState<DoctorOption[]>([]);
+
+  useEffect(() => {
+    if (!clinicId) {
+      setModalDoctors([]);
+      return;
+    }
+    patientApi.getDoctorsByClinic(Number(clinicId))
+      .then(res => setModalDoctors(res || []))
+      .catch(() => setModalDoctors([]));
+  }, [clinicId]);
 
   const handleSave = async () => {
     if (!doctorId || !clinicId || !from || !to) {
@@ -205,25 +217,29 @@ const EditModal = ({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <SelectField
-            label="Doctor"
-            placeholder="Select Doctor"
-            value={doctorId}
-            onChange={setDoctorId}
-            options={doctors.map((d) => ({
-              value: String(d.id),
-              label: d.name,
-            }))}
-          />
-          <SelectField
             label="Clinic"
             placeholder="Select Clinic"
             value={clinicId}
-            onChange={setClinicId}
+            onChange={(v) => {
+              setClinicId(v);
+              setDoctorId(""); // Reset doctor when clinic changes
+            }}
             options={clinics.map((c) => ({
               value: String(c.id),
               label: c.name,
             }))}
           />
+          <SelectField
+            label="Doctor"
+            placeholder="Select Doctor"
+            value={doctorId}
+            onChange={setDoctorId}
+            options={modalDoctors.map((d) => ({
+              value: String(d.id),
+              label: d.name,
+            }))}
+          />
+
           <SelectField
             label="Day"
             placeholder="Select Day"
@@ -283,6 +299,18 @@ const DrSchedulePage = ({
   const [day, setDay] = useState("1"); // Monday default
   const [fromTime, setFromTime] = useState("");
   const [toTime, setToTime] = useState("");
+  const [createDoctors, setCreateDoctors] = useState<DoctorOption[]>([]);
+
+  useEffect(() => {
+    if (!clinicId) {
+      setCreateDoctors([]);
+      return;
+    }
+    patientApi.getDoctorsByClinic(Number(clinicId))
+      .then(res => setCreateDoctors(res || []))
+      .catch(() => setCreateDoctors([]));
+  }, [clinicId]);
+
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState(false);
@@ -290,6 +318,17 @@ const DrSchedulePage = ({
   // Filter
   const [filterDoctorId, setFilterDoctorId] = useState("");
   const [filterClinicId, setFilterClinicId] = useState("");
+  const [filterDoctors, setFilterDoctors] = useState<DoctorOption[]>([]);
+
+  useEffect(() => {
+    if (!filterClinicId) {
+      setFilterDoctors(doctors || []);
+      return;
+    }
+    patientApi.getDoctorsByClinic(Number(filterClinicId))
+      .then(res => setFilterDoctors(res || []))
+      .catch(() => setFilterDoctors([]));
+  }, [filterClinicId, doctors]);
 
   // Table data
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
@@ -318,19 +357,23 @@ const DrSchedulePage = ({
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
-        const [staffRes, clinicRes] = await Promise.all([
-          staffApi.getStaffs({ Role: "2", PageIndex: 0, PageSize: 1000 }), // Role 2 = Doctor
-          getClinics({ PageIndex: 0, PageSize: 100 }),
-        ]);
-        const staffList: any[] = extractList(staffRes);
-        setDoctors(
-          staffList.map((s: any) => ({
+        const clinicRes = await getClinics({ PageIndex: 0, PageSize: 100 });
+        const clinicList: any[] = extractList(clinicRes);
+
+        let docsList = await patientApi.getAllDoctors().catch(() => []);
+        
+        // If getAllDoctors returns empty (e.g., if the endpoint requires ClinicId), 
+        // fallback to staffApi which gets all users with Role=2
+        if (!docsList || docsList.length === 0) {
+          const staffRes = await staffApi.getStaffs({ Role: "2", PageIndex: 0, PageSize: 1000 });
+          docsList = extractList(staffRes).map((s: any) => ({
             id: s.id ?? s.Id,
             name: s.fullNameEnglish ?? s.name ?? s.FullNameEnglish ?? "Unknown",
-          })),
-        );
+          }));
+        }
 
-        const clinicList: any[] = extractList(clinicRes);
+        setDoctors(docsList);
+
         setClinics(
           clinicList.map((c: any) => ({
             id: c.id ?? c.Id,
@@ -480,25 +523,29 @@ const DrSchedulePage = ({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <SelectField
-              label="Doctor"
-              placeholder="Select Doctor"
-              value={doctorId}
-              onChange={setDoctorId}
-              options={doctors.map((d) => ({
-                value: String(d.id),
-                label: d.name,
-              }))}
-            />
-            <SelectField
               label="Clinic"
               placeholder="Select Clinic"
               value={clinicId}
-              onChange={setClinicId}
+              onChange={(v) => {
+                setClinicId(v);
+                setDoctorId(""); // Reset doctor when clinic changes
+              }}
               options={clinics.map((c) => ({
                 value: String(c.id),
                 label: c.name,
               }))}
             />
+            <SelectField
+              label="Doctor"
+              placeholder="Select Doctor"
+              value={doctorId}
+              onChange={setDoctorId}
+              options={createDoctors.map((d) => ({
+                value: String(d.id),
+                label: d.name,
+              }))}
+            />
+
             <SelectField
               label="Day"
               placeholder="Select Day"
@@ -553,7 +600,7 @@ const DrSchedulePage = ({
                 setFilterDoctorId(v);
                 setCurrentPage(1);
               }}
-              options={doctors.map((d) => ({
+              options={(filterDoctors || []).map((d) => ({
                 value: String(d.id),
                 label: d.name,
               }))}
@@ -564,6 +611,7 @@ const DrSchedulePage = ({
               value={filterClinicId}
               onChange={(v) => {
                 setFilterClinicId(v);
+                setFilterDoctorId("");
                 setCurrentPage(1);
               }}
               options={clinics.map((c) => ({

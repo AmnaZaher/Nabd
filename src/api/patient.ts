@@ -329,6 +329,21 @@ export const patientApi = {
     }
   },
 
+  /** Fetch all doctors using the Patient/Doctors endpoint */
+  getAllDoctors: async (): Promise<{ id: number; name: string }[]> => {
+    try {
+      const res = await fetchApi<any>(`/Patient/Doctors`);
+      const raw = res.data;
+      const list: any[] =
+        raw?.data ??
+        (Array.isArray(raw) ? raw : []);
+      return list.map((d: any) => ({ id: Number(d.id), name: d.name || `Dr. #${d.id}` }));
+    } catch (err) {
+      console.error('[getAllDoctors] Failed:', err);
+      return [];
+    }
+  },
+
   deletePatient: async (id: string): Promise<void> => {
     // Uses ActiveOrDeActive toggle endpoint
     try {
