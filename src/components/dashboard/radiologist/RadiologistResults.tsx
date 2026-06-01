@@ -12,7 +12,10 @@ import {
   CheckCircle2,
   SlidersHorizontal,
 } from "lucide-react";
-import { getExamDetails, type RadiologyExamDetailsDto } from "../../../api/radiologyResults";
+import {
+  type ApprovedReportDto,
+  getAllApprovedReports,
+} from "../../../api/radiologyResults";
 
 type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
 type Priority = "URGENT" | "NORMAL";
@@ -30,9 +33,7 @@ interface ResultItem {
   reportId?: string;
 }
 
-const EXAM_IDS = ["1", "2", "3"];
-
-const normalizeStatus = (item: RadiologyExamDetailsDto): ApprovalStatus => {
+const normalizeStatus = (item: ApprovedReportDto): ApprovalStatus => {
   const raw = (
     item.approvalStatus ||
     item.reportStatus ||
@@ -57,8 +58,8 @@ const normalizePriority = (value?: string): Priority => {
   return "NORMAL";
 };
 
-const mapExamToResultItem = (item: RadiologyExamDetailsDto, fallbackId: string): ResultItem => ({
-  queueId: `RAD-${item.examId ?? item.id ?? fallbackId}`,
+const mapReportToResultItem = (item: ApprovedReportDto): ResultItem => ({
+  queueId: `RAD-${item.examId ?? item.id ?? item.reportId ?? "—"}`,
   patientName: item.patientName || "Unknown Patient",
   patientId: item.patientFileNumber || item.fileNumber || String(item.patientId ?? "—"),
   examType: item.examType || item.modality || "Radiology Exam",
@@ -66,7 +67,7 @@ const mapExamToResultItem = (item: RadiologyExamDetailsDto, fallbackId: string):
   radiologist: item.radiologistName || "—",
   priority: normalizePriority(item.priority),
   status: normalizeStatus(item),
-  examId: String(item.examId ?? item.id ?? fallbackId),
+  examId: String(item.examId ?? item.id ?? item.reportId ?? "—"),
   reportId: item.reportId ? String(item.reportId) : undefined,
 });
 
@@ -102,6 +103,48 @@ const RadiologistResults: React.FC<{
   const [items, setItems] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const ITEMS_PER_PAGE = 6;
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getAllApprovedReports();
+        setItems(data.map(mapReportToResultItem));
+      } catch (err: any) {
+        setError(err?.message || "Failed to load results.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, []);
+
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.patientName.toLowerCase().includes(q) ||
+        item.queueId.toLowerCase().includes(q) ||
+        item.patientId.toLowerCase().includes(q)
+    );
+  }, [items, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const approvedCount = items.filter((x) => x.status === "APPROVED").length;
+  const pendingCount = items.filter((x) => x.status === "PENDING").length;
+  const reviewCount = items.filter((x) => x.status === "PENDING").length;
 
   const getActionButton = (item: ResultItem) => {
     switch (item.status) {
@@ -135,40 +178,13 @@ const RadiologistResults: React.FC<{
     }
   };
 
-  useEffect(() => {
-    const fetchResults = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const responses = await Promise.all(EXAM_IDS.map((id) => getExamDetails(id)));
-        setItems(responses.map((item, index) => mapExamToResultItem(item, EXAM_IDS[index])));
-      } catch (err: any) {
-        setError(err?.message || "Failed to load results.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchResults();
-  }, []);
-
-  const filteredItems = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return items.filter(
-      (item) =>
-        item.patientName.toLowerCase().includes(q) ||
-        item.queueId.toLowerCase().includes(q) ||
-        item.patientId.toLowerCase().includes(q)
-    );
-  }, [items, searchQuery]);
-
-  const pendingCount = items.filter((x) => x.status === "PENDING").length;
-  const approvedCount = items.filter((x) => x.status === "APPROVED").length;
-  const reviewCount = items.filter((x) => x.status === "PENDING").length;
-
-  const pages: (number | "...")[] = [1];
-  const currentPage = 1;
+  const pages: (number | "...")[] = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+    .reduce<(number | "...")[]>((acc, p, i, arr) => {
+      if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("...");
+      acc.push(p);
+      return acc;
+    }, []);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
@@ -247,7 +263,10 @@ const RadiologistResults: React.FC<{
                 type="text"
                 placeholder="Patient Name or Queue ID..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl shadow-sm text-sm font-semibold focus:ring-2 focus:ring-blue-500/10 outline-none transition-all placeholder:text-slate-400"
               />
             </div>
@@ -310,7 +329,7 @@ const RadiologistResults: React.FC<{
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {filteredItems.map((item) => (
+                      {paginatedItems.map((item) => (
                         <tr
                           key={item.queueId}
                           className="hover:bg-slate-50/40 transition-colors"
@@ -359,7 +378,7 @@ const RadiologistResults: React.FC<{
                         </tr>
                       ))}
 
-                      {filteredItems.length === 0 && (
+                      {paginatedItems.length === 0 && (
                         <tr>
                           <td
                             colSpan={8}
@@ -375,12 +394,15 @@ const RadiologistResults: React.FC<{
 
                 <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Showing {filteredItems.length} Entries
+                    Showing {filteredItems.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}-
+                    {Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of {filteredItems.length} Entries
                   </p>
+
                   <div className="flex items-center gap-1">
                     <button
-                      disabled
-                      className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200/50 bg-white text-slate-300 transition-colors disabled:opacity-40 cursor-not-allowed"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200/50 bg-white text-slate-300 transition-colors disabled:opacity-40 cursor-pointer"
                     >
                       <ChevronLeft size={16} />
                     </button>
@@ -396,6 +418,7 @@ const RadiologistResults: React.FC<{
                       ) : (
                         <button
                           key={page}
+                          onClick={() => setCurrentPage(page)}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center border text-xs font-bold transition-colors cursor-pointer ${
                             currentPage === page
                               ? "border-blue-600 bg-blue-600 text-white"
@@ -407,7 +430,11 @@ const RadiologistResults: React.FC<{
                       )
                     )}
 
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200/50 bg-white text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200/50 bg-white text-slate-400 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
+                    >
                       <ChevronRight size={16} />
                     </button>
                   </div>
