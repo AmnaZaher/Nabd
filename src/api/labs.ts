@@ -19,6 +19,15 @@ export const getLabCatalog = async (pageIndex = 1, pageSize = 5) => {
 };
 
 /**
+ * Fetch available lab tests for a visit.
+ */
+export const getAvailableLabTests = async () => {
+  return await fetchApi<any[]>('/Lab/AvaliableLabTest', {
+    method: 'GET',
+  });
+};
+
+/**
  * Fetch details for a specific lab test from the catalog.
  * @param id The ID of the test.
  */
