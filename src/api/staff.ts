@@ -451,9 +451,8 @@ export const staffApi = {
   },
 
   toggleStatus: async (id: string, activate: boolean): Promise<void> => {
-    await fetchApi(`/Staff/${id}/status`, {
+    await fetchApi(`/Admin/ActiveOrDeActive/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ status: activate ? "Active" : "Disabled" }),
     });
   },
 
