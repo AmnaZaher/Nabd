@@ -129,10 +129,14 @@ const TimeField = ({
   label,
   value,
   onChange,
+  min,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  min?: string;
+  disabled?: boolean;
 }) => (
   <div className="flex flex-col gap-1.5">
     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
@@ -141,8 +145,10 @@ const TimeField = ({
     <input
       type="time"
       value={value}
+      min={min}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={`w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${disabled ? "opacity-50 cursor-not-allowed bg-slate-50" : ""}`}
     />
   </div>
 );
@@ -183,6 +189,10 @@ const EditModal = ({
   const handleSave = async () => {
     if (!doctorId || !clinicId || !from || !to) {
       setError("All fields are required.");
+      return;
+    }
+    if (to <= from) {
+      setError("To time must be after from time.");
       return;
     }
     setSaving(true);
@@ -252,8 +262,30 @@ const EditModal = ({
           />
         </div>
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <TimeField label="From Time" value={from} onChange={setFrom} />
-          <TimeField label="To Time" value={to} onChange={setTo} />
+          <TimeField 
+            label="From Time" 
+            value={from} 
+            onChange={(v) => {
+              setFrom(v);
+              if (to && v >= to) {
+                setTo("");
+              }
+            }} 
+          />
+          <TimeField 
+            label="To Time" 
+            value={to} 
+            onChange={(v) => {
+              setTo(v);
+              if (from && v && v <= from) {
+                setError("To time must be after from time.");
+              } else {
+                setError("");
+              }
+            }} 
+            min={from} 
+            disabled={!from} 
+          />
         </div>
         {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
         <div className="flex gap-3 justify-end">
@@ -432,6 +464,10 @@ const DrSchedulePage = ({
       setCreateError("All fields are required.");
       return;
     }
+    if (toTime <= fromTime) {
+      setCreateError("To time must be after from time.");
+      return;
+    }
     setCreating(true);
     try {
       await scheduleApi.createSchedule({
@@ -561,9 +597,27 @@ const DrSchedulePage = ({
             <TimeField
               label="From Time"
               value={fromTime}
-              onChange={setFromTime}
+              onChange={(v) => {
+                setFromTime(v);
+                if (toTime && v >= toTime) {
+                  setToTime("");
+                }
+              }}
             />
-            <TimeField label="To Time" value={toTime} onChange={setToTime} />
+            <TimeField 
+              label="To Time" 
+              value={toTime} 
+              onChange={(v) => {
+                setToTime(v);
+                if (fromTime && v && v <= fromTime) {
+                  setCreateError("To Time must be after From Time.");
+                } else {
+                  setCreateError("");
+                }
+              }} 
+              min={fromTime} 
+              disabled={!fromTime} 
+            />
             <div className="flex flex-col justify-end gap-1">
               {createError && (
                 <p className="text-red-500 text-xs">{createError}</p>
