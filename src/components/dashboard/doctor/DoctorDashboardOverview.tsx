@@ -263,13 +263,17 @@ const DoctorDashboardOverview: React.FC<DoctorDashboardOverviewProps> = ({ onMen
                                         const typeObj = getTypeDetails(appt.visitType || '');
 
                                         return (
-                                            <tr key={appt.id || i} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                            <tr 
+                                                key={appt.id || i} 
+                                                onClick={() => navigate(`/dashboard/patient-visit?appointmentId=${appt.visitId}`)}
+                                                className="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
+                                            >
                                                 <td className="py-4 pl-4">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
                                                             {initials}
                                                         </div>
-                                                        <span className="font-bold text-slate-800">{appt.patientName}</span>
+                                                        <span className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{appt.patientName}</span>
                                                     </div>
                                                 </td>
                                                 <td className="py-4 font-medium text-slate-500">
