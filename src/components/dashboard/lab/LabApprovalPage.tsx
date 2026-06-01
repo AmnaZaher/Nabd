@@ -85,11 +85,10 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
             }
         }
 
-        // Fallback to mock data if there is an error, if data is missing, or if the database is empty (no records yet)
-        if (finalData && Array.isArray(finalData) && finalData.length > 0) return finalData;
+        // Return empty array instead of mock data if the database is empty or API fails
+        if (finalData && Array.isArray(finalData)) return finalData;
         
-        console.info("No active results in database or API error. Showing mock data fallback.");
-        return MOCK_LAB_RESULTS;
+        return [];
     }, [apiData, isError, apiError]);
 
     const loading = isLoading;
@@ -481,7 +480,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                                             </button>
                                                         )}
                                                         <button 
-                                                            onClick={() => navigate(`/dashboard/lab/approve/${req.id}`)}
+                                                            onClick={() => navigate(`/dashboard/lab/approve/${req.id}`, { state: { orderData: req } })}
                                                             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                                                             title="Edit"
                                                         >

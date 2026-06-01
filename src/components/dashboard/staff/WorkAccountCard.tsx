@@ -13,6 +13,17 @@ interface WorkAccountCardProps {
 const WEEK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const WORKING_DAYS = 5;
 
+const formatDateTime = (raw: string | null | undefined): string => {
+    if (!raw || raw === 'N/A' || raw.startsWith('0001-01-01')) return 'N/A';
+    try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return raw;
+    }
+};
+
 const WorkAccountCard: React.FC<WorkAccountCardProps> = ({ user, onToggleStatus }) => {
   const isActive = user.status === 'Active';
 
@@ -63,7 +74,7 @@ const WorkAccountCard: React.FC<WorkAccountCardProps> = ({ user, onToggleStatus 
         <AccountInfoItem
           icon={<History className="w-5 h-5 text-slate-400" />}
           label="LAST LOGIN"
-          value={user.lastLogin}
+          value={formatDateTime(user.lastLogin)}
         />
 
         <div className="mt-auto pt-6">

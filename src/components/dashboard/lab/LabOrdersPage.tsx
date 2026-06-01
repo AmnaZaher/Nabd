@@ -86,11 +86,11 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
         let isError = !!apiError;
         let fallback = false;
 
-        if (!finalData || !Array.isArray(finalData) || finalData.length === 0 || isError) {
-            finalData = MOCK_LAB_RESULTS;
+        if (!finalData || !Array.isArray(finalData) || isError) {
+            finalData = [];
             fallback = true;
             if (apiError) {
-                console.warn("Failed to load lab results. Falling back to mock data.", apiError);
+                console.warn("Failed to load lab results.", apiError);
             }
         }
 

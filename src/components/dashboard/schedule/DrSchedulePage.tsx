@@ -18,6 +18,7 @@ import {
   type CreateDoctorScheduleDto,
 } from "../../../api/schedules";
 import { staffApi } from "../../../api/staff";
+import { patientApi } from "../../../api/patient";
 import { getClinics } from "../../../api/clinics";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -128,10 +129,14 @@ const TimeField = ({
   label,
   value,
   onChange,
+  min,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  min?: string;
+  disabled?: boolean;
 }) => (
   <div className="flex flex-col gap-1.5">
     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
@@ -140,8 +145,10 @@ const TimeField = ({
     <input
       type="time"
       value={value}
+      min={min}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={`w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${disabled ? "opacity-50 cursor-not-allowed bg-slate-50" : ""}`}
     />
   </div>
 );
@@ -167,10 +174,25 @@ const EditModal = ({
   const [to, setTo] = useState(schedule.endTime?.slice(0, 5) ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [modalDoctors, setModalDoctors] = useState<DoctorOption[]>([]);
+
+  useEffect(() => {
+    if (!clinicId) {
+      setModalDoctors([]);
+      return;
+    }
+    patientApi.getDoctorsByClinic(Number(clinicId))
+      .then(res => setModalDoctors(res || []))
+      .catch(() => setModalDoctors([]));
+  }, [clinicId]);
 
   const handleSave = async () => {
     if (!doctorId || !clinicId || !from || !to) {
       setError("All fields are required.");
+      return;
+    }
+    if (to <= from) {
+      setError("To time must be after from time.");
       return;
     }
     setSaving(true);
@@ -205,25 +227,29 @@ const EditModal = ({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <SelectField
-            label="Doctor"
-            placeholder="Select Doctor"
-            value={doctorId}
-            onChange={setDoctorId}
-            options={doctors.map((d) => ({
-              value: String(d.id),
-              label: d.name,
-            }))}
-          />
-          <SelectField
             label="Clinic"
             placeholder="Select Clinic"
             value={clinicId}
-            onChange={setClinicId}
+            onChange={(v) => {
+              setClinicId(v);
+              setDoctorId(""); // Reset doctor when clinic changes
+            }}
             options={clinics.map((c) => ({
               value: String(c.id),
               label: c.name,
             }))}
           />
+          <SelectField
+            label="Doctor"
+            placeholder="Select Doctor"
+            value={doctorId}
+            onChange={setDoctorId}
+            options={modalDoctors.map((d) => ({
+              value: String(d.id),
+              label: d.name,
+            }))}
+          />
+
           <SelectField
             label="Day"
             placeholder="Select Day"
@@ -236,8 +262,30 @@ const EditModal = ({
           />
         </div>
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <TimeField label="From Time" value={from} onChange={setFrom} />
-          <TimeField label="To Time" value={to} onChange={setTo} />
+          <TimeField 
+            label="From Time" 
+            value={from} 
+            onChange={(v) => {
+              setFrom(v);
+              if (to && v >= to) {
+                setTo("");
+              }
+            }} 
+          />
+          <TimeField 
+            label="To Time" 
+            value={to} 
+            onChange={(v) => {
+              setTo(v);
+              if (from && v && v <= from) {
+                setError("To time must be after from time.");
+              } else {
+                setError("");
+              }
+            }} 
+            min={from} 
+            disabled={!from} 
+          />
         </div>
         {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
         <div className="flex gap-3 justify-end">
@@ -283,6 +331,18 @@ const DrSchedulePage = ({
   const [day, setDay] = useState("1"); // Monday default
   const [fromTime, setFromTime] = useState("");
   const [toTime, setToTime] = useState("");
+  const [createDoctors, setCreateDoctors] = useState<DoctorOption[]>([]);
+
+  useEffect(() => {
+    if (!clinicId) {
+      setCreateDoctors([]);
+      return;
+    }
+    patientApi.getDoctorsByClinic(Number(clinicId))
+      .then(res => setCreateDoctors(res || []))
+      .catch(() => setCreateDoctors([]));
+  }, [clinicId]);
+
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState(false);
@@ -290,6 +350,17 @@ const DrSchedulePage = ({
   // Filter
   const [filterDoctorId, setFilterDoctorId] = useState("");
   const [filterClinicId, setFilterClinicId] = useState("");
+  const [filterDoctors, setFilterDoctors] = useState<DoctorOption[]>([]);
+
+  useEffect(() => {
+    if (!filterClinicId) {
+      setFilterDoctors(doctors || []);
+      return;
+    }
+    patientApi.getDoctorsByClinic(Number(filterClinicId))
+      .then(res => setFilterDoctors(res || []))
+      .catch(() => setFilterDoctors([]));
+  }, [filterClinicId, doctors]);
 
   // Table data
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
@@ -318,19 +389,23 @@ const DrSchedulePage = ({
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
-        const [staffRes, clinicRes] = await Promise.all([
-          staffApi.getStaffs({ Role: "2", PageIndex: 0, PageSize: 1000 }), // Role 2 = Doctor
-          getClinics({ PageIndex: 0, PageSize: 100 }),
-        ]);
-        const staffList: any[] = extractList(staffRes);
-        setDoctors(
-          staffList.map((s: any) => ({
+        const clinicRes = await getClinics({ PageIndex: 0, PageSize: 100 });
+        const clinicList: any[] = extractList(clinicRes);
+
+        let docsList = await patientApi.getAllDoctors().catch(() => []);
+        
+        // If getAllDoctors returns empty (e.g., if the endpoint requires ClinicId), 
+        // fallback to staffApi which gets all users with Role=2
+        if (!docsList || docsList.length === 0) {
+          const staffRes = await staffApi.getStaffs({ Role: "2", PageIndex: 0, PageSize: 1000 });
+          docsList = extractList(staffRes).map((s: any) => ({
             id: s.id ?? s.Id,
             name: s.fullNameEnglish ?? s.name ?? s.FullNameEnglish ?? "Unknown",
-          })),
-        );
+          }));
+        }
 
-        const clinicList: any[] = extractList(clinicRes);
+        setDoctors(docsList);
+
         setClinics(
           clinicList.map((c: any) => ({
             id: c.id ?? c.Id,
@@ -387,6 +462,10 @@ const DrSchedulePage = ({
     setCreateError("");
     if (!doctorId || !clinicId || !fromTime || !toTime) {
       setCreateError("All fields are required.");
+      return;
+    }
+    if (toTime <= fromTime) {
+      setCreateError("To time must be after from time.");
       return;
     }
     setCreating(true);
@@ -480,25 +559,29 @@ const DrSchedulePage = ({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <SelectField
-              label="Doctor"
-              placeholder="Select Doctor"
-              value={doctorId}
-              onChange={setDoctorId}
-              options={doctors.map((d) => ({
-                value: String(d.id),
-                label: d.name,
-              }))}
-            />
-            <SelectField
               label="Clinic"
               placeholder="Select Clinic"
               value={clinicId}
-              onChange={setClinicId}
+              onChange={(v) => {
+                setClinicId(v);
+                setDoctorId(""); // Reset doctor when clinic changes
+              }}
               options={clinics.map((c) => ({
                 value: String(c.id),
                 label: c.name,
               }))}
             />
+            <SelectField
+              label="Doctor"
+              placeholder="Select Doctor"
+              value={doctorId}
+              onChange={setDoctorId}
+              options={createDoctors.map((d) => ({
+                value: String(d.id),
+                label: d.name,
+              }))}
+            />
+
             <SelectField
               label="Day"
               placeholder="Select Day"
@@ -514,9 +597,27 @@ const DrSchedulePage = ({
             <TimeField
               label="From Time"
               value={fromTime}
-              onChange={setFromTime}
+              onChange={(v) => {
+                setFromTime(v);
+                if (toTime && v >= toTime) {
+                  setToTime("");
+                }
+              }}
             />
-            <TimeField label="To Time" value={toTime} onChange={setToTime} />
+            <TimeField 
+              label="To Time" 
+              value={toTime} 
+              onChange={(v) => {
+                setToTime(v);
+                if (fromTime && v && v <= fromTime) {
+                  setCreateError("To Time must be after From Time.");
+                } else {
+                  setCreateError("");
+                }
+              }} 
+              min={fromTime} 
+              disabled={!fromTime} 
+            />
             <div className="flex flex-col justify-end gap-1">
               {createError && (
                 <p className="text-red-500 text-xs">{createError}</p>
@@ -553,7 +654,7 @@ const DrSchedulePage = ({
                 setFilterDoctorId(v);
                 setCurrentPage(1);
               }}
-              options={doctors.map((d) => ({
+              options={(filterDoctors || []).map((d) => ({
                 value: String(d.id),
                 label: d.name,
               }))}
@@ -564,6 +665,7 @@ const DrSchedulePage = ({
               value={filterClinicId}
               onChange={(v) => {
                 setFilterClinicId(v);
+                setFilterDoctorId("");
                 setCurrentPage(1);
               }}
               options={clinics.map((c) => ({

@@ -170,11 +170,39 @@ const DoctorProfileDetail = ({ onMenuClick }: { onMenuClick: () => void }) => {
     useEffect(() => { loadData(); }, [id]);
 
     const handleDeactivate = async () => {
-        if (!user) return;
+        if (!user || !id) return;
         setIsDeactivating(true);
         try {
             const activate = user.status !== 'Active';
-            await staffApi.toggleStatus(user.id, activate);
+            try {
+                await staffApi.toggleStatus(id as string, activate);
+            } catch (errAdmin) {
+                console.warn('Admin status toggle failed, falling back to doctor profile edit:', errAdmin);
+                
+                let dobStr: string | undefined = undefined;
+                if (user.dateOfBirth) {
+                    const d = new Date(user.dateOfBirth);
+                    if (!isNaN(d.getTime())) {
+                        dobStr = d.toISOString();
+                    }
+                }
+
+                const payload = {
+                    NameEngLish:              user.name || undefined,
+                    NameArabic:               user.fullNameArabic || undefined,
+                    Email:                    user.email || undefined,
+                    PhoneNumber:              user.phone || undefined,
+                    Gender:                   user.gender || undefined,
+                    DateOfBirth:              dobStr,
+                    IsActive:                 activate,
+                    EducationalQualification: user.educationalQualification || undefined,
+                    GraduationYear:           user.graduationYear ? Number(user.graduationYear) : undefined,
+                    MedicalSyndicateNumber:   user.syndicateNumber || undefined,
+                    Address:                  user.address || undefined,
+                    City:                     user.location || undefined,
+                };
+                await profileApi.editDoctorProfile(id as string, payload);
+            }
             setUser(prev => prev ? { ...prev, status: activate ? 'Active' : 'Disabled' } : prev);
             setDeactivateModal(false);
         } catch (err) {

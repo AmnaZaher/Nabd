@@ -98,11 +98,23 @@ const patientFilterConfig: FilterConfig[] = [
 
 // ==================== Helpers ====================
 const formatDate = (raw: string | null | undefined): string => {
-    if (!raw || raw === 'N/A' || raw.startsWith('0001-01-01')) return 'N/A';
+    if (!raw || raw === 'N/A') return 'N/A';
     try {
         const d = new Date(raw);
         if (isNaN(d.getTime())) return raw; // return as-is if unparseable
+        // If it's a min date, we'll just format it anyway since the user requested to see the returned data
         return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+        return raw;
+    }
+};
+
+const formatDateTime = (raw: string | null | undefined): string => {
+    if (!raw || raw === 'N/A') return 'N/A';
+    try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     } catch {
         return raw;
     }
@@ -140,7 +152,7 @@ const getStaffColumns = (onEdit: (staff: StaffMember) => void, onDelete: (staff:
     {
         key: 'lastLogin',
         header: 'LAST LOGIN',
-        render: (staff) => <span className="font-bold text-slate-900">{staff.lastLogin || 'N/A'}</span>,
+        render: (staff) => <span className="font-bold text-slate-900">{formatDate(staff.lastLogin) || 'N/A'}</span>,
     },
     {
         key: 'dept',
@@ -203,14 +215,14 @@ const getPatientColumns = (onEdit: (patient: PatientListItem) => void, onDelete:
     {
         key: 'lastVisit',
         header: 'LAST VISIT',
-        render: (patient) => <span className="font-extrabold text-slate-900">{formatDate(patient.lastVisit)}</span>,
+        render: (patient) => <span className="font-extrabold text-slate-900">{formatDateTime(patient.lastVisit)}</span>,
     },
     {
         key: 'upcoming',
         header: 'UPCOMING',
         render: (patient) => (
             <span className={`font-bold ${patient.upcoming && patient.upcoming !== '-' ? 'text-blue-500' : 'text-slate-400'}`}>
-                {patient.upcoming && patient.upcoming !== '-' ? formatDate(patient.upcoming) : '-'}
+                {patient.upcoming && patient.upcoming !== '-' ? formatDateTime(patient.upcoming) : '-'}
             </span>
         ),
     },
@@ -377,7 +389,7 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                         subtitle: item.nationalId || item.NationalId || item.specialization || '',
                         username: item.username || item.userName || item.Email || item.email || '',
                         role: roleVal,
-                        lastLogin: item.lastLogin || item.LastLogin || item.lastLoginDate || item.LastLoginDate || item.lastSeen || 'N/A',
+                        lastLogin: item.lastLogIn || item.LastLogIn || item.lastLogin || item.LastLogin || item.lastLoginDate || item.LastLoginDate || item.lastSeen || 'N/A',
                         dept: deptVal,
                         status: item.isActive === false || item.status === 'Inactive' ? 'Disabled' : (item.status || 'Active'),
                         avatar: item.avatar || item.PersonalPhotos || '',
@@ -435,18 +447,23 @@ const UserManagementList = ({ onMenuClick, onAddUserClick, onProfileClick }: Use
                 const mappedPatients = list.map((item: any) => {
                     const userGuid = item.userId ? String(item.userId) : (item.id ? String(item.id) : '');
                     
-                    const isMinDate = (d: any) => !d || d.toString().startsWith('0001-01-01');
+                    const isMinDate = (d: any) => !d;
                     
                     const rawLastVisit = item.lastVisitDate || item.LastVisitDate || item.lastVisit || item.LastVisit;
                     const rawUpcoming = item.upComingAppointment || item.UpComingAppointment || item.UpcomingAppointment || item.upcomingAppointment || item.upcoming || item.Upcoming;
                     
+                    let rawDemo = item.demographicData || item.demographics || '';
+                    if (typeof rawDemo === 'string') {
+                        rawDemo = rawDemo.replace(/^1(?=\s|$)/, 'Male').replace(/^2(?=\s|$)/, 'Female');
+                    }
+
                     return {
                         id: userGuid,
                         userId: userGuid,
                         patientId: item.fileNumber || item.nationalId || userGuid,
                         name: item.name || 'Unknown',
                         subtitle: item.fileNumber || '',
-                        demographics: item.demographicData || item.demographics || '',
+                        demographics: rawDemo,
                         lastVisit: isMinDate(rawLastVisit) ? 'N/A' : rawLastVisit,
                         upcoming: isMinDate(rawUpcoming) ? '-' : rawUpcoming,
                         status: item.isActive === false || item.status === 'Inactive' ? 'Disabled' : (item.status || 'Active'),

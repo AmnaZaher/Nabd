@@ -38,7 +38,6 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boole
             // { id: 'patient-visit',   icon: Activity,        label: 'Active Visit', path: PATHS.PATIENT_VISIT   },
             // Points to the new doctor-only schedule page, NOT the shared appointments page
             { id: 'doctor-schedule', icon: CalendarClock, label: 'Schedule', path: PATHS.DOCTOR_SCHEDULE },
-            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
     if (isNurse) {
@@ -50,7 +49,6 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boole
             { id: 'dr-schedule', icon: CalendarClock, label: 'DR. Schedule', path: PATHS.DR_SCHEDULE },
             { id: 'book-radiology', icon: Microscope, label: 'Radiology', path: PATHS.NURSE_BOOK_RADIOLOGY },
             { id: 'lab-catalog', icon: FlaskConical, label: 'Lab Catalog', path: PATHS.NURSE_BOOK_LAB },
-            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
     if (isLabTechnician) {
@@ -58,7 +56,6 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boole
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: PATHS.DASHBOARD },
             { id: 'lab-orders', icon: ClipboardList, label: 'Lab orders', path: PATHS.LAB_TEST_REQUEST },
             { id: 'lab-approval', icon: ClipboardCheck, label: 'Lab approval', path: PATHS.LAB_TEST },
-            { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
         ];
     }
     if (isRadiologist) {
@@ -78,7 +75,6 @@ const getNavItems = (isNurse: boolean, isDoctor: boolean, isLabTechnician: boole
         { id: 'radiology', icon: Microscope, label: 'Radiology', path: PATHS.RADIOLOGY },
         { id: 'lab-catalog', icon: FlaskConical, label: 'Lab Catalog', path: PATHS.LAB_CATALOG },
         { id: 'clinics', icon: Building2, label: 'Clinics', path: PATHS.CLINICS },
-        { id: 'settings', icon: Settings, label: 'Setting', path: PATHS.SETTINGS },
     ];
 };
 

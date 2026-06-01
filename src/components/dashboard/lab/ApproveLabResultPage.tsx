@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { 
     User, 
     AlertTriangle, 
@@ -36,6 +36,7 @@ function formatDate(dateStr?: string) {
 export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: ApproveLabResultPageProps) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [detail, setDetail] = useState<LabResultDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,18 +51,19 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
             return isNaN(parsed) ? 0 : parsed;
         };
 
-        const parsedId = getNumericId(id) || 9421;
+        const orderData = location.state?.orderData;
+        const parsedId = getNumericId(id) || getNumericId(orderData?.requestId) || getNumericId(orderData?.id) || 9421;
 
         let data: LabResultDetail = {
             id: parsedId,
             requestId: parsedId,
-            patientName: "Unknown Patient",
-            fileNumber: "—",
-            testName: "Unknown Test",
-            doctorName: "Unknown Doctor",
-            status: "Pending Review",
-            priority: "Normal",
-            createdAt: new Date().toISOString(),
+            patientName: orderData?.patientName || orderData?.patient?.name || orderData?.name || "Unknown Patient",
+            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || orderData?.patientFileNumber || "—",
+            testName: orderData?.testName || orderData?.labTest?.testNameEnglish || orderData?.name || "Unknown Test",
+            doctorName: orderData?.doctorName || orderData?.doctor?.name || orderData?.doctor || "Unknown Doctor",
+            status: orderData?.status || "Pending Review",
+            priority: orderData?.priority || "Normal",
+            createdAt: orderData?.createdAt || orderData?.date || new Date().toISOString(),
             parameters: []
         } as LabResultDetail;
 
@@ -174,7 +176,7 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
         setLoading(false);
     }
     loadData();
-  }, [id]);
+  }, [id, location.state]);
 
   const getInterpretation = (valStr: string | number | undefined, min: number, max: number) => {
     if (valStr === undefined || valStr === null || valStr === "") return null;
