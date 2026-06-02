@@ -93,6 +93,12 @@ export const visitApi = {
     });
   },
 
+  getAllMedicine: async () => {
+    return await fetchApi(`/Visit/AllMedicine`, {
+      method: 'GET',
+    });
+  },
+
   addPrescription: async (visitId: number | string, payload: any) => {
     return await fetchApi(`/Visit/${visitId}/prescriptions`, {
       method: 'POST',
