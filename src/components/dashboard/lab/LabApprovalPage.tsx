@@ -99,7 +99,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
         const isMock = results === MOCK_LAB_RESULTS;
         if (isMock) {
             return results.filter(r => {
-                const s = normaliseStatus(r.status);
+                const s = normaliseStatus(r.status || r.statuse);
                 return s === "Pending Approval" || s === "Reviewed";
             });
         }
@@ -114,7 +114,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
         let criticalWaiting = 0;
 
         approvalList.forEach(r => {
-            const s = normaliseStatus(r.status);
+            const s = normaliseStatus(r.status || r.statuse);
             const isUrgent = (r.priority || "").toLowerCase() === "urgent";
 
             if (s === "Pending Approval") {
@@ -148,8 +148,9 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
         const pName = (r.patientName ?? r.patient?.name ?? "").toLowerCase();
         const tName = (r.testName ?? r.labTest?.testNameEnglish ?? "Unknown");
         const dName = (r.doctorName ?? r.doctor?.name ?? "Unknown");
+        const idVal = r.finallResultId ?? r.id;
         
-        if (searchQuery && !pName.includes(searchQuery.toLowerCase()) && !r.id.toString().includes(searchQuery)) return false;
+        if (searchQuery && !pName.includes(searchQuery.toLowerCase()) && !idVal?.toString().includes(searchQuery)) return false;
         if (testFilter !== "All Tests" && tName !== testFilter) return false;
         if (doctorFilter !== "All Doctors" && dName !== doctorFilter) return false;
         return true;
@@ -185,8 +186,8 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
 
     const handleApproveAll = async () => {
         const pendingIds = filteredList
-            .filter(r => normaliseStatus(r.status) === "Pending Approval")
-            .map(r => r.id);
+            .filter(r => normaliseStatus(r.status || r.statuse) === "Pending Approval")
+            .map(r => r.finallResultId ?? r.id);
             
         for (const id of pendingIds) {
             await handleApprove(id);
@@ -387,7 +388,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                     </tr>
                                 ) : (
                                     paginatedList.map(req => {
-                                        const status = normaliseStatus(req.status);
+                                        const status = normaliseStatus(req.status || req.statuse);
                                         const pName = req.patientName ?? req.patient?.name ?? "Unknown";
                                         const pDetails = req.fileNumber ?? "—";
                                         const tName = req.testName ?? req.labTest?.testNameEnglish ?? "—";
@@ -420,14 +421,14 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                         }
 
                                         return (
-                                            <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <tr key={req.finallResultId ?? req.id} className="hover:bg-slate-50/50 transition-colors">
                                                 <td className="px-6 py-4">
-                                                    <span className="text-sm font-bold text-blue-600">#LAB-{req.id}</span>
+                                                    <span className="text-sm font-bold text-blue-600">#LAB-{req.requestNumber ?? req.finallResultId ?? req.id}</span>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div 
                                                         className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors group"
-                                                        onClick={() => navigate(`/dashboard/lab/visit/${req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS' } })}
+                                                        onClick={() => navigate(`/dashboard/lab/visit/${req.visitId || req.finallResultId || req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS' } })}
                                                     >
                                                         <div>
                                                             <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{pName}</p>
@@ -450,7 +451,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm text-slate-600 font-medium whitespace-pre-line leading-relaxed">
-                                                        {formatDate(req.createdAt)}
+                                                        {formatDate(req.createdAt || req.time)}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -459,7 +460,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-1">
                                                         <button 
-                                                            onClick={() => navigate(`/dashboard/lab/result/${req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS', orderData: req } })}
+                                                            onClick={() => navigate(`/dashboard/lab/result/${req.finallResultId ?? req.id}`, { state: { from: '/dashboard/lab-test', label: 'APPROVE RESULTS', orderData: req } })}
                                                             className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                                                             title="View Details"
                                                         >
@@ -467,12 +468,12 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                                         </button>
                                                         {status === "Pending Approval" && (
                                                             <button 
-                                                                onClick={() => handleApprove(req.id)}
-                                                                disabled={approvingIds.has(req.id)}
+                                                                onClick={() => handleApprove(req.finallResultId ?? req.id ?? 0)}
+                                                                disabled={approvingIds.has(req.finallResultId ?? req.id ?? 0)}
                                                                 className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                                                                 title="Approve"
                                                             >
-                                                                {approvingIds.has(req.id) ? (
+                                                                {approvingIds.has(req.finallResultId ?? req.id ?? 0) ? (
                                                                     <Loader2 size={18} className="animate-spin" />
                                                                 ) : (
                                                                     <ShieldCheck size={18} />
@@ -480,14 +481,14 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                                             </button>
                                                         )}
                                                         <button 
-                                                            onClick={() => navigate(`/dashboard/lab/approve/${req.id}`, { state: { orderData: req } })}
+                                                            onClick={() => navigate(`/dashboard/lab/approve/${req.finallResultId ?? req.id}`, { state: { orderData: req } })}
                                                             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                                                             title="Edit"
                                                         >
                                                             <Pencil size={18} />
                                                         </button>
                                                         <button 
-                                                            onClick={() => exportLabPDF(req.id)}
+                                                            onClick={() => exportLabPDF(req.finallResultId ?? req.id ?? 0)}
                                                             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                                                             title="Print"
                                                         >

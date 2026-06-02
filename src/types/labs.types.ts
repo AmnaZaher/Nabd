@@ -80,11 +80,14 @@ export interface LabResult {
   testNameEnglish?: string;
   doctorName?: string;
   status?: string; // "Pending" | "Scheduled" | "In Progress" | "Completed" | "Approved"
+  statuse?: string;
   priority?: string; // "Urgent" | "Normal"
   isApproved?: boolean;
   createdAt?: string;
   createDate?: string;
   approvedAt?: string;
+  time?: string;
+  finallResultId?: number;
   // Sometimes the backend wraps the nested test info
   labTest?: {
     testNameEnglish?: string;
