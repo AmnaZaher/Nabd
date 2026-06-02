@@ -67,6 +67,7 @@ interface VisitDetails {
     notes: string;
     status: any;
     attachments: string[];
+    fileNumber: string;
 }
 
 const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfileClick }) => {
@@ -237,7 +238,7 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                         clinicName: d.clinicName ?? '—',
                         notes: d.notes ?? '',
                         status: d.visitStatus ?? '—',
-
+                        fileNumber: patient.fileNumber ?? d.fileNumber ?? d.patientFileNumber ?? '—',
                         attachments: Array.isArray(attachmentsRaw)
                             ? attachmentsRaw.map((url: string) =>
                                   String(url).replace(/\\\\/g, '/').replace(/\\/g, '/')
