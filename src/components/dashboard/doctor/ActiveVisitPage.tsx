@@ -161,6 +161,16 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                 console.log('presRes:', presRes);
                 console.log('presRes.data:', presRes?.data);
 
+                if (labTestsRes) {
+                    const labsData = (labTestsRes as any)?.data || labTestsRes;
+                    setAvailableLabTests(Array.isArray(labsData) ? labsData : []);
+                }
+
+                if (radTestsRes) {
+                    const radsData = (radTestsRes as any)?.data || radTestsRes;
+                    setAvailableRadTests(Array.isArray(radsData) ? radsData : []);
+                }
+
                 if (visitRes?.data) {
                     const d = visitRes.data;
 
@@ -807,17 +817,20 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                             {availableLabTests.length === 0 ? (
                                                 <option value="">No lab tests available</option>
                                             ) : (
-                                                availableLabTests.map((test, idx) => {
-                                                    const isString = typeof test === 'string';
-                                                    const testId = isString ? test : (test.id?.toString() || test.labTestId?.toString() || test.testCode || `item-${idx}`);
-                                                    const testName = isString ? test : (test.name || test.testNameEnglish || test.testName || test.title || test.labTestName || test.testCode || JSON.stringify(test));
-                                                    
-                                                    return (
-                                                        <option key={testId} value={testId}>
-                                                            {testName}
-                                                        </option>
-                                                    );
-                                                })
+                                                <>
+                                                    <option value="" disabled>Select a lab test...</option>
+                                                    {availableLabTests.map((test, idx) => {
+                                                        const isString = typeof test === 'string';
+                                                        const testId = isString ? test : (test.id?.toString() || test.labTestId?.toString() || test.testCode || `item-${idx}`);
+                                                        const testName = isString ? test : (test.name || test.testNameEnglish || test.testName || test.title || test.labTestName || test.testCode || JSON.stringify(test));
+                                                        
+                                                        return (
+                                                            <option key={testId} value={testId}>
+                                                                {testName}
+                                                            </option>
+                                                        );
+                                                    })}
+                                                </>
                                             )}
                                         </select>
                                         <button 
@@ -864,17 +877,20 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                             {availableRadTests.length === 0 ? (
                                                 <option value="">No radiology tests available</option>
                                             ) : (
-                                                availableRadTests.map((test, idx) => {
-                                                    const isString = typeof test === 'string';
-                                                    const testId = isString ? test : (test.id?.toString() || test.serviceCode || `rad-${idx}`);
-                                                    const testName = isString ? test : (test.radiologyTestName || test.name || test.serviceNameEnglish || test.serviceName || test.title || test.serviceCode || JSON.stringify(test));
-                                                    
-                                                    return (
-                                                        <option key={testId} value={testId}>
-                                                            {testName}
-                                                        </option>
-                                                    );
-                                                })
+                                                <>
+                                                    <option value="" disabled>Select a radiology test...</option>
+                                                    {availableRadTests.map((test, idx) => {
+                                                        const isString = typeof test === 'string';
+                                                        const testId = isString ? test : (test.id?.toString() || test.serviceCode || `rad-${idx}`);
+                                                        const testName = isString ? test : (test.radiologyTestName || test.name || test.serviceNameEnglish || test.serviceName || test.title || test.serviceCode || JSON.stringify(test));
+                                                        
+                                                        return (
+                                                            <option key={testId} value={testId}>
+                                                                {testName}
+                                                            </option>
+                                                        );
+                                                    })}
+                                                </>
                                             )}
                                         </select>
                                         <button 
