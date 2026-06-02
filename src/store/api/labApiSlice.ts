@@ -28,8 +28,25 @@ export const labApiSlice = apiSlice.injectEndpoints({
         getLabDashboardStats: builder.query<any, void>({
             query: () => '/Lab/LabDashBoard',
         }),
-        getLabResults: builder.query<LabResult[], void>({
-            query: () => '/Lab/GetResults',
+        getLabResults: builder.query<any, Record<string, any> | void>({
+            query: (params) => {
+                let url = '/Lab/GetResults';
+                const queryParams = new URLSearchParams();
+                
+                if (params) {
+                    Object.entries(params).forEach(([key, value]) => {
+                        if (value !== undefined && value !== null && value !== '') {
+                            queryParams.append(key, value.toString());
+                        }
+                    });
+                }
+                
+                if (!queryParams.has('PageSize')) {
+                    queryParams.append('PageSize', '1000');
+                }
+                
+                return `${url}?${queryParams.toString()}`;
+            },
             transformResponse: (response: any) => {
                 if (response && response.data) {
                     return response.data;
@@ -45,8 +62,25 @@ export const labApiSlice = apiSlice.injectEndpoints({
             }),
             invalidatesTags: ['LabResult', 'LabOrder'],
         }),
-        getResultsToApprove: builder.query<LabResult[], void>({
-            query: () => '/Lab/GetResultsToApprove',
+        getResultsToApprove: builder.query<any, Record<string, any> | void>({
+            query: (params) => {
+                let url = '/Lab/GetResultsToApprove';
+                const queryParams = new URLSearchParams();
+                
+                if (params) {
+                    Object.entries(params).forEach(([key, value]) => {
+                        if (value !== undefined && value !== null && value !== '') {
+                            queryParams.append(key, value.toString());
+                        }
+                    });
+                }
+                
+                if (!queryParams.has('PageSize')) {
+                    queryParams.append('PageSize', '1000');
+                }
+                
+                return `${url}?${queryParams.toString()}`;
+            },
             transformResponse: (response: any) => {
                 if (response && response.data) {
                     return response.data;
