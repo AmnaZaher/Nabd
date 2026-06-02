@@ -343,6 +343,27 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                 ],
             });
 
+            setPrescriptions([
+                ...prescriptions,
+                {
+                    id: Date.now(),
+                    ...newPrescription,
+                },
+            ]);
+
+            setNewPrescription({
+                name: '',
+                dosage: '',
+                frequency: '',
+                duration: '',
+                instructions: '',
+            });
+            setShowAddPrescription(false);
+        } catch (error) {
+            console.error('Failed to add prescription', error);
+        }
+    };
+
     const handleAddLabOrder = () => {
         if (!selectedLabTest) return;
         const testObj = availableLabTests.find(t => t.id?.toString() === selectedLabTest || t.testCode === selectedLabTest);
@@ -370,24 +391,17 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                 cardiacProblems: radDetails.cardiacProblems,
                 cardiacDetails: radDetails.cardiacProblems ? radDetails.cardiacDetails : '',
                 notes: radDetails.notes || ''
-            setPrescriptions([
-                ...prescriptions,
-                {
-                    id: Date.now(),
-                    ...newPrescription,
-                },
-            ]);
-
-            setNewPrescription({
-                name: '',
-                dosage: '',
-                frequency: '',
-                duration: '',
-                instructions: '',
             });
-            setShowAddPrescription(false);
+
+            const testObj = availableRadTests.find(t => t.id?.toString() === selectedRadTest || t.serviceCode === selectedRadTest);
+            const name = testObj ? (testObj.radiologyTestName || testObj.serviceNameEnglish || testObj.serviceName || testObj.serviceCode) : selectedRadTest;
+            
+            if (!radOrders.find(o => o.name === name)) {
+                setRadOrders([...radOrders, { id: Date.now(), name, desc: 'Requested' }]);
+            }
         } catch (error) {
-            console.error('Failed to add prescription', error);
+            console.error("Failed to create radiology request", error);
+            alert("Failed to create radiology request");
         }
     };
 
