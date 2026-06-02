@@ -135,5 +135,11 @@ export const visitApi = {
     return await fetchApi(`/Visit/${visitId}/diagnosesDetails/${diagnosisId}`, {
       method: 'GET',
     });
+  },
+
+  checkMedicineAi: async (visitId: number | string) => {
+    return await fetchApi(`/Ai/check-medicine/${visitId}`, {
+      method: 'POST',
+    });
   }
 };
