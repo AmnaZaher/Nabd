@@ -145,8 +145,8 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
             id: `#${req.id || req.requestId || Math.floor(Math.random() * 10000)}`,
             name: req.testNameEnglish || req.testName || req.labTest?.testNameEnglish || "Unknown Test",
             category: req.category || req.labTest?.category || "General",
-            sample: req.sampleType || "Blood",
-            doctor: req.doctorName || req.doctor?.name || "Unknown",
+            sample: req.smaple || req.sample || req.sampleType || "Blood",
+            doctor: req.requestByName || req.doctorName || req.doctor?.name || "Unknown",
             date: req.requestDate || req.createdAt || "N/A",
             status: req.status || "Pending",
           })));
@@ -156,8 +156,8 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
             id: `#${req.id || req.requestId || Math.floor(Math.random() * 10000)}`,
             name: req.testNameEnglish || req.testName || req.labTest?.testNameEnglish || "Unknown Test",
             category: req.category || req.labTest?.category || "General",
-            sample: req.sampleType || "Blood",
-            doctor: req.doctorName || req.doctor?.name || "Unknown",
+            sample: req.smaple || req.sample || req.sampleType || "Blood",
+            doctor: req.requestByName || req.doctorName || req.doctor?.name || "Unknown",
             date: req.requestDate || req.createdAt || "N/A",
             status: req.status || "Pending",
           })));
