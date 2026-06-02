@@ -6,7 +6,7 @@ import { getAvailableRadiologyTests, createRadiologyRequest } from '../../../api
 import TopBar from '../TopBar';
 import {
     User, Activity, Clock, FileText, Plus, Trash2,
-    CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle
+    CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle, Sparkles, Shield, X, Save
 } from 'lucide-react';
 
 const RadInfoBox = ({ title, value, colorClass, onClick }: { title: string, value: string, colorClass: 'green' | 'amber' | 'red', onClick: () => void }) => {
@@ -120,6 +120,10 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
         cardiacDetails: '',
         notes: ''
     });
+
+    const [showAiModal, setShowAiModal] = useState(false);
+    const [aiResponse, setAiResponse] = useState('');
+    const [isAiLoading, setIsAiLoading] = useState(false);
 
     const normalizeDiagnosisType = (type: any) => {
         if (type === 1 || type === '1') return 'Primary';
@@ -298,6 +302,24 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
         } catch (error) {
             console.error('Failed to complete visit', error);
             navigate('/dashboard/doctor-visits');
+        }
+    };
+
+    const handleAskAi = async () => {
+        if (!visitId) return;
+        setIsAiLoading(true);
+        setShowAiModal(true);
+        setAiResponse('');
+        try {
+            const response = await visitApi.checkMedicineAi(visitId);
+            const data = response?.data || response;
+            const message = data?.message || data?.result || (typeof data === 'string' ? data : JSON.stringify(data));
+            setAiResponse(message || 'AI Check Completed Successfully.');
+        } catch (error: any) {
+            console.error('Failed to run AI check', error);
+            setAiResponse(error?.response?.data?.message || 'Failed to perform AI check. Please try again.');
+        } finally {
+            setIsAiLoading(false);
         }
     };
 
@@ -496,12 +518,20 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 <span>Encounter started {visitDetails.startedTime}</span>
                             </div>
                         </div>
-                        <button
-                            onClick={handleFinishVisit}
-                            className="px-6 py-3 bg-[#0f62fe] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
-                        >
-                            Finish Visit <CheckCircle className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleAskAi}
+                                className="px-6 py-3 bg-white text-slate-800 font-bold border-2 border-slate-800 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                                Ask AI <Sparkles className="w-5 h-5 text-indigo-600" />
+                            </button>
+                            <button
+                                onClick={handleFinishVisit}
+                                className="px-6 py-3 bg-[#0f62fe] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
+                            >
+                                Finish Visit <CheckCircle className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -993,6 +1023,40 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                     </div>
                 </div>
             </main>
+
+            {/* AI Response Modal */}
+            {showAiModal && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-6 flex flex-col flex-1 overflow-hidden">
+                            <div className="flex items-center gap-2 mb-6 shrink-0">
+                                <Shield className="w-5 h-5 text-blue-600" />
+                                <h2 className="text-lg font-bold text-slate-800">AI Check</h2>
+                            </div>
+                            
+                            <div className="min-h-[60px] mb-8 text-slate-700 font-medium overflow-y-auto pr-2 custom-scrollbar flex-1">
+                                {isAiLoading ? (
+                                    <div className="flex items-center gap-2 text-slate-500 animate-pulse">
+                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                        Analyzing medicine interactions...
+                                    </div>
+                                ) : (
+                                    <div className="whitespace-pre-wrap" dir="auto">{aiResponse}</div>
+                                )}
+                            </div>
+                            
+                            <div className="flex justify-end shrink-0 pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => setShowAiModal(false)}
+                                    className="px-6 py-2 bg-[#0f62fe] text-white font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+                                >
+                                    <CheckCircle className="w-4 h-4" /> OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
