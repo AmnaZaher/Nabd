@@ -251,7 +251,7 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                 fileNumber: visitDetails?.fileNumber || "Unknown",
                 visitId: parseInt(visitId || '0', 10),
                 testId: testId,
-                isPregnant: radDetails.isPregnant,
+                isPregnant: radDetails.isPregnant === 'Positive',
                 allergiesToContrast: radDetails.allergiesToContrast,
                 allergyDetails: radDetails.allergiesToContrast ? radDetails.allergyDetails : '',
                 diabetes: radDetails.diabetes,

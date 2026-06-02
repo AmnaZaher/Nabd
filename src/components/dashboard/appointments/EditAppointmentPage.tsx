@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ChevronRight, User, Stethoscope, Building2, Calendar as CalendarIcon, Clock, Lock, FileText, Loader2 } from 'lucide-react';
+import { ChevronRight, Calendar as CalendarIcon, Clock, Lock, FileText, Loader2, User, Stethoscope, Building2 } from 'lucide-react';
 import { getAppointmentDetails, updateAppointment, listAppointments } from '../../../api/appointments';
-import { patientApi } from '../../../api/patient';
-import { getClinics } from '../../../api/clinics';
 import { scheduleApi } from '../../../api/schedules';
+import { patientApi } from '../../../api/patient';
 
 // Helper to format slot (e.g. "09:00:00" -> "09:00 AM")
 function formatSlot(timeStr: string): string {
@@ -41,23 +40,23 @@ const EditAppointmentPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     
-    // Data sources
-    const [doctors, setDoctors] = useState<any[]>([]);
-    const [clinics, setClinics] = useState<any[]>([]);
-    const [patients, setPatients] = useState<any[]>([]);
-    const [loadingDoctors, setLoadingDoctors] = useState(false);
-    const [noDoctorsForClinic, setNoDoctorsForClinic] = useState(false);
-
     // Form state
-    const [patientId, setPatientId] = useState('');
     const [doctorId, setDoctorId] = useState('');
     const [clinicId, setClinicId] = useState('');
+    const [patientName, setPatientName] = useState('');
+    const [clinicName, setClinicName] = useState('');
+    const [doctorName, setDoctorName] = useState('');
     const [date, setDate] = useState('');
     const [timeSlot, setTimeSlot] = useState('');
     const [notes, setNotes] = useState('');
     const [appointmentType, setAppointmentType] = useState<number>(1);
+    const [status, setStatus] = useState<number>(1);
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
+    
+    const [availableDates, setAvailableDates] = useState<{ date: string, label: string }[]>([]);
+    const [loadingDates, setLoadingDates] = useState(false);
+    const [initialDate, setInitialDate] = useState('');
 
     const [error, setError] = useState('');
 
@@ -65,9 +64,7 @@ const EditAppointmentPage: React.FC = () => {
         const loadAll = async () => {
             setLoading(true);
             try {
-                const [clinicRes, ptRes, aptRes] = await Promise.all([
-                    getClinics({ PageIndex: 0, PageSize: 100 }),
-                    patientApi.getPatients({ PageIndex: 0, PageSize: 100 }),
+                const [aptRes] = await Promise.all([
                     id ? (passedApt ? Promise.resolve(passedApt) : getAppointmentDetails(id).catch(async (e) => {
                         console.warn("Details fetch failed, falling back to list", e);
                         try {
@@ -82,55 +79,57 @@ const EditAppointmentPage: React.FC = () => {
                     })) : Promise.resolve(null),
                 ]);
 
-                const rawClinic: any = clinicRes;
-                const clinicList =
-                    rawClinic?.data?.data ??
-                    rawClinic?.data?.items ??
-                    rawClinic?.data?.clinics ??
-                    (Array.isArray(rawClinic?.data) ? rawClinic.data : null) ??
-                    rawClinic?.items ??
-                    rawClinic?.clinics ??
-                    rawClinic?.data ??
-                    (Array.isArray(rawClinic) ? rawClinic : []);
-                
-                const sortedClinics = (Array.isArray(clinicList) ? clinicList : []).map((c: any) => ({
-                    ...c,
-                    displayName: c.clinicNameEn || c.name || c.ClinicNameEn || c.Name || c.clinicNameAr || `Clinic #${c.id || c.Id}`
-                })).sort((a: any, b: any) => a.displayName.localeCompare(b.displayName));
-                setClinics(sortedClinics);
-
-                const rawPt: any = ptRes;
-                const ptList = 
-                    rawPt?.data?.patients ?? 
-                    rawPt?.data?.items ?? 
-                    rawPt?.data?.data ??
-                    rawPt?.patients ?? 
-                    rawPt?.items ?? 
-                    rawPt?.data ??
-                    (Array.isArray(rawPt) ? rawPt : []);
-                setPatients(Array.isArray(ptList) ? ptList : []);
-
                 const apt = aptRes?.data?.data ?? aptRes?.data ?? aptRes;
                 console.log("Fetched appointment details:", apt);
                 if (apt) {
                     const resolvedClinicId = apt.clinicId?.toString() || apt.ClinicId?.toString() || apt.clinic?.id?.toString() || '';
-                    setPatientId(apt.patientId?.toString() || apt.PatientId?.toString() || apt.patient?.id?.toString() || '');
-                    setDoctorId(apt.doctorId?.toString() || apt.DoctorId?.toString() || apt.doctor?.id?.toString() || '');
+                    let resolvedDocId = apt.doctorId?.toString() || apt.DoctorId?.toString() || apt.doctor?.id?.toString() || '';
+                    
+                    if (!resolvedDocId && apt.doctorName && resolvedClinicId) {
+                        try {
+                            const docs = await patientApi.getDoctorsByClinic(Number(resolvedClinicId));
+                            const match = docs.find((d: any) => d.name === apt.doctorName || d.fullNameEnglish === apt.doctorName);
+                            if (match) resolvedDocId = match.id.toString();
+                        } catch (e) {
+                            console.warn("Fallback doctor fetch failed", e);
+                        }
+                    }
+
+                    setDoctorId(resolvedDocId);
                     setClinicId(resolvedClinicId);
+                    
+                    setPatientName(apt.patientName || apt.PatientName || apt.patient?.fullNameEnglish || apt.patient?.name || `Patient #${apt.patientId || apt.PatientId || ''}`);
+                    setClinicName(apt.clinicName || apt.ClinicName || apt.clinic?.displayName || apt.clinic?.name || `Clinic #${resolvedClinicId || ''}`);
+                    setDoctorName(apt.doctorName || apt.DoctorName || apt.doctor?.name || apt.doctor?.fullNameEnglish || `Dr. #${apt.doctorId || apt.DoctorId || ''}`);
+
                     setNotes(apt.notes || apt.Notes || '');
                     setAppointmentType(apt.appointmentType || apt.AppointmentType || 1);
+                    setStatus(apt.status ?? apt.Status ?? 1);
 
-                    const rawDate = apt.appointmentDate || apt.AppointmentDate || apt.dateTime || apt.DateTime || apt.date || apt.Date || apt.appointmentDateTime || apt.AppointmentDateTime || apt.scheduledDate || apt.ScheduledDate;
+                    let rawDate = apt.appointmentDate || apt.AppointmentDate || apt.dateTime || apt.DateTime || apt.date || apt.Date || apt.appointmentDateTime || apt.AppointmentDateTime || apt.scheduledDate || apt.ScheduledDate || apt.bookedAt || apt.BookedAt || apt.createdAt || apt.CreatedAt;
+                    if (!rawDate) {
+                        for (const key of Object.keys(apt)) {
+                            const val = apt[key];
+                            if (typeof val === 'string' && val.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+                                rawDate = val;
+                                break;
+                            }
+                        }
+                    }
+
                     if (rawDate) {
                         if (rawDate.includes('T')) {
                             const [dPart, tPart] = rawDate.split('T');
                             setDate(dPart);
+                            setInitialDate(dPart);
                             const cleanTime = tPart.split('.')[0]; // e.g. "09:00:00"
                             setTimeSlot(cleanTime);
                         } else {
                             const d = new Date(rawDate);
                             if (!isNaN(d.getTime())) {
-                                setDate(d.toISOString().split('T')[0]); // YYYY-MM-DD
+                                const dPart = d.toISOString().split('T')[0];
+                                setDate(dPart);
+                                setInitialDate(dPart);
                                 const hours = d.getHours().toString().padStart(2, '0');
                                 const minutes = d.getMinutes().toString().padStart(2, '0');
                                 const seconds = d.getSeconds().toString().padStart(2, '0');
@@ -139,8 +138,6 @@ const EditAppointmentPage: React.FC = () => {
                         }
                     }
                 }
-                console.log("Clinics parsed:", sortedClinics);
-                console.log("Patients parsed:", ptList);
             } catch (err) {
                 console.error('Failed to load edit page data', err);
             } finally {
@@ -153,7 +150,70 @@ const EditAppointmentPage: React.FC = () => {
     /* ── Clear error on input change ── */
     useEffect(() => {
         setError('');
-    }, [clinicId, doctorId, date, patientId, timeSlot, appointmentType, notes]);
+    }, [date, timeSlot, appointmentType, notes, status]);
+
+    /* ── Fetch Doctor Schedules and Build Dates List ── */
+    useEffect(() => {
+        const buildDates = async () => {
+            let dates: { date: string, label: string }[] = [];
+            
+            if (doctorId) {
+                setLoadingDates(true);
+                try {
+                    const res = await scheduleApi.getSchedules({ DoctorId: Number(doctorId), PageSize: 100 });
+                    const raw = res as any;
+                    let arr: any[] = [];
+                    if (Array.isArray(raw)) arr = raw;
+                    else if (Array.isArray(raw?.data)) arr = raw.data;
+                    else if (Array.isArray(raw?.data?.data)) arr = raw.data.data;
+                    else if (Array.isArray(raw?.data?.items)) arr = raw.data.items;
+                    else if (Array.isArray(raw?.items)) arr = raw.items;
+                    else if (Array.isArray(raw?.schedules)) arr = raw.schedules;
+                    else if (Array.isArray(raw?.data?.schedules)) arr = raw.data.schedules;
+                    
+                    const workingDays = new Set<number>();
+                    arr.forEach((s: any) => {
+                        if (s.isActive !== false) {
+                            workingDays.add(Number(s.dayOfWeek));
+                        }
+                    });
+
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    for (let i = 0; i < 60; i++) {
+                        const nextDate = new Date(today);
+                        nextDate.setDate(today.getDate() + i);
+                        if (workingDays.has(nextDate.getDay())) {
+                            const dateString = nextDate.toISOString().split('T')[0];
+                            const label = nextDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+                            dates.push({ date: dateString, label });
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch schedules for dates", err);
+                } finally {
+                    setLoadingDates(false);
+                }
+            }
+            
+            if (initialDate) {
+                const exists = dates.find(d => d.date === initialDate);
+                if (!exists) {
+                    const dObj = new Date(initialDate);
+                    if (!isNaN(dObj.getTime())) {
+                        const label = dObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+                        dates.unshift({ date: initialDate, label: label + ' (Current)' });
+                    } else {
+                        dates.unshift({ date: initialDate, label: initialDate + ' (Current)' });
+                    }
+                }
+            }
+
+            setAvailableDates(dates);
+        };
+        buildDates();
+    }, [doctorId, initialDate]);
 
     const fetchSlots = useCallback(async () => {
         if (!doctorId || !date) {
@@ -198,54 +258,6 @@ const EditAppointmentPage: React.FC = () => {
         fetchSlots();
     }, [fetchSlots]);
 
-    /* ── Load doctors for selected clinic via /Patient/Doctors?Clinic= ── */
-    useEffect(() => {
-        if (!clinicId) {
-            setDoctors([]);
-            setNoDoctorsForClinic(false);
-            return;
-        }
-        const fetchClinicDoctors = async () => {
-            setLoadingDoctors(true);
-            setNoDoctorsForClinic(false);
-            try {
-                const list = await patientApi.getDoctorsByClinic(Number(clinicId));
-                let mapped = list.map((d: any) => ({ id: String(d.id), name: d.name }));
-                
-                try {
-                    const schedulesRes = await scheduleApi.getSchedules({ ClinicId: Number(clinicId), PageSize: 1000 });
-                    const rawSchedules = (schedulesRes as any)?.data?.data ?? (schedulesRes as any)?.data?.items ?? (schedulesRes as any)?.data ?? [];
-                    const scheduleList = Array.isArray(rawSchedules) ? rawSchedules : [];
-                    
-                    const doctorsWithSchedules = new Set<string>();
-                    scheduleList.forEach((s: any) => {
-                        const dId = s.doctorId ?? s.DoctorId;
-                        if (dId) doctorsWithSchedules.add(String(dId));
-                    });
-                    
-                    mapped = mapped.filter((d: any) => doctorsWithSchedules.has(d.id));
-                } catch (err) {
-                    console.warn('Failed to fetch schedules to filter doctors:', err);
-                }
-
-                mapped.sort((a: any, b: any) => a.name.localeCompare(b.name));
-                setDoctors(mapped);
-                setNoDoctorsForClinic(mapped.length === 0);
-                // Clear doctor selection if not in new list
-                setDoctorId(prev => {
-                    if (prev && !mapped.find((d: any) => d.id === prev)) return '';
-                    return prev;
-                });
-            } catch {
-                setDoctors([]);
-                setNoDoctorsForClinic(true);
-            } finally {
-                setLoadingDoctors(false);
-            }
-        };
-        fetchClinicDoctors();
-    }, [clinicId]);
-
     const handleSave = async () => {
         if (!id) return;
         setError('');
@@ -261,12 +273,10 @@ const EditAppointmentPage: React.FC = () => {
             }
 
             const payload = {
-                patientId: Number(patientId),
-                doctorId: Number(doctorId),
-                clinicId: clinicId ? Number(clinicId) : undefined,
                 appointmentDate: appointmentDate,
                 appointmentType: appointmentType,
                 notes: notes,
+                status: status,
             };
 
             await updateAppointment(id, payload);
@@ -326,24 +336,18 @@ const EditAppointmentPage: React.FC = () => {
                         <div className="space-y-5">
                             {/* Patient */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Patient Search</label>
+                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Patient</label>
                                 <div className="relative">
                                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                                         <User size={16} />
                                     </div>
-                                    <select 
-                                        value={patientId} onChange={e => setPatientId(e.target.value)}
-                                        className="w-full pl-10 pr-24 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none transition-all"
-                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
-                                    >
-                                        <option value="">Select patient...</option>
-                                        {patients.map(p => {
-                                            const id = p.id || p.Id || p.patientId || p.PatientId || p.userId || p.UserId;
-                                            const name = p.fullNameEnglish || p.name || p.FullNameEnglish || p.Name || p.patientName || p.PatientName || `Patient #${id}`;
-                                            return <option key={id} value={id}>{name}</option>;
-                                        })}
-                                    </select>
-                                    <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                                    <input 
+                                        type="text"
+                                        disabled
+                                        value={patientName}
+                                        className="w-full pl-10 pr-24 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 cursor-not-allowed"
+                                    />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                         <span className="bg-[#E0F2FE] text-[#0284C7] text-[10px] font-bold px-2 py-1 rounded">VERIFIED</span>
                                     </div>
                                 </div>
@@ -356,55 +360,34 @@ const EditAppointmentPage: React.FC = () => {
                                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                                         <Building2 size={16} />
                                     </div>
-                                    <select 
-                                        value={clinicId} onChange={e => setClinicId(e.target.value)}
-                                        className="w-full pl-10 pr-10 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none"
-                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
-                                    >
-                                        <option value="">Select location...</option>
-                                        {clinics.map(c => {
-                                            const id = c.id || c.Id;
-                                            const name = c.displayName || `Clinic #${id}`;
-                                            return <option key={id} value={id}>{name}</option>;
-                                        })}
-                                    </select>
+                                    <input 
+                                        type="text"
+                                        disabled
+                                        value={clinicName}
+                                        className="w-full pl-10 pr-3 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 cursor-not-allowed"
+                                    />
                                 </div>
                             </div>
 
                             {/* Doctor */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5">
-                                    Assigned Doctor
-                                    {loadingDoctors && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
-                                </label>
+                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Assigned Doctor</label>
                                 <div className="relative">
                                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                                         <Stethoscope size={16} />
                                     </div>
-                                    <select 
-                                        value={doctorId} onChange={e => setDoctorId(e.target.value)}
-                                        className="w-full pl-10 pr-10 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none"
-                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
-                                    >
-                                        <option value="">Select doctor...</option>
-                                        {doctors.map(d => {
-                                            const id = d.id || d.Id;
-                                            const name = d.name || d.Name || `Dr. #${id}`;
-                                            return <option key={id} value={id}>{name}</option>;
-                                        })}
-                                    </select>
+                                    <input 
+                                        type="text"
+                                        disabled
+                                        value={doctorName}
+                                        className="w-full pl-10 pr-3 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 cursor-not-allowed"
+                                    />
                                 </div>
-                                {!clinicId && (
-                                    <p className="text-[11px] text-slate-400 mt-1 font-medium italic">Select a clinic first to see available doctors.</p>
-                                )}
-                                {clinicId && noDoctorsForClinic && !loadingDoctors && (
-                                    <p className="text-[11px] text-amber-600 mt-1 font-medium">No doctors assigned to this clinic.</p>
-                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Right Column: Scheduling Details */}
+                    {/* Scheduling Details */}
                     <div className="bg-white rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-100/60">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center">
@@ -416,51 +399,74 @@ const EditAppointmentPage: React.FC = () => {
                         <div className="space-y-6">
                             {/* Date */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-2">Appointment Date</label>
-                                <div className="relative border-b-2 border-slate-200 focus-within:border-[#1A6FC4] transition-colors pb-2 flex items-center gap-2">
-                                    <CalendarIcon size={18} className="text-slate-400" />
-                                    <input 
-                                        type="date" 
-                                        value={date} onChange={e => setDate(e.target.value)}
-                                        className="w-full bg-transparent text-sm font-medium text-slate-700 focus:outline-none"
-                                    />
+                                <label className="block text-xs font-bold text-slate-500 mb-1.5">
+                                    Appointment Date
+                                    {loadingDates && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <CalendarIcon size={16} />
+                                    </div>
+                                    <select 
+                                        value={date} 
+                                        onChange={e => { setDate(e.target.value); setTimeSlot(''); }}
+                                        className="w-full pl-10 pr-10 py-3 bg-slate-100 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1A6FC4] appearance-none"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em' }}
+                                        disabled={loadingDates}
+                                    >
+                                        <option value="">Select a Date</option>
+                                        {availableDates.map(d => (
+                                            <option key={d.date} value={d.date}>{d.label}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
                             {/* Time Slots */}
-                            {(loadingSlots || (timeSlots.length > 0 || timeSlot)) && !error && (
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-3">
-                                        Available Slots
-                                        {loadingSlots && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {loadingSlots ? (
-                                            <div className="col-span-3 flex items-center gap-2 text-slate-400 py-2">
-                                                <span className="text-[12px] font-medium">Loading slots...</span>
-                                            </div>
-                                        ) : (
-                                            Array.from(new Set(timeSlot ? [timeSlot, ...timeSlots] : timeSlots)).map((slot) => {
-                                                const isSelected = timeSlot === slot;
-                                                return (
-                                                    <button
-                                                        key={slot}
-                                                        onClick={() => setTimeSlot(slot)}
-                                                        className={`
-                                                            py-2.5 rounded-lg text-xs font-bold transition-all
-                                                            ${isSelected 
-                                                                ? 'bg-[#1A6FC4] text-white shadow-md border-2 border-blue-200 ring-2 ring-[#1A6FC4] ring-offset-1' 
-                                                                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent'}
-                                                        `}
-                                                    >
-                                                        {formatSlot(slot)}
-                                                    </button>
-                                                );
-                                            })
-                                        )}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-3">
+                                    Available Time Slots
+                                    {loadingSlots && <Loader2 size={12} className="inline ml-2 animate-spin text-slate-400" />}
+                                </label>
+                                
+                                {(!doctorId) ? (
+                                    <div className="text-sm text-red-500 italic py-2 border-2 border-dashed border-red-200 rounded-xl px-4 flex items-center justify-center min-h-[60px] bg-red-50/50">
+                                        Doctor data is missing, cannot load slots.
                                     </div>
-                                </div>
-                            )}
+                                ) : (!date) ? (
+                                    <div className="text-sm text-slate-500 italic py-2 border-2 border-dashed border-slate-200 rounded-xl px-4 flex items-center justify-center min-h-[60px] bg-slate-50/50">
+                                        Select a date to view available time slots
+                                    </div>
+                                ) : (loadingSlots ? (
+                                    <div className="flex items-center gap-2 text-slate-400 py-2 border-2 border-dashed border-slate-200 rounded-xl px-4 min-h-[60px] justify-center bg-slate-50/50">
+                                        <span className="text-[12px] font-medium">Loading slots...</span>
+                                    </div>
+                                ) : (timeSlots.length > 0 || timeSlot) ? (
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {Array.from(new Set(timeSlot ? [timeSlot, ...timeSlots] : timeSlots)).map((slot) => {
+                                            const isSelected = timeSlot === slot;
+                                            return (
+                                                <button
+                                                    key={slot}
+                                                    onClick={() => setTimeSlot(slot)}
+                                                    className={`
+                                                        py-2.5 rounded-lg text-xs font-bold transition-all
+                                                        ${isSelected 
+                                                            ? 'bg-[#1A6FC4] text-white shadow-md border-2 border-blue-200 ring-2 ring-[#1A6FC4] ring-offset-1' 
+                                                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent'}
+                                                    `}
+                                                >
+                                                    {formatSlot(slot)}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-amber-600 font-medium py-2 border-2 border-dashed border-amber-100 rounded-xl px-4 flex items-center justify-center min-h-[60px] bg-amber-50/50">
+                                        No available slots for this date.
+                                    </div>
+                                ))}
+                            </div>
 
                             {/* Consultation Type */}
                             <div>
