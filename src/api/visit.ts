@@ -1,4 +1,3 @@
-// src/api/visit.ts
 import { fetchApi } from './config';
 
 export interface CreateVisitPayload {
@@ -22,7 +21,7 @@ export interface CreateVisitPayload {
 export const visitApi = {
   createVisit: async (appointmentId: number | string, payload: CreateVisitPayload) => {
     const formData = new FormData();
-    
+
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (key === 'Attachments' && Array.isArray(value)) {
@@ -42,16 +41,22 @@ export const visitApi = {
   },
 
   listVisits: async (params?: Record<string, any>) => {
-    const queryStr = params ? '?' + new URLSearchParams(
-      Object.entries(params)
-        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
-        .map(([k, v]) => [k, String(v)])
-    ).toString() : '';
+    const queryStr = params
+      ? '?' +
+        new URLSearchParams(
+          Object.entries(params)
+            .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+            .map(([k, v]) => [k, String(v)])
+        ).toString()
+      : '';
+
     return await fetchApi(`/Visit${queryStr}`);
   },
 
   getVisit: async (visitId: number | string) => {
-    return await fetchApi(`/Visit/${visitId}`);
+    return await fetchApi(`/Visit/${visitId}`, {
+      method: 'GET',
+    });
   },
 
   markVisitComplete: async (visitId: number | string) => {
@@ -68,16 +73,24 @@ export const visitApi = {
   },
 
   getVitalSigns: async (visitId: number | string) => {
-    return await fetchApi(`/Visit/${visitId}/vital-signs`);
+    return await fetchApi(`/Visit/${visitId}/vital-signs`, {
+      method: 'GET',
+    });
   },
 
   getVitalSignsHistory: async (params?: Record<string, any>) => {
-    const queryStr = params ? '?' + new URLSearchParams(
-      Object.entries(params)
-        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
-        .map(([k, v]) => [k, String(v)])
-    ).toString() : '';
-    return await fetchApi(`/Visit/vital-signs/history${queryStr}`);
+    const queryStr = params
+      ? '?' +
+        new URLSearchParams(
+          Object.entries(params)
+            .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+            .map(([k, v]) => [k, String(v)])
+        ).toString()
+      : '';
+
+    return await fetchApi(`/Visit/vital-signs/history${queryStr}`, {
+      method: 'GET',
+    });
   },
 
   addPrescription: async (visitId: number | string, payload: any) => {
@@ -88,11 +101,15 @@ export const visitApi = {
   },
 
   getPrescriptions: async (visitId: number | string) => {
-    return await fetchApi(`/Visit/${visitId}/prescriptions`);
+    return await fetchApi(`/Visit/${visitId}/prescriptions`, {
+      method: 'GET',
+    });
   },
 
   getPrescriptionDetails: async (prescriptionId: number | string) => {
-    return await fetchApi(`/Visit/prescriptions/${prescriptionId}`);
+    return await fetchApi(`/Visit/prescriptions/${prescriptionId}`, {
+      method: 'GET',
+    });
   },
 
   addDiagnosis: async (visitId: number | string, payload: any) => {
@@ -103,10 +120,14 @@ export const visitApi = {
   },
 
   getDiagnoses: async (visitId: number | string) => {
-    return await fetchApi(`/Visit/${visitId}/diagnoses`);
+    return await fetchApi(`/Visit/${visitId}/diagnoses`, {
+      method: 'GET',
+    });
   },
 
   getDiagnosisDetails: async (visitId: number | string, diagnosisId: number | string) => {
-    return await fetchApi(`/Visit/${visitId}/diagnosesDetails/${diagnosisId}`);
+    return await fetchApi(`/Visit/${visitId}/diagnosesDetails/${diagnosisId}`, {
+      method: 'GET',
+    });
   }
 };

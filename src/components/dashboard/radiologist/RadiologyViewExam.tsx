@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TopBar from "../TopBar";
 import {
@@ -10,6 +10,13 @@ import {
   ArrowLeft,
   Activity
 } from "lucide-react";
+
+import {
+  createRadiologyExam,
+  deleteRadiologyRequest,
+  getRadiologyRequestById,
+  type RadiologyRequestDetailsDto,
+} from "../../../api/radilogist";
 
 interface RequestItem {
   id: string;
@@ -28,34 +35,62 @@ interface RequestItem {
   scheduledTime: string;
 }
 
-const MOCK_PATIENT_DETAILS: Record<string, Partial<RequestItem>> = {
-  "1": {
-    patientName: "Johnathan Stevens",
-    patientId: "#RAD-99238",
-    initials: "JS",
-    modality: "MRI - System 01",
-    bodyPart: "Spine - Lumbar",
-    age: "45 Years",
-    gender: "Male",
-    nationalId: "992-38-XXXX",
-    testType: "MRI Lumbar Spine w/o Contrast",
-    referringDr: "Dr. Elena Rossi",
-    scheduledTime: "Today, 14:30 PM",
-  },
-  "2": {
-    patientName: "Elena Martinez",
-    patientId: "#RAD-88210",
-    initials: "EM",
-    modality: "X-Ray - Chest System",
-    bodyPart: "Chest - PA/Lat",
-    age: "38 Years",
-    gender: "Female",
-    nationalId: "882-10-XXXX",
-    testType: "Chest X-Ray PA/Lateral",
-    referringDr: "Dr. Sarah Chen",
-    scheduledTime: "Today, 15:15 PM",
-  }
+interface RequestItem {
+  id: string;
+  patientName: string;
+  patientId: string;
+  initials: string;
+  modality: string;
+  bodyPart: string;
+  status: string;
+  priority: string;
+  age: string;
+  gender: string;
+  nationalId: string;
+  testType: string;
+  referringDr: string;
+  scheduledTime: string;
+}
+
+const formatScheduledTime = (value?: string) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
+
+const getInitials = (name?: string) => {
+  if (!name) return "NA";
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+};
+
+const mapDetails = (item?: RadiologyRequestDetailsDto): RequestItem => ({
+  id: String(item?.id ?? item?.requestId ?? "—"),
+  patientName: item?.patientName || "Unknown Patient",
+  patientId: item?.patientFileNumber || item?.fileNumber || String(item?.patientId ?? "—"),
+  initials: getInitials(item?.patientName),
+  modality: item?.modality || item?.category || "—",
+  bodyPart: item?.bodyPart || item?.studyDescription || "—",
+  status: item?.status || "Pending",
+  priority: item?.priority || (item?.isStat ? "STAT" : "Routine"),
+  age: item?.age ? `${item.age} Years` : "—",
+  gender: item?.gender || "—",
+  nationalId: item?.nationalId || "—",
+  testType: item?.testName || item?.examName || item?.studyDescription || "—",
+  referringDr: item?.referringDoctor || item?.referringDr || "—",
+  scheduledTime: formatScheduledTime(item?.scheduledTime || item?.examDate),
+});
+
+
 
 const RadiologyViewExam: React.FC<{
   onMenuClick?: () => void;
@@ -64,28 +99,80 @@ const RadiologyViewExam: React.FC<{
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Resolve dynamic patient details or fallback to default Johnathan Miller
-  const details = MOCK_PATIENT_DETAILS[id || "1"] || {
-    patientName: "Johnathan Miller",
-    patientId: "#HOS-882-90",
-    initials: "JM",
-    modality: "MRI - System 01",
-    bodyPart: "Brain",
-    age: "42 Years",
-    gender: "Male",
-    nationalId: "882-90-XXXX",
-    testType: "MRI Brain w/ Contrast",
-    referringDr: "Dr. Elena Rossi",
-    scheduledTime: "Today, 14:30 PM",
+  const [detailsResponse, setDetailsResponse] = useState<RadiologyRequestDetailsDto | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetchRequest = async () => {
+      if (!id) {
+        setError("Request ID is missing.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getRadiologyRequestById(id);
+        setDetailsResponse(data);
+      } catch (err: any) {
+        setError(err?.message || "Failed to load exam details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRequest();
+  }, [id]);
+
+  const details = useMemo(() => mapDetails(detailsResponse || undefined), [detailsResponse]);
+
+  const handleCancelSession = async () => {
+    if (!id) return;
+
+    const confirmed = window.confirm("Are you sure you want to cancel this session?");
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      await deleteRadiologyRequest(id);
+      navigate("/dashboard/radiology/requests");
+    } catch (err: any) {
+      alert(err?.message || "Failed to cancel session.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartExam = async () => {
+    if (!id) return;
+
+    try {
+      setActionLoading(true);
+      await createRadiologyExam(id, {});
+      navigate(`/dashboard/radiology/start-exam/${id}`);
+    } catch (err: any) {
+      alert(err?.message || "Failed to start exam.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const breadcrumb = (
     <div className="flex items-center gap-2 text-xs md:text-sm font-extrabold text-slate-400">
-      <button className="cursor-pointer hover:text-blue-600" onClick={() => navigate("/dashboard/radiology/requests")}>REQUESTS</button>
+      <button
+        className="cursor-pointer hover:text-blue-600"
+        onClick={() => navigate("/dashboard/radiology/requests")}
+      >
+        REQUESTS
+      </button>
       <ChevronRight size={14} className="text-slate-300 shrink-0" />
       <span className="text-blue-600 font-black">VIEW EXAM</span>
     </div>
   );
+
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">

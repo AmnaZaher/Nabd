@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
@@ -11,9 +11,12 @@ import {
   User
 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
-import { staffApi } from "../../../api/staff";
-import type { StaffProfile } from "../../../types/staff.types";
 import TopBar from "../TopBar";
+import {
+  getRadiologistProfile,
+  updateRadiologistProfile,
+  type RadiologistProfileDto,
+} from "../../../api/radiologistProfile";
 
 interface EditRadiologistProfileProps {
   onMenuClick?: () => void;
@@ -23,12 +26,11 @@ interface EditRadiologistProfileProps {
 const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuClick, onProfileClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [profile, setProfile] = useState<RadiologistProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
-  // Form fields
   const [name, setName] = useState("");
   const [nameArabic, setNameArabic] = useState("");
   const [nationalId, setNationalId] = useState("");
@@ -43,8 +45,8 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
       if (user?.id) {
         setLoading(true);
         try {
-          const data = await staffApi.getMyProfile(user.id, user.name, user.role);
-          const resolved: StaffProfile = data || {
+          const data = await getRadiologistProfile(user.id);
+          const resolved: RadiologistProfileDto = data || {
             id: user.id || "RAD-9901",
             name: "Sarah Al-Farsi",
             fullNameArabic: "سارة الفارسي",
@@ -52,11 +54,11 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
             phone: "+966 55 123 4567",
             gender: "Female",
             address: "742 King Abdullah Road, Olaya District, Riyadh 12211, Saudi Arabia",
-            dateOfBirth: "05/14/1992",
+            dateOfBirth: "1992-05-14",
             nationalId: "234-9876-1120",
             city: "Riyadh",
             country: "Saudi Arabia",
-            role: "Senior Lab Technician",
+            role: "Radiologist",
             status: "Active",
             department: "Radiology Department",
             avatar: "",
@@ -69,26 +71,30 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
           setNationalId(resolved.nationalId || "");
           setGender(resolved.gender || "Female");
           setDateOfBirth(resolved.dateOfBirth || "");
-          setPhone(resolved.phone || "");
+          setPhone(resolved.phone || resolved.phoneNumber || "");
           setEmail(resolved.email || "");
           setAddress(resolved.address || "");
         } catch (error) {
-          console.error("Failed to load profile for edit:", error);
+          console.error("Failed to load radiologist profile for edit:", error);
         } finally {
           setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
     };
+
     fetchProfile();
-  }, [user?.id, user?.name, user?.role]);
+  }, [user?.id]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user?.id) return;
+
     setSaving(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const updatedProfile: StaffProfile = {
-        ...(profile as StaffProfile),
+      const updated = await updateRadiologistProfile(user.id, {
         name,
         fullNameArabic: nameArabic,
         nationalId,
@@ -96,11 +102,13 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
         dateOfBirth,
         phone,
         email,
-        address
-      };
-      setProfile(updatedProfile);
+        address,
+      });
+
+      setProfile(updated || profile);
       setSaving(false);
       setShowSuccessToast(true);
+
       setTimeout(() => {
         setShowSuccessToast(false);
         navigate("/dashboard/profile");
@@ -128,7 +136,6 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
         onProfileClick={onProfileClick}
       />
 
-      {/* Breadcrumb bar */}
       <div className="px-8 py-3 flex items-center gap-2 text-sm font-semibold text-slate-500 bg-white border-b border-slate-100">
         <span
           className="text-slate-700 cursor-pointer hover:text-[#1A6FC4] transition-colors"
@@ -139,7 +146,6 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
         <span className="text-slate-300">›</span>
         <span className="text-[#1A6FC4]">EDIT PROFILE</span>
 
-        {/* Success toast inline in breadcrumb */}
         {showSuccessToast && (
           <div className="ml-4 flex items-center gap-2 bg-white border border-emerald-200 text-emerald-600 text-xs font-semibold px-4 py-1.5 rounded-full shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
             <CheckCircle2 size={14} />
@@ -148,17 +154,11 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
         )}
       </div>
 
-      {/* Main content */}
       <div className="w-full px-6 py-8">
         <form onSubmit={handleSave}>
           <div className="flex gap-6 items-start">
-
-            {/* ── Left sidebar card ── */}
             <div className="w-72 flex-shrink-0 space-y-4">
-
-              {/* Avatar card */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col items-center gap-3">
-                {/* Avatar */}
                 <div className="relative">
                   <div className="w-28 h-28 rounded-xl overflow-hidden bg-slate-100">
                     {profile?.avatar ? (
@@ -179,7 +179,7 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
 
                 <div className="text-center">
                   <h3 className="text-base font-bold text-slate-800">{name || "—"}</h3>
-                  <p className="text-xs text-[#1A6FC4] font-semibold">{profile?.role || "Senior Lab Technician"}</p>
+                  <p className="text-xs text-[#1A6FC4] font-semibold">{profile?.role || "Radiologist"}</p>
                 </div>
 
                 <div className="mt-1">
@@ -190,11 +190,9 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                 </div>
               </div>
 
-              {/* Document portal card */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center">
-                    {/* folder icon approximated */}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                     </svg>
@@ -203,29 +201,26 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                 </div>
 
                 <div className="space-y-2">
-                  {/* Doc row 1 */}
                   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors">
                     <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                       <FileText size={13} className="text-[#1A6FC4]" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-700 truncate">Medical_Licens</p>
+                      <p className="text-xs font-bold text-slate-700 truncate">Medical_License</p>
                       <p className="text-[10px] text-slate-400 font-medium">Modified 2 days ago</p>
                     </div>
                   </div>
 
-                  {/* Doc row 2 */}
                   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors">
                     <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                       <Shield size={13} className="text-slate-400" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-700 truncate">ID_Card_Front.j</p>
+                      <p className="text-xs font-bold text-slate-700 truncate">ID_Card_Front.jpg</p>
                       <p className="text-[10px] text-slate-400 font-medium">Uploaded Jun 2023</p>
                     </div>
                   </div>
 
-                  {/* Upload new */}
                   <button
                     type="button"
                     className="w-full flex items-center justify-center gap-2 p-3 border border-dashed border-slate-200 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors cursor-pointer"
@@ -237,9 +232,7 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
               </div>
             </div>
 
-            {/* ── Right form card ── */}
             <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-              {/* Section header */}
               <div className="flex items-center gap-2.5 mb-6">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
                   <User size={15} className="text-[#1A6FC4]" />
@@ -247,9 +240,7 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                 <h3 className="text-sm font-bold text-slate-800">Personal Information</h3>
               </div>
 
-              {/* Fields grid */}
               <div className="space-y-5">
-                {/* Row 1: English name + Arabic name */}
                 <div className="grid grid-cols-2 gap-5">
                   <Field label="Full Name (English)">
                     <input
@@ -271,7 +262,6 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                   </Field>
                 </div>
 
-                {/* Row 2: National ID + Gender */}
                 <div className="grid grid-cols-2 gap-5">
                   <Field label="National ID">
                     <input
@@ -297,12 +287,11 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                   </Field>
                 </div>
 
-                {/* Row 3: Date of Birth + Phone */}
                 <div className="grid grid-cols-2 gap-5">
                   <Field label="Date of Birth">
                     <input
                       type="text"
-                      placeholder="MM/DD/YYYY"
+                      placeholder="YYYY-MM-DD"
                       value={dateOfBirth}
                       onChange={(e) => setDateOfBirth(e.target.value)}
                       className={inputCls}
@@ -318,7 +307,6 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                   </Field>
                 </div>
 
-                {/* Row 4: Email */}
                 <Field label="Email Address">
                   <input
                     type="email"
@@ -329,7 +317,6 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                   />
                 </Field>
 
-                {/* Row 5: Residential address (textarea) */}
                 <Field label="Residential Address">
                   <textarea
                     value={address}
@@ -340,7 +327,6 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                 </Field>
               </div>
 
-              {/* Action buttons */}
               <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-50">
                 <button
                   type="button"
@@ -365,15 +351,12 @@ const EditRadiologistProfile: React.FC<EditRadiologistProfileProps> = ({ onMenuC
                 </button>
               </div>
             </div>
-
           </div>
         </form>
       </div>
     </div>
   );
 };
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full px-0 py-2 bg-transparent border-0 border-b border-slate-200 text-sm text-slate-800 font-medium focus:outline-none focus:border-[#1A6FC4] transition-colors placeholder:text-slate-300";
