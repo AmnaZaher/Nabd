@@ -1,11 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { visitApi } from '../../../api/visit';
+import { getAvailableLabTests } from '../../../api/labs';
+import { getAvailableRadiologyTests, createRadiologyRequest } from '../../../api/radiology';
 import TopBar from '../TopBar';
 import {
     User, Activity, Clock, FileText, Plus, Trash2,
     CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle
 } from 'lucide-react';
+
+const RadInfoBox = ({ title, value, colorClass, onClick }: { title: string, value: string, colorClass: 'green' | 'amber' | 'red', onClick: () => void }) => {
+    const bgColors = {
+        green: 'bg-emerald-50/50',
+        amber: 'bg-amber-50/50',
+        red: 'bg-red-50/50'
+    };
+    const textColors = {
+        green: 'text-emerald-600',
+        amber: 'text-amber-600',
+        red: 'text-red-600'
+    };
+    const barColors = {
+        green: 'bg-emerald-500',
+        amber: 'bg-amber-500',
+        red: 'bg-red-600'
+    };
+    
+    return (
+        <button 
+            type="button"
+            onClick={onClick}
+            className={`flex-1 min-w-[110px] rounded-2xl ${bgColors[colorClass]} border border-white p-3 flex flex-col items-center justify-center transition-transform hover:scale-[1.02] active:scale-95 shadow-sm`}
+        >
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">{title}</span>
+            <span className={`text-sm font-bold ${textColors[colorClass]} mb-2`}>{value}</span>
+            <div className={`h-1 w-full rounded-full ${barColors[colorClass]}`}></div>
+        </button>
+    );
+};
 
 interface ActiveVisitPageProps {
     onMenuClick?: () => void;
@@ -69,8 +101,24 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     });
     const [showAddPrescription, setShowAddPrescription] = useState(false);
 
-    const [labOrders] = useState<any[]>([]);
-    const [radOrders] = useState<any[]>([]);
+    const [labOrders, setLabOrders] = useState<any[]>([]);
+    const [radOrders, setRadOrders] = useState<any[]>([]);
+
+    const [availableLabTests, setAvailableLabTests] = useState<any[]>([]);
+    const [availableRadTests, setAvailableRadTests] = useState<any[]>([]);
+    const [selectedLabTest, setSelectedLabTest] = useState('');
+    const [selectedRadTest, setSelectedRadTest] = useState('');
+
+    const [radDetails, setRadDetails] = useState({
+        isPregnant: 'Negative',
+        allergiesToContrast: false,
+        allergyDetails: '',
+        diabetes: false,
+        onMetformin: false,
+        cardiacProblems: false,
+        cardiacDetails: '',
+        notes: ''
+    });
 
     const normalizeDiagnosisType = (type: any) => {
         if (type === 1 || type === '1') return 'Primary';
@@ -97,10 +145,12 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
             setError('');
 
             try {
-                const [visitRes, diagRes, presRes] = await Promise.all([
+                const [visitRes, diagRes, presRes, labTestsRes, radTestsRes] = await Promise.all([
                     visitApi.getVisit(visitId),
                     visitApi.getDiagnoses(visitId),
                     visitApi.getPrescriptions(visitId),
+                    getAvailableLabTests(),
+                    getAvailableRadiologyTests(),
                 ]);
 
                 console.log('visitId used:', visitId);
@@ -698,68 +748,151 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 </div>
                             </div>
 
-                            {/* Lab & Radiology Orders */}
-                            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                            {/* Lab Orders */}
+                            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
                                 <h3 className="text-base font-black text-slate-800 mb-6 flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-blue-500" /> Lab & Radiology Orders
+                                    <Activity className="w-5 h-5 text-blue-500" /> Lab Orders
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <div className="flex justify-between items-center mb-3">
-                                            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Lab Test</div>
-                                            <button className="text-xs font-bold text-blue-600 flex items-center gap-1 hover:underline">
-                                                <Plus className="w-3 h-3" /> Add Item
-                                            </button>
-                                        </div>
-                                        <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none mb-3 text-sm font-medium text-slate-700">
-                                            <option>CBC Lab</option>
-                                            <option>Lipid Panel</option>
-                                        </select>
-                                        {labOrders.length === 0
-                                            ? <p className="text-slate-400 text-sm font-medium italic">No lab orders added.</p>
-                                            : <div className="space-y-2">
-                                                {labOrders.map(order => (
-                                                    <div key={order.id} className="flex items-center gap-3 p-3 bg-white border border-blue-100 rounded-xl">
-                                                        <div className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center shrink-0">
-                                                            <CheckCircle className="w-3 h-3" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-slate-800 text-sm">{order.name}</div>
-                                                            <div className="text-xs text-slate-500 font-medium">{order.desc}</div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        }
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Lab Test</div>
                                     </div>
-                                    <div>
-                                        <div className="flex justify-between items-center mb-3">
-                                            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Radiology Test</div>
-                                            <button className="text-xs font-bold text-blue-600 flex items-center gap-1 hover:underline">
-                                                <Plus className="w-3 h-3" /> Add Item
-                                            </button>
-                                        </div>
-                                        <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none mb-3 text-sm font-medium text-slate-700">
-                                            <option>Chest X-Ray</option>
-                                            <option>MRI Scan</option>
+                                    <div className="flex gap-3 mb-3">
+                                        <select 
+                                            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-700"
+                                            value={selectedLabTest}
+                                            onChange={(e) => setSelectedLabTest(e.target.value)}
+                                        >
+                                            {availableLabTests.length === 0 ? (
+                                                <option value="">No lab tests available</option>
+                                            ) : (
+                                                availableLabTests.map((test, idx) => {
+                                                    const isString = typeof test === 'string';
+                                                    const testId = isString ? test : (test.id?.toString() || test.labTestId?.toString() || test.testCode || `item-${idx}`);
+                                                    const testName = isString ? test : (test.name || test.testNameEnglish || test.testName || test.title || test.labTestName || test.testCode || JSON.stringify(test));
+                                                    
+                                                    return (
+                                                        <option key={testId} value={testId}>
+                                                            {testName}
+                                                        </option>
+                                                    );
+                                                })
+                                            )}
                                         </select>
-                                        {radOrders.length === 0
-                                            ? <p className="text-slate-400 text-sm font-medium italic">No radiology orders added.</p>
-                                            : <div className="space-y-2">
-                                                {radOrders.map(order => (
-                                                    <div key={order.id} className="flex items-center gap-3 p-3 bg-white border border-blue-100 rounded-xl">
-                                                        <div className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center shrink-0">
-                                                            <CheckCircle className="w-3 h-3" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-slate-800 text-sm">{order.name}</div>
-                                                            <div className="text-xs text-slate-500 font-medium">{order.desc}</div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        }
+                                        <button 
+                                            onClick={handleAddLabOrder}
+                                            className="px-5 py-3 bg-[#0f62fe] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
+                                        >
+                                            <Plus className="w-4 h-4" /> Save
+                                        </button>
                                     </div>
+                                    {labOrders.length === 0
+                                        ? <p className="text-slate-400 text-sm font-medium italic">No lab orders added.</p>
+                                        : <div className="space-y-2">
+                                            {labOrders.map(order => (
+                                                <div key={order.id} className="flex items-center gap-3 p-3 bg-white border border-blue-100 rounded-xl">
+                                                    <div className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center shrink-0">
+                                                        <CheckCircle className="w-3 h-3" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-slate-800 text-sm">{order.name}</div>
+                                                        <div className="text-xs text-slate-500 font-medium">{order.desc}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            {/* Radiology Orders */}
+                            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+                                <h3 className="text-base font-black text-slate-800 mb-6 flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-blue-500" /> Radiology Orders
+                                </h3>
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Radiology Test</div>
+                                    </div>
+                                    <div className="flex gap-3 mb-3">
+                                        <select 
+                                            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-700"
+                                            value={selectedRadTest}
+                                            onChange={(e) => setSelectedRadTest(e.target.value)}
+                                        >
+                                            {availableRadTests.length === 0 ? (
+                                                <option value="">No radiology tests available</option>
+                                            ) : (
+                                                availableRadTests.map((test, idx) => {
+                                                    const isString = typeof test === 'string';
+                                                    const testId = isString ? test : (test.id?.toString() || test.serviceCode || `rad-${idx}`);
+                                                    const testName = isString ? test : (test.radiologyTestName || test.name || test.serviceNameEnglish || test.serviceName || test.title || test.serviceCode || JSON.stringify(test));
+                                                    
+                                                    return (
+                                                        <option key={testId} value={testId}>
+                                                            {testName}
+                                                        </option>
+                                                    );
+                                                })
+                                            )}
+                                        </select>
+                                        <button 
+                                            onClick={handleAddRadOrder}
+                                            className="px-5 py-3 bg-[#0f62fe] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
+                                        >
+                                            <Plus className="w-4 h-4" /> Save
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap gap-2 mb-4">
+                                        <RadInfoBox 
+                                            title="PREGNANCY" 
+                                            value={radDetails.isPregnant} 
+                                            colorClass={radDetails.isPregnant === 'Negative' ? 'green' : (radDetails.isPregnant === 'Positive' ? 'red' : 'amber')}
+                                            onClick={() => setRadDetails({...radDetails, isPregnant: radDetails.isPregnant === 'Negative' ? 'Positive' : (radDetails.isPregnant === 'Positive' ? 'N/A' : 'Negative')})}
+                                        />
+                                        <RadInfoBox 
+                                            title="DIABETES" 
+                                            value={radDetails.diabetes ? 'Positive' : 'Negative'} 
+                                            colorClass={radDetails.diabetes ? 'amber' : 'green'}
+                                            onClick={() => setRadDetails({...radDetails, diabetes: !radDetails.diabetes})}
+                                        />
+                                        <RadInfoBox 
+                                            title="CONTRAST ALLERGY" 
+                                            value={radDetails.allergiesToContrast ? 'Iodine Sens.' : 'None'} 
+                                            colorClass={radDetails.allergiesToContrast ? 'red' : 'green'}
+                                            onClick={() => setRadDetails({...radDetails, allergiesToContrast: !radDetails.allergiesToContrast, allergyDetails: !radDetails.allergiesToContrast ? 'Iodine Sens.' : ''})}
+                                        />
+                                        <RadInfoBox 
+                                            title="CARDIAC" 
+                                            value={radDetails.cardiacProblems ? 'Positive' : 'None'} 
+                                            colorClass={radDetails.cardiacProblems ? 'red' : 'green'}
+                                            onClick={() => setRadDetails({...radDetails, cardiacProblems: !radDetails.cardiacProblems, cardiacDetails: !radDetails.cardiacProblems ? 'Positive' : ''})}
+                                        />
+                                        <RadInfoBox 
+                                            title="METFORMIN" 
+                                            value={radDetails.onMetformin ? 'Active Use' : 'None'} 
+                                            colorClass={radDetails.onMetformin ? 'amber' : 'green'}
+                                            onClick={() => setRadDetails({...radDetails, onMetformin: !radDetails.onMetformin})}
+                                        />
+                                    </div>
+
+                                    {radOrders.length === 0
+                                        ? <p className="text-slate-400 text-sm font-medium italic">No radiology orders added.</p>
+                                        : <div className="space-y-2">
+                                            {radOrders.map(order => (
+                                                <div key={order.id} className="flex items-center gap-3 p-3 bg-white border border-blue-100 rounded-xl">
+                                                    <div className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center shrink-0">
+                                                        <CheckCircle className="w-3 h-3" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-slate-800 text-sm">{order.name}</div>
+                                                        <div className="text-xs text-slate-500 font-medium">{order.desc}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    }
                                 </div>
                             </div>
 
