@@ -343,6 +343,33 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                 ],
             });
 
+    const handleAddLabOrder = () => {
+        if (!selectedLabTest) return;
+        const testObj = availableLabTests.find(t => t.id?.toString() === selectedLabTest || t.testCode === selectedLabTest);
+        const name = testObj ? (testObj.testNameEnglish || testObj.testName || testObj.testCode) : selectedLabTest;
+        
+        if (!labOrders.find(o => o.name === name)) {
+            setLabOrders([...labOrders, { id: Date.now(), name, desc: 'Requested' }]);
+        }
+    };
+
+    const handleAddRadOrder = async () => {
+        if (!selectedRadTest) return;
+        
+        try {
+            const testId = parseInt(selectedRadTest, 10) || 0;
+            await createRadiologyRequest({
+                fileNumber: visitDetails?.fileNumber || "Unknown",
+                visitId: parseInt(visitId || '0', 10),
+                testId: testId,
+                isPregnant: radDetails.isPregnant === 'Positive',
+                allergiesToContrast: radDetails.allergiesToContrast,
+                allergyDetails: radDetails.allergiesToContrast ? radDetails.allergyDetails : '',
+                diabetes: radDetails.diabetes,
+                onMetformin: radDetails.onMetformin,
+                cardiacProblems: radDetails.cardiacProblems,
+                cardiacDetails: radDetails.cardiacProblems ? radDetails.cardiacDetails : '',
+                notes: radDetails.notes || ''
             setPrescriptions([
                 ...prescriptions,
                 {
