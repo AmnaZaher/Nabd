@@ -379,7 +379,7 @@ const LabTechnicianDashboardOverview: React.FC<{
                               {/* Patient */}
                               <td 
                                 className="px-6 py-4 cursor-pointer group"
-                                onClick={() => navigate(`/dashboard/lab/visit/${req.id}`)}
+                                onClick={() => navigate(`/dashboard/lab/visit/${req.visitId || req.id}`)}
                               >
                                 <div className="flex items-center gap-3">
                                   <div>

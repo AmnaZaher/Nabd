@@ -355,7 +355,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                                                 <td className="px-4 py-5">
                                                     <div 
                                                         className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors group"
-                                                        onClick={() => navigate(`/dashboard/lab/visit/${req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS' } })}
+                                                        onClick={() => navigate(`/dashboard/lab/visit/${req.visitId || req.id}`, { state: { from: '/dashboard/lab-test-request', label: 'LAB ORDERS' } })}
                                                     >
                                                         <div>
                                                             <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{pName}</p>

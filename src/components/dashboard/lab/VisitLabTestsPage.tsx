@@ -96,13 +96,22 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
         let actualRequests: any = [];
         
         if (actualInfo && Object.keys(actualInfo).length > 0) {
-          const demoParts = actualInfo.patientDemoGraphic ? actualInfo.patientDemoGraphic.split(',') : [];
+          const demoKey = Object.keys(actualInfo).find(k => k.toLowerCase().includes('demo'));
+          const patientDemoKey = actualInfo.patient ? Object.keys(actualInfo.patient).find(k => k.toLowerCase().includes('demo')) : null;
+          let extractedDemographics = (demoKey ? actualInfo[demoKey] : null) || 
+                                      (patientDemoKey ? actualInfo.patient[patientDemoKey] : null) || 
+                                      actualInfo.demographics || "";
           
+          if (typeof extractedDemographics === 'object' && extractedDemographics !== null) {
+            extractedDemographics = Object.values(extractedDemographics).filter(Boolean).join(', ');
+          }
+
           setPatientInfo({
             name: actualInfo.patientName || actualInfo.patient?.name || actualInfo.name || actualInfo.patientNameEnglish || "Unknown Patient",
             id: actualInfo.fileNumber || actualInfo.patient?.fileNumber || "Unknown ID",
-            gender: demoParts[0]?.trim() || actualInfo.gender || actualInfo.patient?.gender || "Unknown",
-            age: demoParts[1]?.trim() || (actualInfo.age ? `${actualInfo.age} Years` : "Unknown Age"),
+            gender: actualInfo.gender || actualInfo.patient?.gender || "Unknown",
+            age: actualInfo.age ? `${actualInfo.age} Years` : "Unknown Age",
+            demographics: extractedDemographics,
             image: actualInfo.image || "https://i.pravatar.cc/150?u=placeholder"
           });
           setVisitInfo({
@@ -113,11 +122,20 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
             type: actualInfo.visitType || "N/A"
           });
           
-          // Use the route param 'id' if the response doesn't give a specific request ID
-          const requestsId = actualInfo.id || actualInfo.visitId || actualInfo.requestId || id;
-          const requestsRes = await getVisitLabRequests(requestsId);
-          actualRequests = requestsRes?.data || requestsRes;
+          // Extract requests array directly from the PatientVisitLabRequestsInfo response
+          // Look for common property names or any array property
+          const embeddedRequests = actualInfo.labRequests || actualInfo.requests || actualInfo.tests || actualInfo.labTestRequests || Object.values(actualInfo).find(val => Array.isArray(val));
+          
+          if (embeddedRequests && Array.isArray(embeddedRequests)) {
+            actualRequests = embeddedRequests;
+          } else {
+            // Fallback in case it's not embedded
+            const requestsId = actualInfo.id || actualInfo.visitId || actualInfo.requestId || id;
+            const requestsRes = await getVisitLabRequests(requestsId);
+            actualRequests = requestsRes?.data || requestsRes;
+          }
         } else {
+          // Fallback if actualInfo is empty or not an object
           const requestsRes = await getVisitLabRequests(id);
           actualRequests = requestsRes?.data || requestsRes;
         }
@@ -237,7 +255,9 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
                   <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-xs font-bold">
                     {patientInfo.id}
                   </span>
-                  <span className="text-sm font-medium text-slate-500">{patientInfo.gender}, {patientInfo.age}</span>
+                  <span className="text-sm font-medium text-slate-500">
+                    {(patientInfo as any).demographics || `${patientInfo.gender}, ${patientInfo.age}`}
+                  </span>
                 </div>
               </div>
             </div>
