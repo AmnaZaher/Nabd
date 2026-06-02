@@ -44,22 +44,61 @@ interface ActiveVisitPageProps {
     onProfileClick?: () => void;
 }
 
+interface VisitDetails {
+    patientName: string;
+    age: string | number;
+    gender: string;
+    bloodType: string;
+    allergies: string[];
+    vitals: {
+        bp: string;
+        temp: string | number;
+        heartRate: string | number;
+        oxygenSaturation: string | number;
+        weight: string | number;
+        height: string | number;
+        bmi: string | number;
+    };
+    chiefComplaint: string;
+    visitId: string | number;
+    startedTime: string;
+    doctorName: string;
+    clinicName: string;
+    notes: string;
+    status: any;
+    attachments: string[];
+}
+
 const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfileClick }) => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+
+    // FIX: support both visitId and appointmentId
     const appointmentId = searchParams.get('appointmentId');
     const visitId = searchParams.get('visitId') || appointmentId;
 
     const [loading, setLoading] = useState(true);
-    const [visitDetails, setVisitDetails] = useState<any>(null);
+    const [error, setError] = useState<string>('');
+    const [visitDetails, setVisitDetails] = useState<VisitDetails | null>(null);
     const [clinicalNotes, setClinicalNotes] = useState('');
 
     const [diagnoses, setDiagnoses] = useState<any[]>([]);
-    const [newDiagnosis, setNewDiagnosis] = useState({ name: '', code: '', type: 'Primary', justification: '' });
+    const [newDiagnosis, setNewDiagnosis] = useState({
+        name: '',
+        code: '',
+        type: 'Primary',
+        justification: ''
+    });
     const [showAddDiagnosis, setShowAddDiagnosis] = useState(false);
 
     const [prescriptions, setPrescriptions] = useState<any[]>([]);
-    const [newPrescription, setNewPrescription] = useState({ name: '', dosage: '', frequency: '', duration: '', instructions: '' });
+    const [newPrescription, setNewPrescription] = useState({
+        name: '',
+        dosage: '',
+        frequency: '',
+        duration: '',
+        instructions: ''
+    });
     const [showAddPrescription, setShowAddPrescription] = useState(false);
 
     const [labOrders, setLabOrders] = useState<any[]>([]);
@@ -81,10 +120,30 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
         notes: ''
     });
 
+    const normalizeDiagnosisType = (type: any) => {
+        if (type === 1 || type === '1') return 'Primary';
+        if (type === 2 || type === '2') return 'Secondary';
+        return type || '—';
+    };
+
+    const normalizeGender = (gender: any) => {
+        if (gender === null || gender === undefined || gender === '') return '—';
+        if (gender === 1 || gender === '1') return 'Male';
+        if (gender === 2 || gender === '2') return 'Female';
+        return String(gender);
+    };
+
     useEffect(() => {
         const fetchVisitData = async () => {
-            if (!visitId) return;
+            if (!visitId) {
+                setError('visitId / appointmentId is missing from URL.');
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
+            setError('');
+
             try {
                 const [visitRes, diagRes, presRes, labTestsRes, radTestsRes] = await Promise.all([
                     visitApi.getVisit(visitId),
@@ -94,191 +153,258 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                     getAvailableRadiologyTests(),
                 ]);
 
-                if (labTestsRes?.data) {
-                    setAvailableLabTests(Array.isArray(labTestsRes.data) ? labTestsRes.data : []);
-                    if (Array.isArray(labTestsRes.data) && labTestsRes.data.length > 0) {
-                        setSelectedLabTest(labTestsRes.data[0].id?.toString() || labTestsRes.data[0].testCode || '');
-                    }
-                }
-
-                if (radTestsRes?.data) {
-                    setAvailableRadTests(Array.isArray(radTestsRes.data) ? radTestsRes.data : []);
-                    if (Array.isArray(radTestsRes.data) && radTestsRes.data.length > 0) {
-                        setSelectedRadTest(radTestsRes.data[0].id?.toString() || radTestsRes.data[0].serviceCode || '');
-                    }
-                }
+                console.log('visitId used:', visitId);
+                console.log('visitRes:', visitRes);
+                console.log('visitRes.data:', visitRes?.data);
+                console.log('diagRes:', diagRes);
+                console.log('diagRes.data:', diagRes?.data);
+                console.log('presRes:', presRes);
+                console.log('presRes.data:', presRes?.data);
 
                 if (visitRes?.data) {
                     const d = visitRes.data;
-                    const vs = d.vitalSigns;
+
+                    const patient = d.patient ?? d.patientDto ?? d.patientInfo ?? {};
+                    const vs = d.vitalSigns ?? d.vitals ?? {};
+
+                    const attachmentsRaw =
+                        d.attachemntsUrl ??
+                        d.attachmentsUrl ??
+                        d.attachments ??
+                        [];
+
                     setVisitDetails({
-                        patientName: d.patientName,
-                        age: '—',
-                        gender: '—',
-                        bloodType: '—',
-                        allergies: [],
+                        patientName:
+                            patient.fullName ??
+                            patient.name ??
+                            d.patientName ??
+                            '—',
+
+                        age:
+                            patient.age ??
+                            d.age ??
+                            '—',
+
+                        gender:
+                            normalizeGender(
+                                patient.gender ??
+                                d.gender
+                            ),
+
+                        bloodType:
+                            patient.bloodType ??
+                            d.bloodType ??
+                            '—',
+
+                        allergies:
+                            patient.allergies ??
+                            d.allergies ??
+                            [],
+
                         vitals: {
-                            bp: vs?.bloodPressureSystolic && vs?.bloodPressureDiastolic
-                                ? `${vs.bloodPressureSystolic}/${vs.bloodPressureDiastolic}` : '—',
-                            temp: vs?.temperature ?? '—',
-                            heartRate: vs?.heartRate,
-                            oxygenSaturation: vs?.oxygenSaturation,
-                            weight: vs?.weight,
-                            height: vs?.height,
-                            bmi: vs?.bmi,
+                            bp:
+                                vs.bloodPressureSystolic != null &&
+                                vs.bloodPressureDiastolic != null
+                                    ? `${vs.bloodPressureSystolic}/${vs.bloodPressureDiastolic}`
+                                    : '—',
+                            temp: vs.temperature ?? '—',
+                            heartRate: vs.heartRate ?? '—',
+                            oxygenSaturation: vs.oxygenSaturation ?? '—',
+                            weight: vs.weight ?? '—',
+                            height: vs.height ?? '—',
+                            bmi: vs.bmi ?? '—',
                         },
-                        chiefComplaint: d.chiefComplaint,
-                        fileNumber: d.fileNumber || d.fileNum || d.patientFileNumber || d.patient?.fileNumber || d.patientId || d.nationalId || 'Unknown',
-                        visitId: d.visitNumber,
-                        startedTime: new Date(d.visitDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        doctorName: d.doctorName,
-                        clinicName: d.clinicName,
-                        notes: d.notes,
-                        status: d.visitStatus,
-                        attachments: (d.attachemntsUrl ?? []).map((url: string) =>
-                            url.replace(/\\\\/g, '/').replace(/\\/g, '/')
-                        ),
+
+                        chiefComplaint: d.chiefComplaint ?? '—',
+                        visitId: d.visitNumber ?? d.visitId ?? visitId,
+                        startedTime: d.visitDate
+                            ? new Date(d.visitDate).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                              })
+                            : '—',
+                        doctorName: d.doctorName ?? '—',
+                        clinicName: d.clinicName ?? '—',
+                        notes: d.notes ?? '',
+                        status: d.visitStatus ?? '—',
+
+                        attachments: Array.isArray(attachmentsRaw)
+                            ? attachmentsRaw.map((url: string) =>
+                                  String(url).replace(/\\\\/g, '/').replace(/\\/g, '/')
+                              )
+                            : [],
                     });
+
                     setClinicalNotes(d.notes ?? '');
+                } else {
+                    setError('Visit data not found.');
                 }
 
                 if (diagRes?.data) {
                     const diagList = Array.isArray(diagRes.data) ? diagRes.data : [];
-                    setDiagnoses(diagList.map((d: any) => ({
-                        id: d.diagnosisId,
-                        name: d.diagnosis,
-                        code: d.icdCode,
-                        type: d.diagnosisType,
-                    })));
+                    setDiagnoses(
+                        diagList.map((d: any) => ({
+                            id: d.diagnosisId ?? Date.now() + Math.random(),
+                            name: d.diagnosis ?? d.name ?? '—',
+                            code: d.icdCode ?? d.code ?? '',
+                            type: normalizeDiagnosisType(d.diagnosisType ?? d.type),
+                        }))
+                    );
                 }
 
                 if (presRes?.data) {
                     const presData = Array.isArray(presRes.data) ? presRes.data : [];
+
                     const flatItems = presData.flatMap((p: any) =>
                         (p.items ?? []).map((item: any) => ({
-                            id: item.prescriptionItemId,
-                            name: item.medicineName,
-                            dosage: item.dosage,
-                            frequency: item.frequency,
-                            duration: item.duration,
-                            instructions: item.instructions,
+                            id: item.prescriptionItemId ?? item.id ?? Date.now() + Math.random(),
+                            name: item.medicineName ?? item.medicationName ?? item.name ?? '—',
+                            dosage: item.dosage ?? '',
+                            frequency: item.frequency ?? '',
+                            duration: item.duration ?? '',
+                            instructions: item.instructions ?? '',
                         }))
                     );
+
                     setPrescriptions(flatItems);
                 }
-
             } catch (error) {
-                console.error("Failed to fetch visit details", error);
+                console.error('Failed to fetch visit details', error);
+                setError('Failed to load visit details.');
             } finally {
                 setLoading(false);
             }
         };
+
         fetchVisitData();
     }, [visitId]);
 
     const handleFinishVisit = async () => {
         try {
-            if (visitId) await visitApi.markVisitComplete(visitId);
+            if (!visitId) return;
+            await visitApi.markVisitComplete(visitId);
             navigate(`/dashboard/patient-visit?appointmentId=${visitId}`);
         } catch (error) {
-            console.error("Failed to complete visit", error);
+            console.error('Failed to complete visit', error);
             navigate('/dashboard/doctor-visits');
         }
     };
 
     const handleAddDiagnosis = async () => {
-        if (!newDiagnosis.name) return;
+        if (!visitId || !newDiagnosis.name.trim()) return;
+
         try {
-            await visitApi.addDiagnosis(visitId!, {
+            await visitApi.addDiagnosis(visitId, {
                 diagnosis: newDiagnosis.name,
                 icdCode: newDiagnosis.code,
                 diagnosisType: newDiagnosis.type === 'Primary' ? 1 : 2,
                 notes: newDiagnosis.justification,
             });
-            setDiagnoses([...diagnoses, {
-                id: Date.now(),
-                name: newDiagnosis.name,
-                code: newDiagnosis.code,
-                type: newDiagnosis.type,
-            }]);
-            setNewDiagnosis({ name: '', code: '', type: 'Primary', justification: '' });
+
+            setDiagnoses([
+                ...diagnoses,
+                {
+                    id: Date.now(),
+                    name: newDiagnosis.name,
+                    code: newDiagnosis.code,
+                    type: newDiagnosis.type,
+                },
+            ]);
+
+            setNewDiagnosis({
+                name: '',
+                code: '',
+                type: 'Primary',
+                justification: '',
+            });
             setShowAddDiagnosis(false);
         } catch (error) {
-            console.error("Failed to add diagnosis", error);
+            console.error('Failed to add diagnosis', error);
         }
     };
 
     const handleAddPrescription = async () => {
-        if (!newPrescription.name) return;
+        if (!visitId || !newPrescription.name.trim()) return;
+
         try {
-            await visitApi.addPrescription(visitId!, {
+            await visitApi.addPrescription(visitId, {
                 notes: '',
-                items: [{
-                    id: 0,
-                    medicineId: 5,
-                    medicationName: newPrescription.name,
-                    dosage: newPrescription.dosage,
-                    frequency: newPrescription.frequency,
-                    duration: newPrescription.duration,
-                    instructions: newPrescription.instructions,
-                    notes: '',
-                }],
+                items: [
+                    {
+                        id: 0,
+                        medicineId: 5,
+                        medicationName: newPrescription.name,
+                        dosage: newPrescription.dosage,
+                        frequency: newPrescription.frequency,
+                        duration: newPrescription.duration,
+                        instructions: newPrescription.instructions,
+                        notes: '',
+                    },
+                ],
             });
-            setPrescriptions([...prescriptions, { id: Date.now(), ...newPrescription }]);
-            setNewPrescription({ name: '', dosage: '', frequency: '', duration: '', instructions: '' });
+
+            setPrescriptions([
+                ...prescriptions,
+                {
+                    id: Date.now(),
+                    ...newPrescription,
+                },
+            ]);
+
+            setNewPrescription({
+                name: '',
+                dosage: '',
+                frequency: '',
+                duration: '',
+                instructions: '',
+            });
             setShowAddPrescription(false);
         } catch (error) {
-            console.error("Failed to add prescription", error);
+            console.error('Failed to add prescription', error);
         }
     };
 
-    const handleAddLabOrder = () => {
-        if (!selectedLabTest) return;
-        const testObj = availableLabTests.find(t => t.id?.toString() === selectedLabTest || t.testCode === selectedLabTest);
-        const name = testObj ? (testObj.testNameEnglish || testObj.testName || testObj.testCode) : selectedLabTest;
-        
-        if (!labOrders.find(o => o.name === name)) {
-            setLabOrders([...labOrders, { id: Date.now(), name, desc: 'Requested' }]);
-        }
-    };
-
-    const handleAddRadOrder = async () => {
-        if (!selectedRadTest) return;
-        
-        try {
-            const testId = parseInt(selectedRadTest, 10) || 0;
-            await createRadiologyRequest({
-                fileNumber: visitDetails?.fileNumber || "Unknown",
-                visitId: parseInt(visitId || '0', 10),
-                testId: testId,
-                isPregnant: radDetails.isPregnant,
-                allergiesToContrast: radDetails.allergiesToContrast,
-                allergyDetails: radDetails.allergiesToContrast ? radDetails.allergyDetails : '',
-                diabetes: radDetails.diabetes,
-                onMetformin: radDetails.onMetformin,
-                cardiacProblems: radDetails.cardiacProblems,
-                cardiacDetails: radDetails.cardiacProblems ? radDetails.cardiacDetails : '',
-                notes: radDetails.notes || ''
-            });
-
-            const testObj = availableRadTests.find(t => t.id?.toString() === selectedRadTest || t.serviceCode === selectedRadTest);
-            const name = testObj ? (testObj.radiologyTestName || testObj.serviceNameEnglish || testObj.serviceName || testObj.serviceCode) : selectedRadTest;
-            
-            if (!radOrders.find(o => o.name === name)) {
-                setRadOrders([...radOrders, { id: Date.now(), name, desc: 'Requested' }]);
-            }
-        } catch (error) {
-            console.error("Failed to create radiology request", error);
-            alert("Failed to create radiology request");
-        }
-    };
-
-    if (loading || !visitDetails) {
+    if (loading) {
         return (
             <div className="flex-1 flex flex-col min-h-0 bg-[#f8fafc]">
-                <TopBar title="DASHBOARD" onMenuClick={onMenuClick || (() => { })} onProfileClick={onProfileClick} showAddUser={false} isNurse={false} />
+                <TopBar
+                    title="DASHBOARD"
+                    onMenuClick={onMenuClick || (() => {})}
+                    onProfileClick={onProfileClick}
+                    showAddUser={false}
+                    isNurse={false}
+                />
                 <main className="flex-1 flex items-center justify-center">
-                    <div className="text-slate-400 font-medium animate-pulse">Loading visit...</div>
+                    <div className="text-slate-400 font-medium animate-pulse">
+                        Loading visit...
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
+    if (error || !visitDetails) {
+        return (
+            <div className="flex-1 flex flex-col min-h-0 bg-[#f8fafc]">
+                <TopBar
+                    title="DASHBOARD"
+                    onMenuClick={onMenuClick || (() => {})}
+                    onProfileClick={onProfileClick}
+                    showAddUser={false}
+                    isNurse={false}
+                />
+                <main className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="text-red-500 font-semibold mb-2">
+                            {error || 'Visit not found.'}
+                        </div>
+                        <button
+                            onClick={() => navigate('/dashboard/doctor-visits')}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                        >
+                            Back
+                        </button>
+                    </div>
                 </main>
             </div>
         );
@@ -288,7 +414,7 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
         <div className="flex-1 flex flex-col min-h-0 bg-[#f8fafc]">
             <TopBar
                 title="DASHBOARD"
-                onMenuClick={onMenuClick || (() => { })}
+                onMenuClick={onMenuClick || (() => {})}
                 onProfileClick={onProfileClick}
                 showAddUser={false}
                 isNurse={false}
@@ -301,14 +427,19 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-3xl font-black text-slate-800">{visitDetails.patientName}</h1>
+                                <h1 className="text-3xl font-black text-slate-800">
+                                    {visitDetails.patientName}
+                                </h1>
                                 <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-bold flex items-center gap-1.5">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                                     Active Visit
                                 </span>
                             </div>
                             <div className="text-slate-500 font-medium flex items-center gap-2">
-                                <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> Visit ID: {visitDetails.visitId}</span>
+                                <span className="flex items-center gap-1">
+                                    <FileText className="w-4 h-4" />
+                                    Visit ID: {visitDetails.visitId}
+                                </span>
                                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                                 <span>Encounter started {visitDetails.startedTime}</span>
                             </div>
@@ -342,17 +473,27 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-500 font-medium text-sm">Blood Type</span>
-                                        <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">{visitDetails.bloodType}</span>
+                                        <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
+                                            {visitDetails.bloodType}
+                                        </span>
                                     </div>
                                     <div>
                                         <span className="text-slate-500 font-medium text-sm block mb-2">Allergies</span>
                                         <div className="flex flex-wrap gap-2">
-                                            {visitDetails.allergies.length === 0
-                                                ? <span className="text-slate-400 text-xs font-medium">None recorded</span>
-                                                : visitDetails.allergies.map((alg: string) => (
-                                                    <span key={alg} className="px-3 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100">{alg}</span>
+                                            {visitDetails.allergies.length === 0 ? (
+                                                <span className="text-slate-400 text-xs font-medium">
+                                                    None recorded
+                                                </span>
+                                            ) : (
+                                                visitDetails.allergies.map((alg: string, idx: number) => (
+                                                    <span
+                                                        key={`${alg}-${idx}`}
+                                                        className="px-3 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100"
+                                                    >
+                                                        {alg}
+                                                    </span>
                                                 ))
-                                            }
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -366,23 +507,31 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-slate-500 text-xs font-bold mb-1">Blood Pressure</div>
-                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.bp} <span className="text-xs font-medium text-slate-400">mmHg</span></div>
+                                        <div className="font-black text-lg text-slate-800">
+                                            {visitDetails.vitals.bp} <span className="text-xs font-medium text-slate-400">mmHg</span>
+                                        </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-slate-500 text-xs font-bold mb-1">Temperature</div>
-                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.temp} <span className="text-xs font-medium text-slate-400">°C</span></div>
+                                        <div className="font-black text-lg text-slate-800">
+                                            {visitDetails.vitals.temp} <span className="text-xs font-medium text-slate-400">°C</span>
+                                        </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-slate-500 text-xs font-bold mb-1">Heart Rate</div>
-                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.heartRate ?? '—'} <span className="text-xs font-medium text-slate-400">bpm</span></div>
+                                        <div className="font-black text-lg text-slate-800">
+                                            {visitDetails.vitals.heartRate} <span className="text-xs font-medium text-slate-400">bpm</span>
+                                        </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-slate-500 text-xs font-bold mb-1">SpO₂</div>
-                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.oxygenSaturation ?? '—'} <span className="text-xs font-medium text-slate-400">%</span></div>
+                                        <div className="font-black text-lg text-slate-800">
+                                            {visitDetails.vitals.oxygenSaturation} <span className="text-xs font-medium text-slate-400">%</span>
+                                        </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 col-span-2">
                                         <div className="text-slate-500 text-xs font-bold mb-1">BMI</div>
-                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.bmi ?? '—'}</div>
+                                        <div className="font-black text-lg text-slate-800">{visitDetails.vitals.bmi}</div>
                                     </div>
                                 </div>
                             </div>
