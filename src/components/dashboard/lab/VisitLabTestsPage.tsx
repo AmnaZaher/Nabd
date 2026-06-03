@@ -145,9 +145,9 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
             id: `#${req.id || req.requestId || Math.floor(Math.random() * 10000)}`,
             name: req.testNameEnglish || req.testName || req.labTest?.testNameEnglish || "Unknown Test",
             category: req.category || req.labTest?.category || "General",
-            sample: req.smaple || req.sample || req.sampleType || "Blood",
-            doctor: req.requestByName || req.doctorName || req.doctor?.name || "Unknown",
-            date: req.requestDate || req.createdAt || "N/A",
+            sample: req.sampleType || req.sample || req.smaple || req.labTest?.sampleType || "Blood",
+            doctor: req.requestByName || req.requestedBy || req.doctorName || req.doctor?.name || actualInfo?.doctorName || actualInfo?.doctor?.name || "Unknown",
+            date: req.requestDate || req.createdAt || req.date || actualInfo?.visitDate || "N/A",
             status: req.status || "Pending",
           })));
         } else if (actualRequests && actualRequests.length !== undefined) {
@@ -156,9 +156,9 @@ const VisitLabTestsPage: React.FC<VisitLabTestsPageProps> = ({ onMenuClick, onPr
             id: `#${req.id || req.requestId || Math.floor(Math.random() * 10000)}`,
             name: req.testNameEnglish || req.testName || req.labTest?.testNameEnglish || "Unknown Test",
             category: req.category || req.labTest?.category || "General",
-            sample: req.smaple || req.sample || req.sampleType || "Blood",
-            doctor: req.requestByName || req.doctorName || req.doctor?.name || "Unknown",
-            date: req.requestDate || req.createdAt || "N/A",
+            sample: req.sampleType || req.sample || req.smaple || req.labTest?.sampleType || "Blood",
+            doctor: req.requestByName || req.requestedBy || req.doctorName || req.doctor?.name || actualInfo?.doctorName || actualInfo?.doctor?.name || "Unknown",
+            date: req.requestDate || req.createdAt || req.date || actualInfo?.visitDate || "N/A",
             status: req.status || "Pending",
           })));
         }
