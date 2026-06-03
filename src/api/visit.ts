@@ -137,9 +137,15 @@ export const visitApi = {
     });
   },
 
-  checkMedicineAi: async (visitId: number | string) => {
-    return await fetchApi(`/Ai/check-medicine/${visitId}`, {
-      method: 'POST',
+  deletePrescriptionItem: async (prescriptionId: number | string, itemId: number | string) => {
+    return await fetchApi(`/Visit/Delete PrespectionItem?PrespectionId=${prescriptionId}&ItemId=${itemId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  deleteDiagnosis: async (diagnosisId: number | string) => {
+    return await fetchApi(`/Visit/Delete Diagnosis?id=${diagnosisId}`, {
+      method: 'DELETE',
     });
   }
 };
