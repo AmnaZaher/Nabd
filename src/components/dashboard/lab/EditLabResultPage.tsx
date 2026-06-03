@@ -56,36 +56,10 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
             parameters: []
         } as LabResultDetail;
 
-<<<<<<< Updated upstream
         (data as any).visitNumber = orderData?.visitId || orderData?.visitNumber || "";
         (data as any).category = orderData?.category || orderData?.labTest?.category || "";
         (data as any).sampleType = orderData?.sampleType || "";
 
-        // 1. Try to fetch the full request details using the new endpoint
-        let requestDetailsData: any = null;
-        try {
-            const reqRes = await getLabTestRequestDetails(id as string);
-            requestDetailsData = (reqRes as any)?.data ?? reqRes;
-            if (Array.isArray(requestDetailsData)) requestDetailsData = requestDetailsData[0];
-            if (requestDetailsData) {
-                // If it returns patient details, merge them
-                if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
-                if (requestDetailsData.doctorName) data.doctorName = requestDetailsData.doctorName;
-                if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
-                
-                // If it contains parameters directly
-                const paramsList = requestDetailsData.parameters || requestDetailsData.labParameters || requestDetailsData.testParameters || requestDetailsData.labTest?.parameters;
-                if (paramsList && Array.isArray(paramsList)) {
-                    data.parameters = paramsList.map((p: any) => ({
-                        ...p,
-                        id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
-                        parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
-                        referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
-                        referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
-                        unit: p.unit || p.measurementUnit || ''
-                    }));
-                }
-=======
         // 0. Fetch parameters directly using GetParamret
         let parametersFetched = false;
         try {
@@ -104,7 +78,6 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
             if (extractedParams && Array.isArray(extractedParams) && extractedParams.length > 0) {
                 data.parameters = extractedParams;
                 parametersFetched = true;
->>>>>>> Stashed changes
             }
         } catch (err) {
             console.warn("Failed to load parameters via GetParamret.", err);

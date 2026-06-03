@@ -185,10 +185,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                         <span className="ml-2 bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">{stats.pending || '00'}</span>
                     </button>
 
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
 
                     {/* Completed */}
                     <button 
