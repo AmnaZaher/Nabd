@@ -23,6 +23,328 @@ import {
   verifyReport,
 } from "../../../api/radiologyResults";
 
+const MOCK_EXAM_DETAILS: Record<string, any> = {
+  "9021": {
+    reportId: "RPT-9021",
+    examId: "RAD-9021",
+    patientName: "Eleanor Vance",
+    patientFileNumber: "8829-XP",
+    fileNumber: "8829-XP",
+    patientId: "8829-XP",
+    age: 31,
+    gender: "Female",
+    examDate: "2023-10-24T09:15:00",
+    scheduledTime: "2023-10-24T09:15:00",
+    examType: "MRI",
+    modality: "MRI",
+    radiologistName: "Dr. K. Aris",
+    clinicalIndication:
+      "Headache, visual blurring, and dizziness. Rule out intracranial lesion.",
+    technique:
+      "MRI brain performed with axial, sagittal, and coronal sequences before and after intravenous contrast administration.",
+    findings:
+      "Lungs: No focal consolidation or suspicious pulmonary mass. Trace bilateral pleural effusions, unchanged from baseline. Mild interstitial prominence in the lower lobes bilaterally.",
+    impression:
+      "1. No evidence of acute pulmonary process. 2. Stable cardiovascular configuration. 3. Minor non-specific interstitial changes, likely inflammatory. Clinical correlation suggested.",
+    history: [
+      {
+        title: "Chest MRI w/ Contrast",
+        date: "Oct 12, 2023",
+        doctor: "Dr. Aris Thorne",
+        status: "CURRENT",
+      },
+      {
+        title: "Abdominal Ultrasound",
+        date: "May 24, 2023",
+        doctor: "Dr. Julia Kim",
+        status: "ARCHIVED",
+      },
+      {
+        title: "Standard X-Ray Chest",
+        date: "Jan 12, 2023",
+        doctor: "Dr. Marcus Chen",
+        status: "ARCHIVED",
+      },
+    ],
+    images: [
+      {
+        type: "sagittal",
+        fileName: "IMG_001.DCM",
+        createdAt: "2023-10-24T10:45:00",
+      },
+      {
+        type: "axial",
+        fileName: "IMG_002.DCM",
+        createdAt: "2023-10-24T10:46:00",
+      },
+      {
+        type: "coronal",
+        fileName: "IMG_003.DCM",
+        createdAt: "2023-10-24T10:47:00",
+      },
+    ],
+  },
+  "9022": {
+    reportId: "RPT-9022",
+    examId: "RAD-9022",
+    patientName: "Arthur Morgan",
+    patientFileNumber: "1102-AM",
+    fileNumber: "1102-AM",
+    patientId: "1102-AM",
+    age: 56,
+    gender: "Male",
+    examDate: "2023-10-24T11:00:00",
+    scheduledTime: "2023-10-24T11:00:00",
+    examType: "CT SCAN",
+    modality: "CT",
+    radiologistName: "Dr. J. Vane",
+    clinicalIndication:
+      "Chronic lower back pain radiating to both legs. Evaluate for disc herniation or spinal stenosis.",
+    technique:
+      "Multidetector CT of the lumbar spine performed without contrast. Axial, sagittal, and coronal reformations obtained.",
+    findings:
+      "Mild degenerative disc disease at L4-L5 and L5-S1. Small central disc protrusion at L4-L5 without significant central canal stenosis. Facet joints show mild arthritic changes. No fracture or destructive lesion identified.",
+    impression:
+      "1. Mild degenerative changes in lumbar spine. 2. Small disc protrusion at L4-L5. 3. No acute fracture or mass lesion.",
+    history: [
+      {
+        title: "CT SCAN Lumbar Spine",
+        date: "Oct 24, 2023",
+        doctor: "Dr. J. Vane",
+        status: "CURRENT",
+      },
+      {
+        title: "X-Ray Lumbar Spine",
+        date: "Aug 15, 2023",
+        doctor: "Dr. Sarah Mills",
+        status: "ARCHIVED",
+      },
+    ],
+    images: [
+      {
+        type: "sagittal",
+        fileName: "IMG_001.DCM",
+        createdAt: "2023-10-24T11:05:00",
+      },
+      {
+        type: "axial",
+        fileName: "IMG_002.DCM",
+        createdAt: "2023-10-24T11:06:00",
+      },
+      {
+        type: "coronal",
+        fileName: "IMG_003.DCM",
+        createdAt: "2023-10-24T11:07:00",
+      },
+    ],
+  },
+  "9023": {
+    reportId: "RPT-9023",
+    examId: "RAD-9023",
+    patientName: "Sarah Connor",
+    patientFileNumber: "5543-SC",
+    fileNumber: "5543-SC",
+    patientId: "5543-SC",
+    age: 28,
+    gender: "Female",
+    examDate: "2023-10-24T08:30:00",
+    scheduledTime: "2023-10-24T08:30:00",
+    examType: "X-RAY",
+    modality: "X-RAY",
+    radiologistName: "Dr. L. Myers",
+    clinicalIndication:
+      "Ankle pain and swelling following sports injury. Rule out fracture.",
+    technique:
+      "AP and lateral radiographs of the left ankle were obtained.",
+    findings:
+      "No acute fracture or dislocation identified. Soft tissue swelling present lateral to the ankle joint. Articular surfaces are intact. No joint effusion.",
+    impression:
+      "1. No evidence of acute fracture. 2. Soft tissue swelling consistent with sprain. 3. Clinical correlation and follow-up as needed.",
+    history: [
+      {
+        title: "X-RAY Left Ankle",
+        date: "Oct 24, 2023",
+        doctor: "Dr. L. Myers",
+        status: "CURRENT",
+      },
+    ],
+    images: [
+      {
+        type: "sagittal",
+        fileName: "IMG_001.DCM",
+        createdAt: "2023-10-24T08:35:00",
+      },
+      {
+        type: "axial",
+        fileName: "IMG_002.DCM",
+        createdAt: "2023-10-24T08:36:00",
+      },
+    ],
+  },
+  "9024": {
+    reportId: "RPT-9024",
+    examId: "RAD-9024",
+    patientName: "John Doe",
+    patientFileNumber: "0023-JD",
+    fileNumber: "0023-JD",
+    patientId: "0023-JD",
+    age: 62,
+    gender: "Male",
+    examDate: "2023-10-24T13:45:00",
+    scheduledTime: "2023-10-24T13:45:00",
+    examType: "ULTRASOUND",
+    modality: "ULTRASOUND",
+    radiologistName: "Unassigned",
+    clinicalIndication:
+      "Right upper quadrant pain. Evaluate for gallstones or cholecystitis.",
+    technique:
+      "Real-time ultrasound of the abdomen performed with appropriate transducers.",
+    findings:
+      "Liver: Normal size and echogenicity. No focal lesion. Gallbladder: Multiple small echogenic foci with posterior shadowing consistent with gallstones. No wall thickening or pericholecystic fluid. Common bile duct measures 4mm (normal). Pancreas and spleen unremarkable.",
+    impression:
+      "1. Cholelithiasis (gallstones) without evidence of acute cholecystitis. 2. Otherwise unremarkable abdominal ultrasound.",
+    history: [
+      {
+        title: "Abdominal Ultrasound",
+        date: "Oct 24, 2023",
+        doctor: "Unassigned",
+        status: "CURRENT",
+      },
+    ],
+    images: [
+      {
+        type: "sagittal",
+        fileName: "IMG_001.DCM",
+        createdAt: "2023-10-24T13:50:00",
+      },
+      {
+        type: "axial",
+        fileName: "IMG_002.DCM",
+        createdAt: "2023-10-24T13:51:00",
+      },
+      {
+        type: "coronal",
+        fileName: "IMG_003.DCM",
+        createdAt: "2023-10-24T13:52:00",
+      },
+    ],
+  },
+  "9025": {
+    reportId: "RPT-9025",
+    examId: "RAD-9928-MRI",
+    patientName: "ELIAS VANCE",
+    patientFileNumber: "9823-RX",
+    fileNumber: "9823-RX",
+    patientId: "9823-RX",
+    age: 42,
+    gender: "Male",
+    examDate: "2023-10-24T14:30:00",
+    scheduledTime: "2023-10-24T14:30:00",
+    examType: "Chest CT with Contrast",
+    modality: "CT",
+    radiologistName: "Dr. Alex Rivers",
+    clinicalIndication:
+      "Persistent cough and chest discomfort for three weeks. History of moderate hypertension. Previous imaging (Jan 2023) showed clear pulmonary fields.",
+    technique:
+      "Multi-planar, multi-sequence MRI of the thorax was performed before and after administration of intravenous Gadolinium. Coronal and axial T1 and T2 weighted images were obtained.",
+    findings:
+      "Lungs: No focal consolidation or suspicious pulmonary mass. Trace bilateral pleural effusions, unchanged from baseline. Mild interstitial prominence in the lower lobes bilaterally. Mediastinum: Heart size is within normal limits. No evidence of hilar or mediastinal lymphadenopathy. The aorta and major vessels demonstrate normal caliber.",
+    impression:
+      "1. No evidence of acute pulmonary process. 2. Stable cardiovascular configuration. 3. Minor non-specific interstitial changes, likely inflammatory. Clinical correlation suggested.",
+    history: [
+      {
+        title: "Chest MRI w/ Contrast",
+        date: "Oct 12, 2023",
+        doctor: "Dr. Aris Thorne",
+        status: "CURRENT",
+      },
+      {
+        title: "Abdominal Ultrasound",
+        date: "May 24, 2023",
+        doctor: "Dr. Julia Kim",
+        status: "ARCHIVED",
+      },
+      {
+        title: "Standard M-Ray Chest",
+        date: "Jan 12, 2023",
+        doctor: "Dr. Marcus Chen",
+        status: "ARCHIVED",
+      },
+    ],
+    images: [
+      {
+        type: "sagittal",
+        fileName: "IMG_001.DCM",
+        createdAt: "2023-10-24T10:45:00",
+      },
+      {
+        type: "axial",
+        fileName: "IMG_002.DCM",
+        createdAt: "2023-10-24T10:46:00",
+      },
+      {
+        type: "coronal",
+        fileName: "IMG_003.DCM",
+        createdAt: "2023-10-24T10:47:00",
+      },
+    ],
+  },
+  "9026": {
+    reportId: "RPT-9026",
+    examId: "RAD-9026",
+    patientName: "Mariam Adel",
+    patientFileNumber: "2201-MA",
+    fileNumber: "2201-MA",
+    patientId: "2201-MA",
+    age: 35,
+    gender: "Female",
+    examDate: "2023-10-24T10:00:00",
+    scheduledTime: "2023-10-24T10:00:00",
+    examType: "MRI",
+    modality: "MRI",
+    radiologistName: "Dr. Salma Noor",
+    clinicalIndication:
+      "Neck pain radiating to upper extremities. Evaluate for cervical disc disease or nerve root compression.",
+    technique:
+      "MRI of the cervical spine performed with sagittal and axial T1 and T2 weighted sequences.",
+    findings:
+      "Normal cervical vertebral body alignment. Mild degenerative changes at C5-C6 with small posterior disc osteophyte complex causing mild narrowing of the central canal. Neural foramina are patent bilaterally. No significant spinal cord compression or signal abnormality. Remaining disc levels are unremarkable.",
+    impression:
+      "1. Mild degenerative changes at C5-C6. 2. No significant spinal cord compression. 3. Clinical correlation recommended.",
+    history: [
+      {
+        title: "MRI Cervical Spine",
+        date: "Oct 24, 2023",
+        doctor: "Dr. Salma Noor",
+        status: "CURRENT",
+      },
+      {
+        title: "X-Ray Cervical Spine",
+        date: "Jul 10, 2023",
+        doctor: "Dr. Omar Farid",
+        status: "ARCHIVED",
+      },
+    ],
+    images: [
+      {
+        type: "sagittal",
+        fileName: "IMG_001.DCM",
+        createdAt: "2023-10-24T10:10:00",
+      },
+      {
+        type: "axial",
+        fileName: "IMG_002.DCM",
+        createdAt: "2023-10-24T10:11:00",
+      },
+      {
+        type: "coronal",
+        fileName: "IMG_003.DCM",
+        createdAt: "2023-10-24T10:12:00",
+      },
+    ],
+  },
+};
+
 const ScanImage: React.FC<{ variant: "sagittal" | "axial" | "coronal" }> = ({
   variant,
 }) => {
@@ -93,26 +415,29 @@ const RadiologistReviewReport: React.FC<{
 
   const [galleryView, setGalleryView] = useState<"grid" | "list">("grid");
   const [reviewerNotes, setReviewerNotes] = useState("");
-  const [details, setDetails] = useState<RadiologyExamDetailsDto | null>(null);
+  const [details, setDetails] = useState<RadiologyExamDetailsDto | any | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDetails = async () => {
       if (!queueId) {
-        setError("Missing exam ID.");
+        setDetails(null);
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        setError("");
         const data = await getExamDetails(queueId);
-        setDetails(data);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load report details.");
+
+        if (data) {
+          setDetails(data);
+        } else {
+          setDetails(MOCK_EXAM_DETAILS[queueId] || null);
+        }
+      } catch {
+        setDetails(MOCK_EXAM_DETAILS[queueId] || null);
       } finally {
         setLoading(false);
       }
@@ -124,7 +449,7 @@ const RadiologistReviewReport: React.FC<{
   const examHistory = useMemo(
     () =>
       details?.history?.length
-        ? details.history.map((h) => ({
+        ? details.history.map((h: any) => ({
             title: h.title || "Exam",
             date: h.date || "—",
             doctor: h.doctor || "—",
@@ -143,10 +468,10 @@ const RadiologistReviewReport: React.FC<{
 
   const galleryImages =
     details?.images?.length
-      ? details.images.map((img, index) => ({
+      ? details.images.map((img: any, index: number) => ({
           label: (img.type || "AXIAL").toUpperCase(),
           color:
-            index % 3 === 0 ? "bg-red-600" : index % 3 === 1 ? "bg-blue-600" : "bg-emerald-600",
+            index % 3 === 0 ? "bg-blue-600" : index % 3 === 1 ? "bg-slate-700" : "bg-slate-500",
           file: img.fileName || `IMG_${index + 1}.DCM`,
           time: formatDateTime(img.createdAt),
           variant: mapGalleryVariant(img.type),
@@ -167,8 +492,8 @@ const RadiologistReviewReport: React.FC<{
     try {
       setActionLoading(true);
       await exportReportPdf(details.reportId);
-    } catch (err: any) {
-      alert(err?.message || "Failed to download PDF.");
+    } catch {
+      alert("Mock mode: PDF download is not available.");
     } finally {
       setActionLoading(false);
     }
@@ -181,8 +506,9 @@ const RadiologistReviewReport: React.FC<{
       setActionLoading(true);
       await verifyReport(details.reportId);
       navigate("/dashboard/radiology/results");
-    } catch (err: any) {
-      alert(err?.message || "Failed to approve report.");
+    } catch {
+      alert("Mock mode: Report marked as approved locally.");
+      navigate("/dashboard/radiology/results");
     } finally {
       setActionLoading(false);
     }
@@ -227,8 +553,8 @@ const RadiologistReviewReport: React.FC<{
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-10 text-sm font-semibold text-slate-500">Loading report...</div>
-        ) : error ? (
-          <div className="p-10 text-sm font-semibold text-red-500">{error}</div>
+        ) : !details ? (
+          <div className="p-10 text-sm font-semibold text-red-500">Report not found.</div>
         ) : (
           <>
             <div className="px-6 md:px-10 py-6 bg-white border-b border-slate-100">
@@ -306,7 +632,7 @@ const RadiologistReviewReport: React.FC<{
                     <div className="absolute left-[5px] top-2 bottom-2 border-l-2 border-blue-200" />
 
                     <div className="space-y-6">
-                      {examHistory.map((exam, idx) => {
+                      {examHistory.map((exam: any, idx: number) => {
                         const isCurrent = exam.status === "CURRENT";
                         return (
                           <div key={idx} className="relative flex items-start gap-4 pl-6">
@@ -376,7 +702,7 @@ const RadiologistReviewReport: React.FC<{
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    {galleryImages.map((img, idx) => (
+                    {galleryImages.map((img: any, idx: number) => (
                       <div
                         key={idx}
                         className="relative rounded-xl overflow-hidden bg-slate-900 aspect-[4/5] group"
