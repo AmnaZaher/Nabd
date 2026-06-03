@@ -100,7 +100,6 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
         };
     }, [apiData, apiError]);
 
-    const error = hasError ? "API unavailable or returned empty data. Showing mock data." : null;
 
     const [testFilter, setTestFilter] = useState("Test Name");
     const [doctorFilter, setDoctorFilter] = useState("Doctor");
@@ -173,19 +172,6 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                     </div>
                 </div>
 
-                {/* Global error banner */}
-                {error && (
-                    <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-5 py-4 text-red-700 text-sm font-medium">
-                        <span className="shrink-0 font-bold">!</span>
-                        <span>{error}</span>
-                        <button
-                            onClick={() => refetch()}
-                            className="ml-auto text-red-600 font-bold hover:underline text-xs"
-                        >
-                            Retry
-                        </button>
-                    </div>
-                )}
 
                 {/* Status Cards / Filters */}
                 <div className="flex flex-wrap gap-4">
@@ -199,6 +185,10 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                         <span className="ml-2 bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">{stats.pending || '00'}</span>
                     </button>
 
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 
                     {/* Completed */}
                     <button 
