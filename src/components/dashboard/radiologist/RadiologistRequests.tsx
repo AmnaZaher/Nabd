@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import {getRadiologyRequests,type RadiologyRequestListItemDto } from "../../../api/radilogist";
+import {getRadiologyRequests, createRadiologyExam, type RadiologyRequestListItemDto } from "../../../api/radilogist";
 
 interface RequestItem {
   id: string;
@@ -101,6 +101,7 @@ const RadiologistRequests: React.FC<{
   const [requests, setRequests] = useState<RadiologyRequestListItemDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [startingExamId, setStartingExamId] = useState<number | null>(null);
   const ITEMS_PER_PAGE = 4;
 
   useEffect(() => {
@@ -146,6 +147,26 @@ const RadiologistRequests: React.FC<{
 
   const tabCountLabel = (count: number) => String(count).padStart(2, "0");
   
+
+  const handleStartExam = async (reqId: number | undefined, modality: string | undefined) => {
+    if (!reqId) return;
+    setStartingExamId(reqId);
+    try {
+      const response = await createRadiologyExam(reqId, {
+        examDate: new Date().toISOString(),
+        modality,
+      });
+
+      const newExamId = response.examId || response.id;
+      if (!newExamId) throw new Error("No exam id returned");
+
+      navigate(`/dashboard/radiology/scan/${newExamId}`);
+    } catch (error: any) {
+      alert(error?.message || "Failed to start exam.");
+    } finally {
+      setStartingExamId(null);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F4F6FA]">
@@ -361,18 +382,15 @@ const RadiologistRequests: React.FC<{
                               <Eye size={15} />
                             </button>
                             <button
-                              onClick={() =>
-                                canStart &&
-                                navigate(`/dashboard/radiology/start-exam/${req.id}`)
-                              }
-                              disabled={!canStart}
+                              onClick={() => canStart && handleStartExam(req.id, req.modality)}
+                              disabled={!canStart || startingExamId === req.id}
                               className={`px-4 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all ${
-                                canStart
-                                  ? "bg-[#1A6FC4] hover:bg-[#155faa] text-white shadow-sm cursor-pointer"
-                                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                !canStart
+                                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                  : "bg-[#1A6FC4] hover:bg-[#155faa] text-white shadow-sm cursor-pointer"
                               }`}
                             >
-                              Start Exam
+                              {startingExamId === req.id ? "Starting..." : "Start Exam"}
                             </button>
                           </div>
                         </td>
