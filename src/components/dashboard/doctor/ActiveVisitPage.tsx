@@ -39,6 +39,11 @@ const RadInfoBox = ({ title, value, colorClass, onClick }: { title: string, valu
     );
 };
 
+interface MedicineOption {
+    id: string;
+    name: string;
+}
+
 interface ActiveVisitPageProps {
     onMenuClick?: () => void;
     onProfileClick?: () => void;
@@ -93,7 +98,9 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const [showAddDiagnosis, setShowAddDiagnosis] = useState(false);
 
     const [prescriptions, setPrescriptions] = useState<any[]>([]);
+    const [availableMedicines, setAvailableMedicines] = useState<MedicineOption[]>([]);
     const [newPrescription, setNewPrescription] = useState({
+        medicineId: '',
         name: '',
         dosage: '',
         frequency: '',
@@ -138,6 +145,16 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
         return String(gender);
     };
 
+    const normalizeMedicines = (response: any): MedicineOption[] => {
+        const rawData = response?.data ?? response ?? [];
+        if (!Array.isArray(rawData)) return [];
+
+        return rawData.map((item: any) => ({
+            id: String(item.medicineId),
+            name: String(item.medicinName ?? '')
+        })).filter((item: MedicineOption) => item.id && item.name);
+    };
+
     useEffect(() => {
         const fetchVisitData = async () => {
             if (!visitId) {
@@ -150,12 +167,13 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
             setError('');
 
             try {
-                const [visitRes, diagRes, presRes, labTestsRes, radTestsRes] = await Promise.all([
+                const [visitRes, diagRes, presRes, labTestsRes, radTestsRes, medicineRes] = await Promise.all([
                     visitApi.getVisit(visitId),
                     visitApi.getDiagnoses(visitId),
                     visitApi.getPrescriptions(visitId),
                     getAvailableLabTests(),
                     getAvailableRadiologyTests(),
+                    visitApi.getAllMedicine(),
                 ]);
 
                 console.log('visitId used:', visitId);
@@ -175,6 +193,9 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                     const radsData = (radTestsRes as any)?.data || radTestsRes;
                     setAvailableRadTests(Array.isArray(radsData) ? radsData : []);
                 }
+
+                const medicines = normalizeMedicines(medicineRes);
+                setAvailableMedicines(medicines);
 
                 if (visitRes?.data) {
                     const d = visitRes.data;
@@ -360,13 +381,22 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
         if (!visitId || !newPrescription.name.trim()) return;
 
         try {
+            const selectedMedicine = availableMedicines.find(
+                med => med.id === newPrescription.medicineId
+            );
+
+            if (!selectedMedicine) {
+                alert('Selected medicine is invalid.');
+                return;
+            }
+
             await visitApi.addPrescription(visitId, {
                 notes: '',
                 items: [
                     {
                         id: 0,
-                        medicineId: 5,
-                        medicationName: newPrescription.name,
+                        medicineId: Number(selectedMedicine.id),
+                        medicationName: selectedMedicine.name,
                         dosage: newPrescription.dosage,
                         frequency: newPrescription.frequency,
                         duration: newPrescription.duration,
@@ -385,6 +415,7 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
             ]);
 
             setNewPrescription({
+                medicineId: '',
                 name: '',
                 dosage: '',
                 frequency: '',
@@ -774,7 +805,25 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 {showAddPrescription && (
                                     <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6">
                                         <div className="flex flex-wrap gap-4 mb-4">
-                                            <input type="text" placeholder="Medicine name..." className="flex-1 min-w-[150px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.name} onChange={e => setNewPrescription({ ...newPrescription, name: e.target.value })} />
+                                            <select
+                                                className="flex-1 min-w-[200px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-700"
+                                                value={newPrescription.medicineId}
+                                                onChange={(e) => {
+                                                    const selected = availableMedicines.find(m => m.id === e.target.value);
+                                                    setNewPrescription({
+                                                        ...newPrescription,
+                                                        medicineId: e.target.value,
+                                                        name: selected?.name || ''
+                                                    });
+                                                }}
+                                            >
+                                                <option value="" disabled>Select medicine...</option>
+                                                {availableMedicines.map((med) => (
+                                                    <option key={med.id} value={med.id}>
+                                                        {med.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                             <input type="text" placeholder="Dosage" className="w-32 px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.dosage} onChange={e => setNewPrescription({ ...newPrescription, dosage: e.target.value })} />
                                             <input type="text" placeholder="Frequency" className="w-48 px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.frequency} onChange={e => setNewPrescription({ ...newPrescription, frequency: e.target.value })} />
                                             <input type="text" placeholder="Duration" className="w-32 px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.duration} onChange={e => setNewPrescription({ ...newPrescription, duration: e.target.value })} />
