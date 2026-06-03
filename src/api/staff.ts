@@ -77,23 +77,15 @@ export const staffApi = {
       // Augment the list item with full profile details if possible
       const realId = item.id || item.Id || item.userId || item.UserId;
       if (realId) {
-        try {
-          const fullProfileResponse = await fetchApi<any>(`/Staff/${realId}`);
-          if (fullProfileResponse?.data) {
-            item = { ...item, ...fullProfileResponse.data };
-          }
-        } catch (e) {
-          console.warn(`Failed to fetch full profile details via /Staff/${realId}:`, e);
-          // Fallback for Admin profile
-          if (idOrNationalId === 'admin1' || String(item.role) === '1' || String(item.Role) === '1' || item.roleName === 'Admin') {
-            try {
-              const adminProfileResponse = await fetchApi<any>('/Admin/Profile');
-              if (adminProfileResponse?.data) {
-                item = { ...item, ...adminProfileResponse.data };
-              }
-            } catch (e2) {
-              console.warn("Failed to fetch admin profile fallback:", e2);
+        // Fallback for Admin profile
+        if (idOrNationalId === 'admin1' || String(item.role) === '1' || String(item.Role) === '1' || item.roleName === 'Admin') {
+          try {
+            const adminProfileResponse = await fetchApi<any>('/Admin/Profile');
+            if (adminProfileResponse?.data) {
+              item = { ...item, ...adminProfileResponse.data };
             }
+          } catch (e2) {
+            console.warn("Failed to fetch admin profile fallback:", e2);
           }
         }
       }
@@ -229,8 +221,10 @@ export const staffApi = {
   },
 
   getProfile: async (id: string): Promise<StaffProfile> => {
-    const response = await fetchApi<StaffProfile>(`/Staff/${id}`);
-    return response.data!;
+    // The backend doesn't have a specific GET profile endpoint by ID, so we use getStaffById
+    const data = await staffApi.getStaffById(id);
+    if (!data) throw new Error("Staff profile not found");
+    return data;
   },
 
   /**
@@ -419,15 +413,7 @@ export const staffApi = {
       } catch (err) { console.log("Strategy Lab Tech failed:", err); }
     }
 
-    // ── Strategy 1: /Staff/{userId} (direct lookup by internal ID) ──
-    try {
-      const response = await fetchApi<any>(`/Staff/${userId}`);
-      const item = response?.data;
-      if (item) {
-        const name = resolveName(item);
-        if (name) return buildProfile(item, userId, jwtUsername);
-      }
-    } catch (err) { console.log("Strategy 1 failed:", err); }
+    // ── Strategy 1: Skipped (no /Staff/{userId} endpoint on backend) ──
 
     // ── Strategy 2: Admin search by national ID (admins only) ──
     if (jwtUsername) {

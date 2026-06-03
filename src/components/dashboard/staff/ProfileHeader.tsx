@@ -29,7 +29,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       <div className="relative shrink-0">
         <div className="w-28 h-28 md:w-36 md:h-36 rounded-full p-2 border-2 border-blue-50">
           <img
-            src={user.avatar}
+            src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=3b82f6&color=fff&size=200`}
             alt={user.name}
             className="w-full h-full object-cover rounded-full bg-slate-100"
           />
