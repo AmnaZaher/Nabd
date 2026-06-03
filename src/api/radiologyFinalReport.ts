@@ -2,6 +2,7 @@ import { fetchApi } from "./config";
 
 export interface CreateDraftRadiologyReportDto {
   examId: number;
+  reportType?: string;
   findingsAr?: string;
   findingsEn: string;
   recommendationsAr?: string;

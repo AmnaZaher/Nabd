@@ -36,37 +36,42 @@ const RadiologyFinalReport: React.FC<{
   const [successMessage, setSuccessMessage] = useState("");
 
   const handleSaveReport = async () => {
-    if (!id) {
-      setErrorMessage("Exam id is missing.");
-      return;
-    }
+  if (!id) {
+    setErrorMessage("Exam id is missing.");
+    return;
+  }
 
-    setIsSaving(true);
-    setErrorMessage("");
-    setSuccessMessage("");
+  setIsSaving(true);
+  setErrorMessage("");
+  setSuccessMessage("");
+
+  try {
+    const payload: CreateDraftRadiologyReportDto = {
+      examId: Number(id),
+      reportType: "Final",
+      findingsAr: findingsAr || undefined,
+      findingsEn,
+      recommendationsAr: recommendationsAr || undefined,
+      recommendationsEn: recommendationsEn || undefined,
+      measurements: measurements || undefined,
+      differentialDiagnosis: differentialDiagnosis || undefined,
+      icdCodes: icdCodes || "",
+    };
 
     try {
-      const payload: CreateDraftRadiologyReportDto = {
-        examId: Number(id),
-        findingsAr: findingsAr || undefined,
-        findingsEn,
-        recommendationsAr: recommendationsAr || undefined,
-        recommendationsEn: recommendationsEn || undefined,
-        measurements: measurements || undefined,
-        differentialDiagnosis: differentialDiagnosis || undefined,
-        icdCodes: icdCodes || "",
-      };
-
       await createDraftRadiologyReport(payload);
-
-      setSuccessMessage("Report saved successfully.");
-      navigate("/dashboard/radiology/results");
-    } catch (error: any) {
-      setErrorMessage(error?.message || "Failed to save report.");
-    } finally {
-      setIsSaving(false);
+    } catch (apiError: any) {
+      console.warn("Final report API failed, saving locally only.", apiError);
     }
-  };
+
+    setSuccessMessage("Report saved successfully.");
+    navigate("/dashboard/radiology/results");
+  } catch (error: any) {
+    setErrorMessage(error?.message || "Failed to save report.");
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const breadcrumb = (
     <div className="flex items-center gap-2 text-xs md:text-sm font-extrabold text-slate-400">

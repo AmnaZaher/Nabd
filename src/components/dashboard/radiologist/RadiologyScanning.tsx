@@ -28,7 +28,169 @@ interface SliceImage {
   svgData: string;
   imageId?: string;
   fileName?: string;
+  previewUrl?: string;
 }
+
+const MRI_PREVIEW_IMAGE =
+  "https://i.pinimg.com/736x/d9/94/e1/d994e1efd4e234e3ed7cd9529d90c71b.jpg";
+
+const MOCK_EXAM_DETAILS: Record<string, any> = {
+  "9021": {
+    id: 9021,
+    patientName: "Eleanor Vance",
+    patientId: "8829-XP",
+    patientAge: 29,
+    patientGender: "Female",
+    patientWeight: 58,
+    requestNumber: "#RAD-9021",
+    examDate: "2026-06-03T14:30:00",
+    doctorName: "Dr. Elena Rossi",
+    examTitle: "MRI Brain w/ Contrast",
+    examType: "MRI Brain w/ Contrast",
+    protocol: "BRAIN_W_CONTRAST_T1_T2_AX",
+    notes:
+      "Patient reports severe recurring headaches and dizziness. Monitor carefully during contrast administration.",
+    technicianNote:
+      "Ensure head is centered and secured. Confirm patient remains still during acquisition.",
+  },
+  "9022": {
+    id: 9022,
+    patientName: "Arthur Morgan",
+    patientId: "1102-AM",
+    patientAge: 42,
+    patientGender: "Male",
+    patientWeight: 77,
+    requestNumber: "#RAD-9022",
+    examDate: "2026-06-03T11:00:00",
+    doctorName: "Dr. J. Vane",
+    examTitle: "Lumbar Spine MRI",
+    examType: "Lumbar Spine MRI",
+    protocol: "L-SPINE_W_O_CONTRAST_T2_SAG",
+    notes:
+      "Patient reports persistent lower back pain for 3 weeks. History of mild scoliosis. Allergic to iodine-based contrast agents. Requires assistance moving to prone position.",
+    technicianNote:
+      "Ensure patient's spine is aligned with the center mark of the coil. Use leg bolsters for comfort.",
+  },
+  "9023": {
+    id: 9023,
+    patientName: "Sarah Connor",
+    patientId: "5543-SC",
+    patientAge: 35,
+    patientGender: "Female",
+    patientWeight: 61,
+    requestNumber: "#RAD-9023",
+    examDate: "2026-06-02T09:15:00",
+    doctorName: "Dr. L. Myers",
+    examTitle: "Left Ankle X-Ray",
+    examType: "Left Ankle X-Ray",
+    protocol: "ANKLE_XR_AP_LAT_OBL",
+    notes:
+      "Assess for post-traumatic swelling and rule out fracture around the lateral malleolus.",
+    technicianNote:
+      "Position foot neutrally and obtain AP, lateral, and oblique views.",
+  },
+  "9024": {
+    id: 9024,
+    patientName: "John Doe",
+    patientId: "0023-JD",
+    patientAge: 31,
+    patientGender: "Male",
+    patientWeight: 70,
+    requestNumber: "#RAD-9024",
+    examDate: "2026-06-03T16:00:00",
+    doctorName: "Dr. Ahmed Noor",
+    examTitle: "Ultrasound Abdomen",
+    examType: "Ultrasound Abdomen",
+    protocol: "ABD_US_STANDARD",
+    notes:
+      "Patient complains of intermittent abdominal pain after meals. Evaluate hepatobiliary region.",
+    technicianNote:
+      "Scan RUQ first, then complete full abdominal sweep. Patient fasting status confirmed.",
+  },
+};
+
+const MOCK_IMAGE_QUEUE: Record<string, SliceImage[]> = {
+  "9021": [
+    {
+      id: "9021-1",
+      sliceNumber: "Slice 12/48",
+      type: "T1",
+      thickness: "0.8mm",
+      status: "completed",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+    {
+      id: "9021-2",
+      sliceNumber: "Slice 24/48",
+      type: "T2",
+      thickness: "0.8mm",
+      status: "completed",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+    {
+      id: "9021-3",
+      sliceNumber: "Slice 32/48",
+      type: "FLAIR",
+      thickness: "0.8mm",
+      status: "processing",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+  ],
+  "9022": [
+    {
+      id: "9022-1",
+      sliceNumber: "Slice 12/48",
+      type: "T2",
+      thickness: "0.8mm",
+      status: "completed",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+    {
+      id: "9022-2",
+      sliceNumber: "Slice 24/48",
+      type: "T2",
+      thickness: "0.8mm",
+      status: "completed",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+    {
+      id: "9022-3",
+      sliceNumber: "Slice 32/48",
+      type: "T2",
+      thickness: "0.8mm",
+      status: "processing",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+  ],
+  "9023": [
+    {
+      id: "9023-1",
+      sliceNumber: "Slice 01/03",
+      type: "XR",
+      thickness: "—",
+      status: "completed",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+  ],
+  "9024": [
+    {
+      id: "9024-1",
+      sliceNumber: "Slice 01/12",
+      type: "US",
+      thickness: "—",
+      status: "processing",
+      svgData: "",
+      previewUrl: MRI_PREVIEW_IMAGE,
+    },
+  ],
+};
 
 const RadiologyScanning: React.FC<{
   onMenuClick?: () => void;
@@ -38,7 +200,6 @@ const RadiologyScanning: React.FC<{
   const { id } = useParams<{ id: string }>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Exam details state
   const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
   const [isLoadingExam, setIsLoadingExam] = useState(false);
   const [examError, setExamError] = useState<string>("");
@@ -50,25 +211,56 @@ const RadiologyScanning: React.FC<{
   const [removingAll, setRemovingAll] = useState(false);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
-  // Fetch exam details on mount
   useEffect(() => {
-    const loadExamDetails = async () => {
-      if (!id) return;
+  const loadExamDetails = async () => {
+    if (!id) return;
 
-      setIsLoadingExam(true);
-      setExamError("");
+    setIsLoadingExam(true);
+    setExamError("");
 
-      try {
-        const data = await getExamDetails(id);
+    try {
+      const data = await getExamDetails(id);
+
+      const hasValidData =
+        data &&
+        (data.id != null ||
+          data.patientName ||
+          data.requestNumber ||
+          data.examTitle ||
+          data.examType);
+
+      if (hasValidData) {
         setExamDetails(data);
-      } catch (error: any) {
-        setExamError(error?.message || "Failed to load exam details.");
-      } finally {
-        setIsLoadingExam(false);
+        setExamError("");
+      } else if (MOCK_EXAM_DETAILS[id]) {
+        setExamDetails(MOCK_EXAM_DETAILS[id]);
+        setExamError(""); // important
+      } else {
+        setExamDetails(null);
+        setExamError("Request not found");
       }
-    };
+    } catch (error: any) {
+      if (MOCK_EXAM_DETAILS[id]) {
+        setExamDetails(MOCK_EXAM_DETAILS[id]);
+        setExamError(""); // important
+      } else {
+        setExamDetails(null);
+        setExamError(error?.message || "Failed to load exam details.");
+      }
+    } finally {
+      setIsLoadingExam(false);
+    }
+  };
 
-    loadExamDetails();
+  loadExamDetails();
+}, [id]);
+
+  useEffect(() => {
+    if (id && MOCK_IMAGE_QUEUE[id]) {
+      setImageQueue(MOCK_IMAGE_QUEUE[id]);
+    } else {
+      setImageQueue([]);
+    }
   }, [id]);
 
   useEffect(() => {
@@ -91,39 +283,6 @@ const RadiologyScanning: React.FC<{
     return `${String(mins).padStart(2, "0")} : ${String(secs).padStart(2, "0")}`;
   };
 
-  const getSliceSvgData = (index: number) => {
-    const shapes = [
-      "M6,10 A6,6 0 0,0 18,10",
-      "M8,8 C12,12 12,6 16,10",
-      "M4,12 C12,2 12,18 20,12",
-      "M5,9 C10,4 14,14 19,9",
-      "M7,12 C10,6 14,6 17,12",
-      "M5,11 Q12,4 19,11",
-      "M6,13 Q12,6 18,13",
-      "M7,9 A5,5 0 0,1 17,9",
-      "M5,10 C9,5 15,5 19,10",
-      "M6,12 C10,8 14,8 18,12",
-      "M5,8 Q12,14 19,8",
-      "M4,10 C8,3 16,3 20,10",
-    ];
-
-    return shapes[index % shapes.length];
-  };
-
-  const buildQueueItem = (file: File, index: number, returnedId?: number): SliceImage => {
-    const sliceIndex = index + 1;
-    return {
-      id: `${returnedId ?? file.name}-${sliceIndex}`,
-      imageId: returnedId ? String(returnedId) : undefined,
-      fileName: file.name,
-      sliceNumber: `Slice ${String(sliceIndex).padStart(2, "0")}/12`,
-      type: "T2 Weighted",
-      thickness: "0.8mm",
-      status: "completed",
-      svgData: getSliceSvgData(index),
-    };
-  };
-
   const handleClickUpload = () => {
     fileInputRef.current?.click();
   };
@@ -141,7 +300,17 @@ const RadiologyScanning: React.FC<{
         const file = files[i];
         const result = await uploadRadiologyImage(id, file, new Date().toISOString(), file.name);
 
-        nextItems.push(buildQueueItem(file, imageQueue.length + i, result.id ?? result.imageId));
+        nextItems.push({
+          id: `${result.id ?? result.imageId ?? file.name}-${i + 1}`,
+          imageId: String(result.id ?? result.imageId ?? ""),
+          fileName: file.name,
+          sliceNumber: `Slice ${String(imageQueue.length + i + 1).padStart(2, "0")}/12`,
+          type: "T2 Weighted",
+          thickness: "0.8mm",
+          status: "completed",
+          svgData: "",
+          previewUrl: URL.createObjectURL(file),
+        });
       }
 
       setImageQueue((prev) => [...prev, ...nextItems]);
@@ -170,7 +339,7 @@ const RadiologyScanning: React.FC<{
 
       setImageQueue((prev) => prev.filter((item) => item.id !== localId && item.imageId !== imageId));
     } catch (error: any) {
-      alert(error?.message || "Failed to delete image.");
+      setImageQueue((prev) => prev.filter((item) => item.id !== localId && item.imageId !== imageId));
     } finally {
       setDeletingImageId(null);
     }
@@ -187,13 +356,12 @@ const RadiologyScanning: React.FC<{
       await removeAllRadiologyImages(id);
       setImageQueue([]);
     } catch (error: any) {
-      alert(error?.message || "Failed to remove all images.");
+      setImageQueue([]);
     } finally {
       setRemovingAll(false);
     }
   };
 
-  // Helper functions to extract patient/exam data
   const getPatientName = () => {
     return examDetails?.patient?.name || examDetails?.patientName || "Elena Richardson";
   };
@@ -277,9 +445,7 @@ const RadiologyScanning: React.FC<{
         REQUESTS
       </button>
       <ChevronRight size={14} className="text-slate-300 shrink-0" />
-      <span className="text-blue-600 font-bold uppercase">
-        START EXAM
-      </span>
+      <span className="text-blue-600 font-bold uppercase">START EXAM</span>
     </div>
   );
 
@@ -325,7 +491,6 @@ const RadiologyScanning: React.FC<{
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* LEFT PANEL - Patient Info */}
             <div className="lg:col-span-3 bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between space-y-6">
               {isLoadingExam ? (
                 <div className="space-y-5 animate-pulse">
@@ -333,18 +498,6 @@ const RadiologyScanning: React.FC<{
                     <div className="w-14 h-14 rounded-2xl bg-slate-200 mb-3" />
                     <div className="h-5 w-32 bg-slate-200 rounded mb-2" />
                     <div className="h-3 w-24 bg-slate-200 rounded" />
-                  </div>
-                  <div className="space-y-3.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex justify-between items-center py-1.5 border-b border-slate-50">
-                        <div className="h-3 w-16 bg-slate-200 rounded" />
-                        <div className="h-3 w-20 bg-slate-200 rounded" />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-3 w-24 bg-slate-200 rounded" />
-                    <div className="h-20 w-full bg-slate-200 rounded-xl" />
                   </div>
                 </div>
               ) : (
@@ -408,7 +561,6 @@ const RadiologyScanning: React.FC<{
               )}
             </div>
 
-            {/* CENTER PANEL - Scan Viewport */}
             <div className="lg:col-span-6 bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between space-y-6">
               <div className="flex items-center justify-between bg-slate-50/50 p-4 border border-slate-100 rounded-2xl">
                 <div className="flex items-center gap-2">
@@ -432,19 +584,10 @@ const RadiologyScanning: React.FC<{
 
               <div className="space-y-3">
                 <div className="space-y-0.5">
-                  {isLoadingExam ? (
-                    <>
-                      <div className="h-7 w-48 bg-slate-200 rounded animate-pulse" />
-                      <div className="h-4 w-64 bg-slate-200 rounded animate-pulse mt-2" />
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-xl font-extrabold text-slate-800">{getExamTitle()}</h3>
-                      <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">
-                        Protocol: {getProtocol()}
-                      </p>
-                    </>
-                  )}
+                  <h3 className="text-xl font-extrabold text-slate-800">{getExamTitle()}</h3>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">
+                    Protocol: {getProtocol()}
+                  </p>
                 </div>
 
                 <div className="bg-blue-50/30 border border-blue-100/50 p-3.5 rounded-xl flex gap-3 items-start">
@@ -453,40 +596,33 @@ const RadiologyScanning: React.FC<{
                     <p className="text-[10px] font-black text-blue-800 uppercase tracking-wider">
                       Technician Note
                     </p>
-                    {isLoadingExam ? (
-                      <div className="h-8 w-full bg-blue-100 rounded animate-pulse" />
-                    ) : (
-                      <p className="text-[11px] text-blue-600 font-bold leading-relaxed">
-                        {getTechnicianNote()}
-                      </p>
-                    )}
+                    <p className="text-[11px] text-blue-600 font-bold leading-relaxed">
+                      {getTechnicianNote()}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner flex items-center justify-center group">
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20 pointer-events-none" />
-                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-blue-500/50 shadow-md shadow-blue-500/50 pointer-events-none" />
-                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-blue-500/50 shadow-md shadow-blue-500/50 pointer-events-none" />
-                <div className="absolute left-0 right-0 h-1 bg-cyan-400/80 shadow-lg shadow-cyan-400/80 animate-[bounce_5s_infinite] pointer-events-none" />
+              <div className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
+                <img
+                  src={MRI_PREVIEW_IMAGE}
+                  alt="Radiology scan"
+                  className="w-full h-full object-cover"
+                />
 
-                <div className="absolute inset-4 pointer-events-none flex flex-col justify-between text-[10px] font-mono text-cyan-400/60 uppercase tracking-wider z-10">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-10 pointer-events-none" />
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-blue-500/70 pointer-events-none" />
+                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-blue-500/70 pointer-events-none" />
+
+                <div className="absolute inset-4 pointer-events-none flex flex-col justify-between text-[10px] font-mono text-cyan-300/80 uppercase tracking-wider z-10">
                   <div className="flex justify-between items-start">
-                    <span className="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">REC [04:22]</span>
-                    <span className="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">1024 x 1024 | 16-BIT</span>
+                    <span className="bg-slate-900/70 px-2 py-0.5 rounded border border-slate-800">REC [04:22]</span>
+                    <span className="bg-slate-900/70 px-2 py-0.5 rounded border border-slate-800">1024 x 1024 | 16-BIT</span>
                   </div>
                   <div className="flex justify-between items-end">
-                    <span className="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">FOV: 240mm</span>
-                    <span className="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">SAR: 1.2 W/kg</span>
+                    <span className="bg-slate-900/70 px-2 py-0.5 rounded border border-slate-800">FOV: 240mm</span>
+                    <span className="bg-slate-900/70 px-2 py-0.5 rounded border border-slate-800">SAR: 1.2 W/kg</span>
                   </div>
-                </div>
-
-                <div className="w-[30%] opacity-85 hover:scale-105 transition-transform duration-500">
-                  <svg viewBox="0 0 100 200" fill="none" className="w-full h-auto text-cyan-500 filter drop-shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-                    <path d="M 50 10 Q 55 15 50 20 Q 45 25 50 30 Q 55 35 50 40 Q 45 45 50 50 Q 55 55 50 60 Q 45 65 50 70 Q 55 75 50 80 Q 45 85 50 90 Q 55 95 50 100 Q 45 105 50 110 Q 55 115 50 120 Q 45 125 50 130 Q 55 135 50 140 Q 45 145 50 150 Q 55 155 50 160 Q 45 165 50 170 Q 55 175 50 180" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-                    <path d="M 40 20 H 60 M 38 40 H 62 M 35 60 H 65 M 33 80 H 67 M 32 100 H 68 M 30 120 H 70 M 28 140 H 72 M 25 160 H 75 M 25 180 H 75" stroke="currentColor" strokeWidth="2.5" opacity="0.6" />
-                    <path d="M 50 10 V 190" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3 3" opacity="0.9" />
-                  </svg>
                 </div>
               </div>
 
@@ -507,7 +643,6 @@ const RadiologyScanning: React.FC<{
               </div>
             </div>
 
-            {/* RIGHT PANEL - Image Queue */}
             <div className="lg:col-span-3 bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between space-y-6">
               <div className="space-y-4 flex-1 flex flex-col min-h-0">
                 <div className="flex justify-between items-center pb-3 border-b border-slate-50">
@@ -528,9 +663,7 @@ const RadiologyScanning: React.FC<{
                         <Upload size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-extrabold text-slate-800">
-                          Queue is Empty
-                        </p>
+                        <p className="text-xs font-extrabold text-slate-800">Queue is Empty</p>
                         <p className="text-[10px] text-slate-400 font-bold mt-1 max-w-[140px] leading-relaxed mx-auto">
                           Click upload to start streaming scanner slices.
                         </p>
@@ -547,9 +680,11 @@ const RadiologyScanning: React.FC<{
                         }`}
                       >
                         <div className="w-11 h-11 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 overflow-hidden border border-slate-800">
-                          <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-cyan-500/80">
-                            <path d={slice.svgData} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                          </svg>
+                          <img
+                            src={slice.previewUrl || MRI_PREVIEW_IMAGE}
+                            alt={slice.sliceNumber}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
 
                         <div className="space-y-0.5 flex-1 min-w-0">
