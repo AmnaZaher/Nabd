@@ -106,6 +106,16 @@ export const getLabTestRequestDetails = async (requestId: number | string) => {
 };
 
 /**
+ * Get parameters for a specific lab request.
+ * @param requestId The request ID.
+ */
+export const getLabParameters = async (requestId: number | string) => {
+  return await fetchApi<any>(`/Lab/GetParamret?RequestId=${requestId}`, {
+    method: 'GET',
+  });
+};
+
+/**
  * Get analysis data for a specific result.
  * @param id The result ID.
  */
