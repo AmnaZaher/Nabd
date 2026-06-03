@@ -112,6 +112,18 @@ export const visitApi = {
     });
   },
 
+  getAllMedicine: async () => {
+    return await fetchApi(`/Visit/AllMedicine`, {
+      method: 'GET',
+    });
+  },
+
+  checkMedicineAi: async (visitId: number | string) => {
+    return await fetchApi(`/Ai/check-medicine/${visitId}`, {
+      method: 'POST',
+    });
+  },
+
   getPrescriptionDetails: async (prescriptionId: number | string) => {
     return await fetchApi(`/Visit/prescriptions/${prescriptionId}`, {
       method: 'GET',

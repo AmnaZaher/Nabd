@@ -6,7 +6,7 @@ import { getAvailableRadiologyTests, createRadiologyRequest } from '../../../api
 import TopBar from '../TopBar';
 import {
     User, Activity, Clock, FileText, Plus, Trash2,
-    CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle
+    CheckCircle, Paperclip, Pill, ActivitySquare, AlertCircle, Sparkles, Shield
 } from 'lucide-react';
 
 const RadInfoBox = ({ title, value, colorClass, onClick }: { title: string, value: string, colorClass: 'green' | 'amber' | 'red', onClick: () => void }) => {
@@ -82,6 +82,10 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const [visitDetails, setVisitDetails] = useState<VisitDetails | null>(null);
     const [clinicalNotes, setClinicalNotes] = useState('');
 
+    const [showAiModal, setShowAiModal] = useState(false);
+    const [aiResponse, setAiResponse] = useState('');
+    const [isAiLoading, setIsAiLoading] = useState(false);
+
     const [diagnoses, setDiagnoses] = useState<any[]>([]);
     const [newDiagnosis, setNewDiagnosis] = useState({
         name: '',
@@ -92,7 +96,9 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     const [showAddDiagnosis, setShowAddDiagnosis] = useState(false);
 
     const [prescriptions, setPrescriptions] = useState<any[]>([]);
+    const [availableMedicines, setAvailableMedicines] = useState<any[]>([]);
     const [newPrescription, setNewPrescription] = useState({
+        medicineId: '',
         name: '',
         dosage: '',
         frequency: '',
@@ -145,12 +151,13 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
             setError('');
 
             try {
-                const [visitRes, diagRes, presRes, labTestsRes, radTestsRes] = await Promise.all([
+                const [visitRes, diagRes, presRes, labTestsRes, radTestsRes, medicineRes] = await Promise.all([
                     visitApi.getVisit(visitId),
                     visitApi.getDiagnoses(visitId),
                     visitApi.getPrescriptions(visitId),
                     getAvailableLabTests(),
                     getAvailableRadiologyTests(),
+                    visitApi.getAllMedicine(),
                 ]);
 
                 console.log('visitId used:', visitId);
@@ -158,6 +165,14 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                 console.log('visitRes.data:', visitRes?.data);
                 console.log('diagRes:', diagRes);
                 console.log('diagRes.data:', diagRes?.data);
+
+                if (medicineRes?.data) {
+                    const data = Array.isArray(medicineRes.data) ? medicineRes.data : [];
+                    setAvailableMedicines(data.map((item: any) => ({
+                        id: String(item.medicineId || item.id),
+                        name: item.medicinName || item.medicineName || item.medicationName || item.name || 'Unknown'
+                    })).filter((item: any) => item.id && item.name !== 'Unknown'));
+                }
                 console.log('presRes:', presRes);
                 console.log('presRes.data:', presRes?.data);
 
@@ -291,21 +306,41 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
         }
     };
 
+    const handleAskAi = async () => {
+        if (!visitId) return;
+        setIsAiLoading(true);
+        setShowAiModal(true);
+        setAiResponse('');
+        try {
+            const response = await visitApi.checkMedicineAi(visitId);
+            const data = response?.data || response;
+            const message = data?.message || data?.result || (typeof data === 'string' ? data : JSON.stringify(data));
+            setAiResponse(message || 'AI Check Completed Successfully.');
+        } catch (error: any) {
+            console.error('Failed to run AI check', error);
+            setAiResponse(error?.response?.data?.message || 'Failed to perform AI check. Please try again.');
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
     const handleAddDiagnosis = async () => {
         if (!visitId || !newDiagnosis.name.trim()) return;
 
         try {
-            await visitApi.addDiagnosis(visitId, {
+            const response = await visitApi.addDiagnosis(visitId, {
                 diagnosis: newDiagnosis.name.trim(),
                 icdCode: newDiagnosis.code.trim() || null,
                 diagnosisType: newDiagnosis.type === 'Primary' ? 1 : 2,
                 notes: newDiagnosis.justification.trim() || null,
             });
 
+            const newId = response?.data?.diagnosisId || Date.now();
+
             setDiagnoses([
                 ...diagnoses,
                 {
-                    id: Date.now(),
+                    id: newId,
                     name: newDiagnosis.name,
                     code: newDiagnosis.code,
                     type: newDiagnosis.type,
@@ -325,7 +360,16 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
     };
 
     const handleAddPrescription = async () => {
-        if (!visitId || !newPrescription.name.trim()) return;
+        if (!visitId || !newPrescription.medicineId) {
+            alert('Please select a medicine.');
+            return;
+        }
+
+        const selectedMedicine = availableMedicines.find(m => m.id === newPrescription.medicineId);
+        if (!selectedMedicine) {
+            alert('Invalid medicine selected.');
+            return;
+        }
 
         try {
             await visitApi.addPrescription(visitId, {
@@ -333,8 +377,8 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                 items: [
                     {
                         id: 0,
-                        medicineId: 5,
-                        medicationName: newPrescription.name,
+                        medicineId: Number(selectedMedicine.id),
+                        medicationName: selectedMedicine.name,
                         dosage: newPrescription.dosage,
                         frequency: newPrescription.frequency,
                         duration: newPrescription.duration,
@@ -353,6 +397,7 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
             ]);
 
             setNewPrescription({
+                medicineId: '',
                 name: '',
                 dosage: '',
                 frequency: '',
@@ -506,12 +551,20 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 <span>Encounter started {visitDetails.startedTime}</span>
                             </div>
                         </div>
-                        <button
-                            onClick={handleFinishVisit}
-                            className="px-6 py-3 bg-[#0f62fe] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
-                        >
-                            Finish Visit <CheckCircle className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleAskAi}
+                                className="px-6 py-3 bg-white text-slate-800 font-bold border-2 border-slate-800 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                                Ask AI <Sparkles className="w-5 h-5 text-indigo-600" />
+                            </button>
+                            <button
+                                onClick={handleFinishVisit}
+                                className="px-6 py-3 bg-[#0f62fe] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
+                            >
+                                Finish Visit <CheckCircle className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -754,7 +807,19 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                                 {showAddPrescription && (
                                     <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6">
                                         <div className="flex flex-wrap gap-4 mb-4">
-                                            <input type="text" placeholder="Medicine name..." className="flex-1 min-w-[150px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.name} onChange={e => setNewPrescription({ ...newPrescription, name: e.target.value })} />
+                                            <select
+                                                className="flex-1 min-w-[150px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none"
+                                                value={newPrescription.medicineId}
+                                                onChange={e => {
+                                                    const selected = availableMedicines.find(m => m.id === e.target.value);
+                                                    setNewPrescription({ ...newPrescription, medicineId: e.target.value, name: selected?.name || '' });
+                                                }}
+                                            >
+                                                <option value="">Select medicine...</option>
+                                                {availableMedicines.map(med => (
+                                                    <option key={med.id} value={med.id}>{med.name}</option>
+                                                ))}
+                                            </select>
                                             <input type="text" placeholder="Dosage" className="w-32 px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.dosage} onChange={e => setNewPrescription({ ...newPrescription, dosage: e.target.value })} />
                                             <input type="text" placeholder="Frequency" className="w-48 px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.frequency} onChange={e => setNewPrescription({ ...newPrescription, frequency: e.target.value })} />
                                             <input type="text" placeholder="Duration" className="w-32 px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none" value={newPrescription.duration} onChange={e => setNewPrescription({ ...newPrescription, duration: e.target.value })} />
@@ -997,6 +1062,39 @@ const ActiveVisitPage: React.FC<ActiveVisitPageProps> = ({ onMenuClick, onProfil
                     </div>
                 </div>
             </main>
+            {/* AI Response Modal */}
+            {showAiModal && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-6 flex flex-col flex-1 overflow-hidden">
+                            <div className="flex items-center gap-2 mb-6 shrink-0">
+                                <Shield className="w-5 h-5 text-blue-600" />
+                                <h2 className="text-lg font-bold text-slate-800">AI Check</h2>
+                            </div>
+                            
+                            <div className="min-h-[60px] mb-8 text-slate-700 font-medium overflow-y-auto pr-2 custom-scrollbar flex-1">
+                                {isAiLoading ? (
+                                    <div className="flex items-center gap-2 text-slate-500 animate-pulse">
+                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                        Analyzing medicine interactions...
+                                    </div>
+                                ) : (
+                                    <div className="whitespace-pre-wrap" dir="auto">{aiResponse}</div>
+                                )}
+                            </div>
+                            
+                            <div className="flex justify-end shrink-0 pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => setShowAiModal(false)}
+                                    className="px-6 py-2 bg-[#0f62fe] text-white font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+                                >
+                                    <CheckCircle className="w-4 h-4" /> OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
