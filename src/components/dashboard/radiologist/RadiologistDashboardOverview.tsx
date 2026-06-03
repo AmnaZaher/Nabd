@@ -9,7 +9,7 @@ import {
   FileText,
   Activity,
 } from "lucide-react";
-import { getTodayRadiologyRequests, createRadiologyExam, type TodayRadiologyRequestDto } from "../../../api/radilogist";
+import { getTodayRadiologyRequests, type TodayRadiologyRequestDto } from "../../../api/radilogist";
 
 interface Exam {
   id: string;
@@ -114,7 +114,6 @@ const RadiologistDashboardOverview: React.FC<{
   const [requests, setRequests] = useState<TodayRadiologyRequestDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [startingExamId, setStartingExamId] = useState<string | null>(null);
 
   const exams = useMemo<Exam[]>(() => requests.map(mapTodayRequestToExam), [requests]);
 
@@ -142,23 +141,8 @@ const RadiologistDashboardOverview: React.FC<{
     return "Good evening";
   };
 
-  const handleStartExam = async (examId: string, modality: string) => {
-    setStartingExamId(examId);
-    try {
-      const response = await createRadiologyExam(examId, {
-        examDate: new Date().toISOString(),
-        modality,
-      });
-
-      const newExamId = response.examId || response.id;
-      if (!newExamId) throw new Error("No exam id returned");
-
-      navigate(`/dashboard/radiology/scan/${newExamId}`);
-    } catch (error: any) {
-      alert(error?.message || "Failed to start exam.");
-    } finally {
-      setStartingExamId(null);
-    }
+  const handleStartExam = (examId: string) => {
+    navigate(`/dashboard/radiology/start-exam/${examId}`);
   };
 
   return (
@@ -297,15 +281,14 @@ const RadiologistDashboardOverview: React.FC<{
                               <td className="px-8 py-6">
                                 <div className="flex items-center justify-center gap-2">
                                   <button
-                                    onClick={() => handleStartExam(exam.id, exam.modality)}
-                                    disabled={startingExamId === exam.id}
-                                    className={`px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer whitespace-nowrap disabled:opacity-50 ${
+                                    onClick={() => handleStartExam(exam.id)}
+                                    className={`px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer whitespace-nowrap ${
                                       isEmergency
                                         ? "bg-red-600 hover:bg-red-750 text-white shadow-red-100"
                                         : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100"
                                     }`}
                                   >
-                                    {startingExamId === exam.id ? "Starting..." : isEmergency ? "Start Now" : "Start Exam"}
+                                    {isEmergency ? "Start Now" : "Start Exam"}
                                   </button>
                                   <button
                                     title="View Details"
