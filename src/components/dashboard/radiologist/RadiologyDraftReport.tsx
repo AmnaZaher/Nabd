@@ -23,6 +23,7 @@ interface SeriesThumbnail {
   svgPath: string;
 }
 
+
 const MOCK_SERIES: SeriesThumbnail[] = [
   { id: "1", label: "PA Chest", svgPath: "M6,4 Q12,18 18,4 M12,4 V20 M8,8 H16" },
   { id: "2", label: "Lat Chest", svgPath: "M8,4 C14,10 6,14 12,20" },
@@ -31,6 +32,158 @@ const MOCK_SERIES: SeriesThumbnail[] = [
   { id: "5", label: "Bone Window", svgPath: "M4,12 H20 M8,4 V20 M16,4 V20" },
 ];
 
+const MOCK_REPORT_IMAGE =
+  "https://i.pinimg.com/736x/d9/94/e1/d994e1efd4e234e3ed7cd9529d90c71b.jpg";
+
+
+const MOCK_REPORT_IMAGES: Record<string, RadiologyImageDto[]> = {
+  "9021": [
+    {
+      id: 1,
+      imageId: 1,
+      examId: 9021,
+      fileName: "brain_slice_12.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "No acute intracranial hemorrhage. Mild prominence of ventricles. No midline shift.",
+      reportTextForImage:
+        "No acute intracranial hemorrhage. Mild prominence of ventricles. No midline shift.",
+    },
+    {
+      id: 2,
+      imageId: 2,
+      examId: 9021,
+      fileName: "brain_slice_24.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "Gray-white matter differentiation preserved. No focal mass lesion identified.",
+      reportTextForImage:
+        "Gray-white matter differentiation preserved. No focal mass lesion identified.",
+    },
+    {
+      id: 3,
+      imageId: 3,
+      examId: 9021,
+      fileName: "brain_slice_32.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "Post-contrast enhancement pattern within expected limits. Recommend clinical correlation.",
+      reportTextForImage:
+        "Post-contrast enhancement pattern within expected limits. Recommend clinical correlation.",
+    },
+    {
+      id: 4,
+      imageId: 4,
+      examId: 9021,
+      fileName: "brain_slice_40.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes: "No extra-axial collection seen.",
+      reportTextForImage: "No extra-axial collection seen.",
+    },
+  ],
+  "9022": [
+    {
+      id: 11,
+      imageId: 11,
+      examId: 9022,
+      fileName: "lumbar_12.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "Lumbar lordosis preserved. Mild disc desiccation at lower lumbar levels.",
+      reportTextForImage:
+        "Lumbar lordosis preserved. Mild disc desiccation at lower lumbar levels.",
+    },
+    {
+      id: 12,
+      imageId: 12,
+      examId: 9022,
+      fileName: "lumbar_24.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "Broad-based posterior disc bulge at L4-L5 causing mild canal narrowing.",
+      reportTextForImage:
+        "Broad-based posterior disc bulge at L4-L5 causing mild canal narrowing.",
+    },
+    {
+      id: 13,
+      imageId: 13,
+      examId: 9022,
+      fileName: "lumbar_32.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "No acute compression fracture. Neural foramina remain grossly patent.",
+      reportTextForImage:
+        "No acute compression fracture. Neural foramina remain grossly patent.",
+    },
+    {
+      id: 14,
+      imageId: 14,
+      examId: 9022,
+      fileName: "lumbar_40.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "Conus medullaris terminates normally. No abnormal cord signal identified.",
+      reportTextForImage:
+        "Conus medullaris terminates normally. No abnormal cord signal identified.",
+    },
+  ],
+  "9023": [
+    {
+      id: 21,
+      imageId: 21,
+      examId: 9023,
+      fileName: "ankle_01.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes: "No displaced fracture identified. Mild soft tissue swelling laterally.",
+      reportTextForImage:
+        "No displaced fracture identified. Mild soft tissue swelling laterally.",
+    },
+    {
+      id: 22,
+      imageId: 22,
+      examId: 9023,
+      fileName: "ankle_02.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes: "Joint alignment preserved.",
+      reportTextForImage: "Joint alignment preserved.",
+    },
+  ],
+  "9024": [
+    {
+      id: 31,
+      imageId: 31,
+      examId: 9024,
+      fileName: "abdomen_01.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes:
+        "Liver size is within normal limits. No focal hepatic lesion identified on this image.",
+      reportTextForImage:
+        "Liver size is within normal limits. No focal hepatic lesion identified on this image.",
+    },
+    {
+      id: 32,
+      imageId: 32,
+      examId: 9024,
+      fileName: "abdomen_02.jpg",
+      imageUrl: MOCK_REPORT_IMAGE,
+      url: MOCK_REPORT_IMAGE,
+      notes: "Gallbladder appears unremarkable. No shadowing calculi visualized.",
+      reportTextForImage:
+        "Gallbladder appears unremarkable. No shadowing calculi visualized.",
+    },
+  ],
+};
 const RadiologyDraftReport: React.FC<{
   onMenuClick?: () => void;
   onProfileClick?: () => void;
@@ -68,42 +221,80 @@ const RadiologyDraftReport: React.FC<{
     [images, selectedImageId]
   );
 
+  const isMockSelectedImage = useMemo(() => {
+  if (!selectedImageId || !examId) return false;
+
+  return (MOCK_REPORT_IMAGES[examId] || []).some(
+    (img) => Number(img.id ?? img.imageId) === Number(selectedImageId)
+  );
+}, [selectedImageId, examId]);
+
   useEffect(() => {
-    const loadImages = async () => {
-      if (!examId) return;
+  const loadImages = async () => {
+    if (!examId) return;
 
-      setIsImagesLoading(true);
-      setPageError("");
-      setSuccessMessage("");
+    setIsImagesLoading(true);
+    setPageError("");
+    setSuccessMessage("");
 
-      try {
-        const data = await getImagesByExam(examId);
-        setImages(data);
+    try {
+      const data = await getImagesByExam(examId);
 
-        if (data.length > 0) {
-          const firstImageId = Number(data[0].id ?? data[0].imageId);
-          setSelectedImageId(Number.isNaN(firstImageId) ? null : firstImageId);
+      const finalData =
+        Array.isArray(data) && data.length > 0
+          ? data
+          : MOCK_REPORT_IMAGES[examId] || [];
 
-          const initialText =
-            data[0]?.reportTextForImage ||
-            data[0]?.ReportTextForImage ||
-            data[0]?.notes ||
-            "";
+      if (finalData.length > 0) {
+        setImages(finalData);
+        setPageError("");
 
-          setFindingsText(initialText);
-        } else {
-          setSelectedImageId(null);
-          setFindingsText("");
-        }
-      } catch (error: any) {
-        setPageError(error?.message || "Failed to load radiology images.");
-      } finally {
-        setIsImagesLoading(false);
+        const firstImageId = Number(finalData[0].id ?? finalData[0].imageId);
+        setSelectedImageId(Number.isNaN(firstImageId) ? null : firstImageId);
+
+        const initialText =
+          finalData[0]?.reportTextForImage ||
+          finalData[0]?.ReportTextForImage ||
+          finalData[0]?.notes ||
+          "";
+
+        setFindingsText(initialText);
+      } else {
+        setImages([]);
+        setSelectedImageId(null);
+        setFindingsText("");
+        setPageError("Exam not found.");
       }
-    };
+    } catch (error: any) {
+      const mockData = MOCK_REPORT_IMAGES[examId] || [];
 
-    loadImages();
-  }, [examId]);
+      if (mockData.length > 0) {
+        setImages(mockData);
+        setPageError("");
+
+        const firstImageId = Number(mockData[0].id ?? mockData[0].imageId);
+        setSelectedImageId(Number.isNaN(firstImageId) ? null : firstImageId);
+
+        const initialText =
+          mockData[0]?.reportTextForImage ||
+          mockData[0]?.ReportTextForImage ||
+          mockData[0]?.notes ||
+          "";
+
+        setFindingsText(initialText);
+      } else {
+        setImages([]);
+        setSelectedImageId(null);
+        setFindingsText("");
+        setPageError(error?.message || "Exam not found.");
+      }
+    } finally {
+      setIsImagesLoading(false);
+    }
+  };
+
+  loadImages();
+}, [examId]);
 
   useEffect(() => {
     if (selectedImage) {
@@ -127,20 +318,20 @@ const RadiologyDraftReport: React.FC<{
   };
 
   const handleSelectImage = (image: RadiologyImageDto, index: number) => {
-    const imageId = Number(image.id ?? image.imageId);
-    const imageText =
-      image?.reportTextForImage ||
-      image?.ReportTextForImage ||
-      image?.notes ||
-      "";
+  const imageId = Number(image.id ?? image.imageId);
+  const imageText =
+    image?.reportTextForImage ||
+    image?.ReportTextForImage ||
+    image?.notes ||
+    "";
 
-    setSelectedImageId(Number.isNaN(imageId) ? null : imageId);
-    setFindingsText(imageText);
-    setActiveSeries(String((index % 5) + 1));
-    setSuccessMessage("");
-    setSaveError("");
-    setDeleteError("");
-  };
+  setSelectedImageId(Number.isNaN(imageId) ? null : imageId);
+  setFindingsText(imageText);
+  setActiveSeries(String((index % 5) + 1));
+  setSuccessMessage("");
+  setSaveError("");
+  setDeleteError("");
+};
 
   const handleSaveFindings = async () => {
   if (!selectedImageId) {
@@ -154,9 +345,11 @@ const RadiologyDraftReport: React.FC<{
   setSuccessMessage("");
 
   try {
-    await updateRadiologyImageNotes(selectedImageId, {
-      reportTextForImage: findingsText,
-    });
+    if (!isMockSelectedImage) {
+      await updateRadiologyImageNotes(selectedImageId, {
+        reportTextForImage: findingsText,
+      });
+    }
 
     setImages((prev) =>
       prev.map((img) => {
@@ -166,13 +359,16 @@ const RadiologyDraftReport: React.FC<{
             ...img,
             notes: findingsText,
             reportTextForImage: findingsText,
+            ReportTextForImage: findingsText,
           };
         }
         return img;
       })
     );
 
-    navigate(`/dashboard/radiology/final-report/${id}`);
+    setSuccessMessage("Findings saved successfully.");
+
+    navigate(`/dashboard/radiology/report-final/${id}`);
   } catch (error: any) {
     setSaveError(error?.message || "Failed to save findings.");
   } finally {
@@ -181,48 +377,50 @@ const RadiologyDraftReport: React.FC<{
 };
 
   const handleDeleteImage = async () => {
-    if (!selectedImageId) {
-      setDeleteError("No image selected.");
-      return;
-    }
+  if (!selectedImageId) {
+    setDeleteError("No image selected.");
+    return;
+  }
 
-    setIsDeletingImage(true);
-    setDeleteError("");
-    setSaveError("");
-    setSuccessMessage("");
+  setIsDeletingImage(true);
+  setDeleteError("");
+  setSaveError("");
+  setSuccessMessage("");
 
-    try {
+  try {
+    if (!isMockSelectedImage) {
       await softDeleteRadiologyImage(selectedImageId);
-
-      const updatedImages = images.filter((img) => {
-        const currentId = Number(img.id ?? img.imageId);
-        return currentId !== selectedImageId;
-      });
-
-      setImages(updatedImages);
-
-      if (updatedImages.length > 0) {
-        const nextImageId = Number(updatedImages[0].id ?? updatedImages[0].imageId);
-        const nextText =
-          updatedImages[0]?.reportTextForImage ||
-          updatedImages[0]?.ReportTextForImage ||
-          updatedImages[0]?.notes ||
-          "";
-
-        setSelectedImageId(Number.isNaN(nextImageId) ? null : nextImageId);
-        setFindingsText(nextText);
-      } else {
-        setSelectedImageId(null);
-        setFindingsText("");
-      }
-
-      setSuccessMessage("Image deleted successfully.");
-    } catch (error: any) {
-      setDeleteError(error?.message || "Failed to delete image.");
-    } finally {
-      setIsDeletingImage(false);
     }
-  };
+
+    const updatedImages = images.filter((img) => {
+      const currentId = Number(img.id ?? img.imageId);
+      return currentId !== selectedImageId;
+    });
+
+    setImages(updatedImages);
+
+    if (updatedImages.length > 0) {
+      const nextImageId = Number(updatedImages[0].id ?? updatedImages[0].imageId);
+      const nextText =
+        updatedImages[0]?.reportTextForImage ||
+        updatedImages[0]?.ReportTextForImage ||
+        updatedImages[0]?.notes ||
+        "";
+
+      setSelectedImageId(Number.isNaN(nextImageId) ? null : nextImageId);
+      setFindingsText(nextText);
+    } else {
+      setSelectedImageId(null);
+      setFindingsText("");
+    }
+
+    setSuccessMessage("Image deleted successfully.");
+  } catch (error: any) {
+    setDeleteError(error?.message || "Failed to delete image.");
+  } finally {
+    setIsDeletingImage(false);
+  }
+};
 
   const breadcrumb = (
     <div className="flex items-center gap-2 text-xs md:text-sm font-extrabold text-slate-400">
