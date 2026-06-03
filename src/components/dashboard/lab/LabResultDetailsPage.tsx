@@ -59,10 +59,16 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
             parameters: []
         } as LabResultDetail;
 
+        (data as any).visitNumber = orderData?.visitId || orderData?.visitNumber || "";
+        (data as any).category = orderData?.category || orderData?.labTest?.category || "";
+        (data as any).sampleType = orderData?.sampleType || "";
+
+        let reqData: any = null;
         // Fetch request details using the provided endpoint
         try {
             const reqRes = await getLabTestRequestDetails(id as string);
-            const reqData = (reqRes as any)?.data ?? reqRes;
+            reqData = (reqRes as any)?.data ?? reqRes;
+            if (Array.isArray(reqData)) reqData = reqData[0];
             if (reqData) {
                 if (reqData.test_Name) {
                     data.testName = reqData.test_Name;
@@ -104,7 +110,8 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
         // Fetch result details directly
         try {
             const res = await getLabResultDetails(id as string);
-            const apiData = (res as any)?.data ?? res;
+            let apiData = (res as any)?.data ?? res;
+            if (Array.isArray(apiData)) apiData = apiData[0];
             if (apiData) {
                 if (apiData.test_Name) {
                     data.testName = apiData.test_Name;
@@ -138,6 +145,65 @@ const LabResultDetailsPage: React.FC<LabResultDetailsPageProps> = ({ onMenuClick
             }
         } catch (err) {
             console.warn("Failed to load result details", err);
+        }
+
+        // 3. If we STILL don't have parameters, try fetching by TestId or Name
+        if (!data.parameters || data.parameters.length === 0) {
+            const testId = (data as any).testId || (data as any).labTestId || (data as any).labTest?.id || reqData?.testId || reqData?.labTestId || reqData?.labTest?.id || orderData?.testId || orderData?.labTestId || orderData?.labTest?.id;
+            let testParams = null;
+
+            if (testId) {
+                try {
+                    const { getLabTestDetails } = await import('../../../api/labs');
+                    const testRes = await getLabTestDetails(testId);
+                    const testData = (testRes as any)?.data ?? testRes;
+                    const testDataParams = testData?.parameters || testData?.labParameters || testData?.testParameters || testData?.labTestParameters;
+                    if (testDataParams && testDataParams.length > 0) {
+                        testParams = testDataParams.map((p: any) => ({
+                            ...p,
+                            id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
+                            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
+                            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
+                            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+                            unit: p.unit || p.measurementUnit || ''
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Failed to load test parameters by testId:", testId, err);
+                }
+            }
+
+            // Fallback: match by name using the full catalog
+            if (!testParams) {
+                try {
+                    const { getLabCatalogFull } = await import('../../../api/labs');
+                    const catalogRes = await getLabCatalogFull();
+                    const catalogList = Array.isArray(catalogRes) ? catalogRes : ((catalogRes as any)?.data || []);
+                    
+                    const testName = data.testName || (data as any).testNameEnglish || data.labTest?.testNameEnglish;
+                    const matchedTest = catalogList.find((t: any) => 
+                        (testName && (t.testNameEnglish === testName || t.testName === testName || t.testNameArabic === testName)) ||
+                        (testId && t.id === testId)
+                    );
+                    
+                    if (matchedTest?.parameters && matchedTest.parameters.length > 0) {
+                        testParams = matchedTest.parameters.map((p: any) => ({
+                            ...p,
+                            id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
+                            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
+                            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
+                            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
+                            unit: p.unit || p.measurementUnit || ''
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Failed to load test parameters via catalog fallback:", err);
+                }
+            }
+
+            if (testParams) {
+                data.parameters = testParams;
+            }
         }
 
         setDetail(data);

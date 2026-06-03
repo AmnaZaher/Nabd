@@ -68,11 +68,15 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
         } as LabResultDetail;
 
         let dataFound = false;
+        (data as any).visitNumber = orderData?.visitId || orderData?.visitNumber || "";
+        (data as any).department = orderData?.category || orderData?.labTest?.category || "Laboratory";
+        (data as any).sampleType = orderData?.sampleType || "";
 
         // Try 1: Fetch result details directly
         try {
             const res = await getLabResultDetails(id as string);
-            const apiData = (res as any)?.data ?? res;
+            let apiData = (res as any)?.data ?? res;
+            if (Array.isArray(apiData)) apiData = apiData[0];
             if (apiData && (apiData.param || apiData.parameters || apiData.test_Name)) {
                 if (apiData.id) data.id = apiData.id;
                 if (apiData.finalResultId) data.id = apiData.finalResultId;
@@ -115,7 +119,8 @@ export default function ApproveLabResultPage({ onMenuClick, onProfileClick }: Ap
         if (!dataFound) {
             try {
                 const resApproval = await getLabResultApprovalDetails(id as string);
-                const approvalData = (resApproval as any)?.data ?? resApproval;
+                let approvalData = (resApproval as any)?.data ?? resApproval;
+                if (Array.isArray(approvalData)) approvalData = approvalData[0];
                 if (approvalData) {
                    if (approvalData.id) data.id = approvalData.id;
                    if (approvalData.finalResultId) data.id = approvalData.finalResultId;

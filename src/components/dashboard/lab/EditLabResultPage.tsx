@@ -56,11 +56,16 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
             parameters: []
         } as LabResultDetail;
 
+        (data as any).visitNumber = orderData?.visitId || orderData?.visitNumber || "";
+        (data as any).category = orderData?.category || orderData?.labTest?.category || "";
+        (data as any).sampleType = orderData?.sampleType || "";
+
         // 1. Try to fetch the full request details using the new endpoint
         let requestDetailsData: any = null;
         try {
             const reqRes = await getLabTestRequestDetails(id as string);
             requestDetailsData = (reqRes as any)?.data ?? reqRes;
+            if (Array.isArray(requestDetailsData)) requestDetailsData = requestDetailsData[0];
             if (requestDetailsData) {
                 // If it returns patient details, merge them
                 if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
@@ -88,7 +93,8 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
         if (!data.parameters || data.parameters.length === 0) {
             try {
                 const res = await getLabResultDetails(id as string);
-                const apiData = (res as any)?.data ?? res;
+                let apiData = (res as any)?.data ?? res;
+                if (Array.isArray(apiData)) apiData = apiData[0];
                 if (apiData) {
                     data = { ...data, ...apiData };
                 }
