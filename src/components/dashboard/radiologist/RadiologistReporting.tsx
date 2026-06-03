@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import TopBar from "../TopBar";
 import {
   Search,
@@ -27,6 +28,7 @@ type Modality = "CT Scan" | "X-Ray" | "MRI" | "Ultrasound" | "Unknown";
 
 interface ReportItem {
   qId: string;
+  routeId: string;
   patientName: string;
   patientId: string;
   modality: Modality;
@@ -137,20 +139,21 @@ const normalizeReport = (item: GetAllReportsApiItem): ReportItem => {
   const modality = mapApiModality(item);
 
   return {
-    qId: item.requestNumber || `#${item.examId || item.reportId || item.id || "—"}`,
-    patientName: item.patientName || "Unknown Patient",
-    patientId: String(item.patientFileNumber || item.patientId || "—"),
-    modality,
-    bodyPart: item.bodyPart || item.testName || item.examType || "—",
-    studyTime: formatTime(item.studyTime || item.studyDate || item.createdAt),
-    studyDate: formatDate(item.studyDate || item.createdAt),
-    priority: inferPriority(item),
-    status,
-    radiologist: item.radiologistName || item.radiologist || "Unassigned",
-    previewUrl: item.previewUrl || item.imageUrl,
-    raw: item,
-  };
+  qId: item.requestNumber || `#${item.examId || item.reportId || item.id || "—"}`,
+  routeId: String(item.examId || item.reportId || item.id || ""),
+  patientName: item.patientName || "Unknown Patient",
+  patientId: String(item.patientFileNumber || item.patientId || "—"),
+  modality,
+  bodyPart: item.bodyPart || item.testName || item.examType || "—",
+  studyTime: formatTime(item.studyTime || item.studyDate || item.createdAt),
+  studyDate: formatDate(item.studyDate || item.createdAt),
+  priority: inferPriority(item),
+  status,
+  radiologist: item.radiologistName || item.radiologist || "Unassigned",
+  previewUrl: item.previewUrl || item.imageUrl,
+  raw: item,
 };
+}
 
 const getModalityBadge = (mod: Modality) => {
   const base =
@@ -239,24 +242,33 @@ const getStatusBadge = (status: ReportStatus) => {
   }
 };
 
-const getActionButton = (status: ReportStatus) => {
+const getActionButton = (status: ReportStatus, onClick?: () => void) => {
   switch (status) {
     case "Waiting for Report":
       return (
-        <button className="px-5 py-2 text-[11px] font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shadow-blue-100 transition-all cursor-pointer whitespace-nowrap">
+        <button
+          onClick={onClick}
+          className="px-5 py-2 text-[11px] font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shadow-blue-100 transition-all cursor-pointer whitespace-nowrap"
+        >
           Open
         </button>
       );
     case "In Progress":
       return (
-        <button className="px-5 py-2 text-[11px] font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shadow-blue-100 transition-all cursor-pointer whitespace-nowrap">
+        <button
+          onClick={onClick}
+          className="px-5 py-2 text-[11px] font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shadow-blue-100 transition-all cursor-pointer whitespace-nowrap"
+        >
           Resume
         </button>
       );
     case "Completed":
     case "Reviewed":
       return (
-        <button className="px-5 py-2 text-[11px] font-black uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer whitespace-nowrap">
+        <button
+          onClick={onClick}
+          className="px-5 py-2 text-[11px] font-black uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+        >
           View
         </button>
       );
@@ -322,6 +334,7 @@ const RadiologistReporting: React.FC<{
   onMenuClick?: () => void;
   onProfileClick?: () => void;
 }> = ({ onMenuClick, onProfileClick }) => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [examTypeFilter, setExamTypeFilter] = useState("All");
@@ -331,6 +344,8 @@ const RadiologistReporting: React.FC<{
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  
 
   useEffect(() => {
     const loadReports = async () => {
@@ -641,7 +656,9 @@ const RadiologistReporting: React.FC<{
 
                         <td className="px-6 py-5">
                           <div className="flex items-center justify-center gap-2">
-                            {getActionButton(report.status)}
+                            {getActionButton(report.status, () =>
+                              navigate(`/dashboard/radiology/report-draft/${report.routeId}`)
+                            )}
                           </div>
                         </td>
                       </tr>
