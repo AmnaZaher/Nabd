@@ -142,7 +142,7 @@ const RadiologistDashboardOverview: React.FC<{
   };
 
   const handleStartExam = (examId: string) => {
-    navigate(`/dashboard/radiology/start-exam/${examId}`);
+    navigate(`/dashboard/radiology/scan/${examId}`);
   };
 
   return (
