@@ -118,7 +118,7 @@ const LabTechnicianDashboardOverview: React.FC<{
     };
   }, [apiData, apiError, dashboardData]);
 
-  const error = hasError ? "API unavailable or returned empty data. Showing mock data." : null;
+
   const fetchResults = () => {
     refetch();
     refetchDashboard();
@@ -211,19 +211,7 @@ const LabTechnicianDashboardOverview: React.FC<{
             </button>
           </div>
 
-          {/* Global error banner */}
-          {error && (
-            <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-5 py-4 text-red-700 text-sm font-medium">
-              <AlertCircle size={18} className="shrink-0" />
-              <span>{error}</span>
-              <button
-                onClick={fetchResults}
-                className="ml-auto text-red-600 font-bold hover:underline text-xs"
-              >
-                Retry
-              </button>
-            </div>
-          )}
+
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">

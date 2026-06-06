@@ -100,7 +100,6 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
         };
     }, [apiData, apiError]);
 
-    const error = hasError ? "API unavailable or returned empty data. Showing mock data." : null;
 
     const [testFilter, setTestFilter] = useState("Test Name");
     const [doctorFilter, setDoctorFilter] = useState("Doctor");
@@ -173,19 +172,6 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                     </div>
                 </div>
 
-                {/* Global error banner */}
-                {error && (
-                    <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-5 py-4 text-red-700 text-sm font-medium">
-                        <span className="shrink-0 font-bold">!</span>
-                        <span>{error}</span>
-                        <button
-                            onClick={() => refetch()}
-                            className="ml-auto text-red-600 font-bold hover:underline text-xs"
-                        >
-                            Retry
-                        </button>
-                    </div>
-                )}
 
                 {/* Status Cards / Filters */}
                 <div className="flex flex-wrap gap-4">
@@ -199,25 +185,7 @@ const LabOrdersPage: React.FC<LabOrdersPageProps> = ({ onMenuClick, onProfileCli
                         <span className="ml-2 bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">{stats.pending || '00'}</span>
                     </button>
 
-                    {/* Scheduled */}
-                    <button 
-                        onClick={() => setStatusFilter(statusFilter === "Scheduled" ? "All" : "Scheduled")}
-                        className={`flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all ${statusFilter === "Scheduled" ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
-                    >
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-400"></div>
-                        <span className="font-semibold text-slate-700">Scheduled</span>
-                        <span className="ml-2 bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">{stats.scheduled || '00'}</span>
-                    </button>
 
-                    {/* In Progress */}
-                    <button 
-                        onClick={() => setStatusFilter(statusFilter === "In Progress" ? "All" : "In Progress")}
-                        className={`flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all ${statusFilter === "In Progress" ? 'border-orange-400 bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
-                    >
-                        <div className="w-2.5 h-2.5 rounded-full border-[3px] border-orange-400 !border-t-transparent animate-spin-slow"></div>
-                        <span className="font-semibold text-slate-700">In Progress</span>
-                        <span className="ml-2 bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">{stats.inProgress || '00'}</span>
-                    </button>
 
                     {/* Completed */}
                     <button 

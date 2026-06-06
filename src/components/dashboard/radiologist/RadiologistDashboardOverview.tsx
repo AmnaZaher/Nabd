@@ -335,7 +335,7 @@ const RadiologistDashboardOverview: React.FC<{
                 </h3>
 
                 <div className="space-y-4">
-                  <button className="w-full flex items-center justify-between p-4 bg-slate-50/50 hover:bg-blue-50/30 rounded-2xl border border-slate-100 hover:border-blue-150 transition-all text-left group cursor-pointer">
+                  <button onClick={() => navigate("/dashboard/radiology/exam-rooms")} className="w-full flex items-center justify-between p-4 bg-slate-50/50 hover:bg-blue-50/30 rounded-2xl border border-slate-100 hover:border-blue-150 transition-all text-left group cursor-pointer">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                         <FileText size={18} />

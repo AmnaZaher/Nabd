@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight, User, AlertTriangle, Loader2, Check } from "lucide-react";
-import { getLabResultDetails, createLabResult, getLabTestDetails, getLabTestRequestDetails } from "../../../api/labs";
+import { getLabResultDetails, createLabResult, getLabTestDetails, getLabTestRequestDetails, getLabParameters } from "../../../api/labs";
 import type { LabResultDetail } from "../../../types/labs.types";
 import TopBar from "../TopBar";
 
@@ -47,7 +47,7 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
             id: parsedId,
             requestId: parsedId,
             patientName: orderData?.patientName || orderData?.patient?.name || orderData?.name || "Unknown Patient",
-            fileNumber: orderData?.fileNumber || orderData?.patient?.fileNumber || "—",
+            fileNumber: orderData?.patientFileNumber || orderData?.fileNumber || orderData?.patient?.fileNumber || "—",
             testName: orderData?.testName || orderData?.labTest?.testNameEnglish || orderData?.name || "Unknown Test",
             doctorName: orderData?.doctorName || orderData?.doctor?.name || orderData?.doctor || "Unknown Doctor",
             status: orderData?.status || "In Progress",
@@ -56,41 +56,65 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
             parameters: []
         } as LabResultDetail;
 
-        // 1. Try to fetch the full request details using the new endpoint
-        let requestDetailsData: any = null;
+        (data as any).visitNumber = orderData?.visitId || orderData?.visitNumber || "";
+        (data as any).category = orderData?.category || orderData?.labTest?.category || "";
+        (data as any).sampleType = orderData?.sampleType || "";
+
+        // 0. Fetch parameters directly using GetParamret
+        let parametersFetched = false;
         try {
-            const reqRes = await getLabTestRequestDetails(id as string);
-            requestDetailsData = (reqRes as any)?.data ?? reqRes;
-            if (requestDetailsData) {
-                // If it returns patient details, merge them
-                if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
-                if (requestDetailsData.doctorName) data.doctorName = requestDetailsData.doctorName;
-                if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
-                
-                // If it contains parameters directly
-                const paramsList = requestDetailsData.parameters || requestDetailsData.labParameters || requestDetailsData.testParameters || requestDetailsData.labTest?.parameters;
-                if (paramsList && Array.isArray(paramsList)) {
-                    data.parameters = paramsList.map((p: any) => ({
-                        ...p,
-                        id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
-                        parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
-                        referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
-                        referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
-                        unit: p.unit || p.measurementUnit || ''
-                    }));
-                }
+            const paramsRes = await getLabParameters(parsedId);
+            const paramsList = (paramsRes as any)?.data ?? paramsRes;
+            console.warn("Unconditional GetParamret raw response:", paramsRes);
+            
+            let extractedParams = null;
+            if (paramsList && Array.isArray(paramsList)) {
+                extractedParams = paramsList;
+            } else if (paramsList && typeof paramsList === 'object') {
+                // In case it's nested
+                extractedParams = paramsList.parameters || paramsList.labTestParameters || paramsList.testParameters || paramsList.results;
+            }
+
+            if (extractedParams && Array.isArray(extractedParams) && extractedParams.length > 0) {
+                data.parameters = extractedParams;
+                parametersFetched = true;
             }
         } catch (err) {
-            console.warn("Failed to load request details via LabTestDetails.", err);
+            console.warn("Failed to load parameters via GetParamret.", err);
+        }
+
+        // 1. Try to fetch the full request details using the new endpoint
+        // Only attempt this if we STILL need parameters, to avoid the expected 400 Bad Request console error.
+        let requestDetailsData: any = null;
+        if (!parametersFetched) {
+            try {
+                const reqRes = await getLabTestRequestDetails(id as string);
+                requestDetailsData = (reqRes as any)?.data ?? reqRes;
+                if (requestDetailsData) {
+                    if (requestDetailsData.patientName) data.patientName = requestDetailsData.patientName;
+                    if (requestDetailsData.doctorName) data.doctorName = requestDetailsData.doctorName;
+                    if (requestDetailsData.testName) data.testName = requestDetailsData.testName;
+                    
+                    const paramsList = requestDetailsData.parameters || requestDetailsData.labParameters || requestDetailsData.testParameters || requestDetailsData.labTest?.parameters;
+                    if (!parametersFetched && paramsList && Array.isArray(paramsList) && paramsList.length > 0) {
+                        data.parameters = paramsList;
+                        parametersFetched = true;
+                    }
+                }
+            } catch (err) {
+                // Suppressing the warning because this endpoint intentionally throws a 400 when the test is not completed yet.
+            }
         }
 
         // 2. If we still don't have parameters, try to get them from GetResultDetails (if it was already partially created)
-        if (!data.parameters || data.parameters.length === 0) {
+        if (!parametersFetched && (!data.parameters || data.parameters.length === 0)) {
             try {
                 const res = await getLabResultDetails(id as string);
-                const apiData = (res as any)?.data ?? res;
+                let apiData = (res as any)?.data ?? res;
+                if (Array.isArray(apiData)) apiData = apiData[0];
                 if (apiData) {
                     data = { ...data, ...apiData };
+                    if (data.parameters && data.parameters.length > 0) parametersFetched = true;
                 }
             } catch (err) {
                 console.warn("Failed to load result details (might not exist yet).", err);
@@ -98,7 +122,7 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
         }
 
         // 3. If we STILL don't have parameters, try fetching by TestId or Name
-        if (!data.parameters || data.parameters.length === 0) {
+        if (!parametersFetched && (!data.parameters || data.parameters.length === 0)) {
             const testId = (data as any).testId || (data as any).labTestId || (data as any).labTest?.id || requestDetailsData?.testId || requestDetailsData?.labTestId || requestDetailsData?.labTest?.id || orderData?.testId || orderData?.labTestId || orderData?.labTest?.id;
             let testParams = null;
 
@@ -108,21 +132,13 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
                     const testData = (testRes as any)?.data ?? testRes;
                     const testDataParams = testData?.parameters || testData?.labParameters || testData?.testParameters || testData?.labTestParameters;
                     if (testDataParams && testDataParams.length > 0) {
-                        testParams = testDataParams.map((p: any) => ({
-                            ...p,
-                            id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
-                            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
-                            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
-                            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
-                            unit: p.unit || p.measurementUnit || ''
-                        }));
+                        testParams = testDataParams;
                     }
                 } catch (err) {
                     console.error("Failed to load test parameters by testId:", testId, err);
                 }
             }
 
-            // Fallback: match by name using the full catalog
             if (!testParams) {
                 try {
                     const { getLabCatalogFull } = await import('../../../api/labs');
@@ -136,25 +152,71 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
                     );
                     
                     if (matchedTest?.parameters && matchedTest.parameters.length > 0) {
-                        testParams = matchedTest.parameters.map((p: any) => ({
-                            ...p,
-                            id: p.id || p.parameterId || p.paramterId || p.labParameterId || p.testParameterId,
-                            parameterNameEnglish: p.parameterNameEnglish || p.parameterName || p.name || 'Unknown Parameter',
-                            referenceRangeMin: p.referenceRangeMin ?? p.minRange ?? 0,
-                            referenceRangeMax: p.referenceRangeMax ?? p.maxRange ?? 0,
-                            unit: p.unit || p.measurementUnit || ''
-                        }));
+                        testParams = matchedTest.parameters;
                     }
                 } catch (err) {
                     console.error("Failed to load test parameters via catalog fallback:", err);
                 }
             }
 
-            if (testParams) {
+            if (testParams && testParams.length > 0) {
                 data.parameters = testParams;
-            } else {
+                parametersFetched = true;
+            } else if (!parametersFetched) {
                 data.parameters = mockParams;
             }
+        }
+
+        // 4. Fallback for Patient and Test info if still unknown (from all requests list)
+        if (!data.patientName || data.patientName === "Unknown Patient" || !data.testName || data.testName === "Unknown Test") {
+            try {
+                const { getLabResults } = await import('../../../api/labs');
+                const resultsRes = await getLabResults();
+                const allResults = (resultsRes as any)?.data || resultsRes;
+                if (Array.isArray(allResults)) {
+                    const match = allResults.find((r: any) => r.requestId == parsedId || r.id == parsedId || r.request?.id == parsedId);
+                    if (match) {
+                        if (match.patientName || match.patient?.name) data.patientName = match.patientName || match.patient?.name;
+                        if (match.patientFileNumber || match.fileNumber || match.patient?.fileNumber) data.fileNumber = match.patientFileNumber || match.fileNumber || match.patient?.fileNumber;
+                        if (match.testName || match.testNameEnglish || match.labTest?.testNameEnglish) data.testName = match.testName || match.testNameEnglish || match.labTest?.testNameEnglish;
+                        if (match.doctorName || match.doctor?.name) data.doctorName = match.doctorName || match.doctor?.name;
+                        if (match.status || match.statuse) data.status = match.status || match.statuse;
+                        if (match.priority) data.priority = match.priority;
+                    }
+                }
+            } catch (err) {
+                console.warn("Failed to fallback from all results:", err);
+            }
+        }
+
+        // 5. Final Mapping: Ensure all parameters have id, name, min, max, unit
+        if (data.parameters && data.parameters !== mockParams) {
+            data.parameters = data.parameters.map((rawP: any, index: number) => {
+                const p = rawP.labTestParameter || rawP.parameter || rawP.labParameter || rawP;
+                const pId = p.paramId || p.id || p.Id || p.parameterId || p.ParameterId || p.paramterId || p.ParamterId || p.labParameterId || p.testParameterId || rawP.paramId || rawP.id || rawP.Id || rawP.parameterId || rawP.paramterId || (index + 9000);
+                
+                let minVal = p.referenceRangeMin ?? p.ReferenceRangeMin ?? p.minRange ?? p.MinRange ?? p.normalRangeMin ?? p.minValue ?? rawP.referenceRangeMin ?? rawP.minRange ?? 0;
+                let maxVal = p.referenceRangeMax ?? p.ReferenceRangeMax ?? p.maxRange ?? p.MaxRange ?? p.normalRangeMax ?? p.maxValue ?? rawP.referenceRangeMax ?? rawP.maxRange ?? 0;
+
+                // Handle single string format "70.00/99.00" in refrenceRange
+                const rangeStr = p.refrenceRange || p.referenceRange || rawP.refrenceRange || rawP.referenceRange;
+                if (typeof rangeStr === 'string' && rangeStr.includes('/')) {
+                    const parts = rangeStr.split('/');
+                    if (parts.length === 2) {
+                        minVal = parseFloat(parts[0]) || minVal;
+                        maxVal = parseFloat(parts[1]) || maxVal;
+                    }
+                }
+
+                return {
+                    ...p,
+                    id: pId,
+                    parameterNameEnglish: p.paramName || p.parameterNameEnglish || p.ParameterNameEnglish || p.parameterName || p.ParameterName || p.name || p.Name || p.paramterName || p.ParamterName || rawP.paramName || rawP.name || rawP.Name || 'Unknown Parameter',
+                    referenceRangeMin: minVal,
+                    referenceRangeMax: maxVal,
+                    unit: p.unit || p.Unit || p.measurementUnit || p.MeasurementUnit || rawP.unit || rawP.Unit || ''
+                };
+            });
         }
 
         setDetail(data);
@@ -294,7 +356,7 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
                 {detail.patientName ?? detail.patient?.name ?? "Emma Lawson"}
               </h3>
               <p className="text-sm text-slate-500 mt-0.5">
-                ID: {detail.fileNumber ?? "#PT-88291"} • Female, 32y
+                ID: {detail.fileNumber ?? "#PT-88291"}
               </p>
             </div>
           </div>
@@ -324,11 +386,13 @@ export default function EditLabResultPage({ onMenuClick, onProfileClick }: EditL
 
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">SAMPLE TYPE</p>
-              <p className="text-sm font-bold text-slate-800">Blood/Serum</p>
+              <p className="text-sm font-bold text-slate-800">{(detail as any).sample || (detail as any).sampleType || location.state?.orderData?.sample || location.state?.orderData?.sampleType || "Blood"}</p>
               
               <div className="mt-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">SAMPLE DATE</p>
-                <p className="text-sm font-bold text-slate-800">Oct 24, 2023</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {detail.createdAt ? new Date(detail.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (location.state?.orderData?.date || "N/A")}
+                </p>
               </div>
             </div>
 

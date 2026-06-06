@@ -3,6 +3,7 @@ import { fetchApi } from "./config";
 export interface RadiologyImageDto {
   id?: number;
   imageId?: number;
+  examId?: number | string; // Added here
   fileName?: string;
   type?: string;
   notes?: string;
@@ -16,6 +17,7 @@ export interface RadiologyImageDto {
 export interface UploadRadiologyImageDto {
   id?: number;
   imageId?: number;
+  examId?: number | string; // Added here
   fileName?: string;
   type?: string;
   notes?: string;

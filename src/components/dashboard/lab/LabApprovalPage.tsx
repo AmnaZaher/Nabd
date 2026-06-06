@@ -390,7 +390,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                     paginatedList.map(req => {
                                         const status = normaliseStatus(req.status || req.statuse);
                                         const pName = req.patientName ?? req.patient?.name ?? "Unknown";
-                                        const pDetails = req.fileNumber ?? "—";
+                                        const pDetails = req.fileNumber;
                                         const tName = req.testName ?? req.labTest?.testNameEnglish ?? "—";
                                         const dName = req.doctorName ?? req.doctor?.name ?? "—";
                                         const isUrgent = (req.priority || "").toLowerCase() === "urgent";
@@ -432,7 +432,7 @@ const LabApprovalPage: React.FC<LabApprovalPageProps> = ({ onMenuClick, onProfil
                                                     >
                                                         <div>
                                                             <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{pName}</p>
-                                                            <p className="text-[11px] font-medium text-slate-500 mt-0.5">{pDetails}</p>
+                                                            {pDetails && <p className="text-[11px] font-medium text-slate-500 mt-0.5">{pDetails}</p>}
                                                         </div>
                                                     </div>
                                                 </td>
