@@ -12,10 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import {
-  getRadiologyRequests,
-  type RadiologyRequestListItemDto,
-} from "../../../api/radilogist";
+import {getRadiologyRequests, createRadiologyExam, type RadiologyRequestListItemDto } from "../../../api/radilogist";
 
 interface RequestItem {
   id: string;
@@ -196,6 +193,7 @@ const RadiologistRequests: React.FC<{
   const [requests, setRequests] = useState<RadiologyRequestListItemDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [startingExamId, setStartingExamId] = useState<number | null>(null);
   const ITEMS_PER_PAGE = 4;
 
   useEffect(() => {
@@ -248,6 +246,26 @@ const RadiologistRequests: React.FC<{
   );
 
   const tabCountLabel = (count: number) => String(count).padStart(2, "0");
+
+  const handleStartExam = async (reqId: number | undefined, modality: string | undefined) => {
+    if (!reqId) return;
+    setStartingExamId(reqId);
+    try {
+      const response = await createRadiologyExam(reqId, {
+        examDate: new Date().toISOString(),
+        modality,
+      });
+
+      const newExamId = response.examId || response.id;
+      if (!newExamId) throw new Error("No exam id returned");
+
+      navigate(`/dashboard/radiology/scan/${newExamId}`);
+    } catch (error: any) {
+      alert(error?.message || "Failed to start exam.");
+    } finally {
+      setStartingExamId(null);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F4F6FA]">
@@ -527,31 +545,113 @@ const RadiologistRequests: React.FC<{
                           >
                             ...
                           </span>
-                        ) : (
-                          <button
-                            key={item}
-                            onClick={() => setCurrentPage(item as number)}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
-                              currentPage === item
-                                ? "bg-[#1A6FC4] border-[#1A6FC4] text-white"
-                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                            }`}
-                          >
-                            {item}
-                          </button>
-                        )
-                      )}
+                        </td>
 
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              </>
+                        {/* Radiologist */}
+                        <td className="px-6 py-5 text-sm font-medium text-slate-700">
+                          {req.radiologist ?? (
+                            <span className="text-slate-400 italic">Unassigned</span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-5">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => navigate(`/dashboard/radiology/view-exam/${req.id}`)}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                              title="View"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <button
+                              onClick={() => canStart && handleStartExam(req.id, req.modality)}
+                              disabled={!canStart || startingExamId === req.id}
+                              className={`px-4 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all ${
+                                !canStart
+                                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                  : "bg-[#1A6FC4] hover:bg-[#155faa] text-white shadow-sm cursor-pointer"
+                              }`}
+                            >
+                              {startingExamId === req.id ? "Starting..." : "Start Exam"}
+                            </button>
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+
+                  {paginated.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="text-center py-16 text-slate-400 text-sm"
+                      >
+                        No exams match your selection.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Pagination footer ── */}
+            <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+              <p className="text-xs text-slate-400 font-semibold">
+                Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filtered.length)}–
+                {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} exams
+              </p>
+
+              <div className="flex items-center gap-1">
+                {/* Prev */}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                {/* Page numbers */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("...");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((item, i) =>
+                    item === "..." ? (
+                      <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-xs text-slate-400">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        onClick={() => setCurrentPage(item as number)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+                          currentPage === item
+                            ? "bg-[#1A6FC4] border-[#1A6FC4] text-white"
+                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+
+                {/* Next */}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+            </>
             )}
           </div>
         </div>
